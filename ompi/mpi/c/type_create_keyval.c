@@ -5,15 +5,17 @@
  * Copyright (c) 2004-2005 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
  * Copyright (c) 2007      Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2015      Research Organization for Information Science
+ *                         and Technology (RIST). All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -25,12 +27,11 @@
 #include "ompi/errhandler/errhandler.h"
 #include "ompi/attribute/attribute.h"
 
-#if OPAL_HAVE_WEAK_SYMBOLS && OMPI_PROFILING_DEFINES
+#if OMPI_BUILD_MPI_PROFILING
+#if OPAL_HAVE_WEAK_SYMBOLS
 #pragma weak MPI_Type_create_keyval = PMPI_Type_create_keyval
 #endif
-
-#if OMPI_PROFILING_DEFINES
-#include "ompi/mpi/c/profile/defines.h"
+#define MPI_Type_create_keyval PMPI_Type_create_keyval
 #endif
 
 static const char FUNC_NAME[] = "MPI_Type_create_keyval";
@@ -50,12 +51,10 @@ int MPI_Type_create_keyval(MPI_Type_copy_attr_function *type_copy_attr_fn,
         if ((NULL == type_copy_attr_fn) || (NULL == type_delete_attr_fn) ||
             (NULL == type_keyval)) {
             return OMPI_ERRHANDLER_INVOKE(MPI_COMM_WORLD,
-                                          MPI_ERR_ARG, 
+                                          MPI_ERR_ARG,
                                           FUNC_NAME);
         }
     }
-
-    OPAL_CR_ENTER_LIBRARY();
 
     copy_fn.attr_datatype_copy_fn = (MPI_Type_internal_copy_attr_function*)type_copy_attr_fn;
     del_fn.attr_datatype_delete_fn = type_delete_attr_fn;

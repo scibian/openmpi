@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2008      Los Alamos National Security, LLC.
- *                         All rights reserved. 
+ * Copyright (c) 2008-2013 Los Alamos National Security, LLC.
+ *                         All rights reserved.
  * Copyright (c) 2004-2008 The Trustees of Indiana University.
  *                         All rights reserved.
  * $COPYRIGHT$
@@ -10,7 +10,7 @@
  * $HEADER$
  */
 
-/** 
+/**
  * @file
  *
  * Type definitions to support routed framework
@@ -28,8 +28,6 @@
 
 BEGIN_C_DECLS
 
-#if !ORTE_DISABLE_FULL_SUPPORT
-
 /* struct for tracking routing trees */
 typedef struct {
     opal_list_item_t super;
@@ -38,7 +36,14 @@ typedef struct {
 } orte_routed_tree_t;
 ORTE_DECLSPEC OBJ_CLASS_DECLARATION(orte_routed_tree_t);
 
-#endif
+/* struct for tracking external routes */
+typedef struct {
+    opal_object_t super;
+    uint16_t job_family;
+    orte_process_name_t route;
+    char *hnp_uri;
+} orte_routed_jobfam_t;
+ORTE_DECLSPEC OBJ_CLASS_DECLARATION(orte_routed_jobfam_t);
 
 END_C_DECLS
 

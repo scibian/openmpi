@@ -5,19 +5,19 @@
  * Copyright (c) 2004-2005 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
-#ifndef OMPI_SYS_ARCH_ATOMIC_H
-#define OMPI_SYS_ARCH_ATOMIC_H 1
+#ifndef OPAL_SYS_ARCH_ATOMIC_H
+#define OPAL_SYS_ARCH_ATOMIC_H 1
 
 /*
  * On ia64, we use cmpxchg, which supports acquire/release semantics natively.
@@ -42,7 +42,7 @@
  * Memory Barriers
  *
  *********************************************************************/
-#if OMPI_GCC_INLINE_ASSEMBLY
+#if OPAL_GCC_INLINE_ASSEMBLY
 
 static inline void opal_atomic_mb(void)
 {
@@ -62,7 +62,7 @@ static inline void opal_atomic_wmb(void)
 }
 
 
-#endif /* OMPI_GCC_INLINE_ASSEMBLY */
+#endif /* OPAL_GCC_INLINE_ASSEMBLY */
 
 
 /**********************************************************************
@@ -70,7 +70,7 @@ static inline void opal_atomic_wmb(void)
  * Atomic math operations
  *
  *********************************************************************/
-#if OMPI_GCC_INLINE_ASSEMBLY
+#if OPAL_GCC_INLINE_ASSEMBLY
 
 #define ia64_cmpxchg4_acq(ptr, new, old)                 \
 ({                               \
@@ -103,12 +103,12 @@ static inline int opal_atomic_cmpset_rel_32( volatile int32_t *addr,
     return ((int32_t)ret == oldval);
 }
 
-#endif /* OMPI_GCC_INLINE_ASSEMBLY */
+#endif /* OPAL_GCC_INLINE_ASSEMBLY */
 
 
 #define opal_atomic_cmpset_32 opal_atomic_cmpset_acq_32
 
-#if OMPI_GCC_INLINE_ASSEMBLY
+#if OPAL_GCC_INLINE_ASSEMBLY
 
 static inline int opal_atomic_cmpset_acq_64( volatile int64_t *addr,
                                              int64_t oldval, int64_t newval)
@@ -119,7 +119,7 @@ static inline int opal_atomic_cmpset_acq_64( volatile int64_t *addr,
     __asm__ __volatile__ ("cmpxchg8.acq %0=[%1],%2,ar.ccv":
                   "=r"(ret) : "r"(addr), "r"(newval) : "memory");
 
-    return ((int32_t)ret == oldval);
+    return (ret == oldval);
 }
 
 
@@ -132,11 +132,11 @@ static inline int opal_atomic_cmpset_rel_64( volatile int64_t *addr,
     __asm__ __volatile__ ("cmpxchg8.rel %0=[%1],%2,ar.ccv":
                   "=r"(ret) : "r"(addr), "r"(newval) : "memory");
 
-    return ((int32_t)ret == oldval);
+    return (ret == oldval);
 }
 
-#endif /* OMPI_GCC_INLINE_ASSEMBLY */
+#endif /* OPAL_GCC_INLINE_ASSEMBLY */
 
 #define opal_atomic_cmpset_64 opal_atomic_cmpset_acq_64
 
-#endif /* ! OMPI_SYS_ARCH_ATOMIC_H */
+#endif /* ! OPAL_SYS_ARCH_ATOMIC_H */

@@ -1,21 +1,26 @@
-/* -*- Mode: C; c-basic-offset:4 ; -*- */
+/* -*- Mode: C; c-basic-offset:4 ; indent-tabs-mode:nil -*- */
 /*
  * Copyright (c) 2004-2005 The Trustees of Indiana University and Indiana
  *                         University Research and Technology
  *                         Corporation.  All rights reserved.
- * Copyright (c) 2004-2010 The University of Tennessee and The University
+ * Copyright (c) 2004-2016 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2007 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2007 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
- * Copyright (c) 2006      Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2006-2013 Cisco Systems, Inc.  All rights reserved.
  * Copyright (c) 2009      Sun Microsystems, Inc.  All rights reserved.
+ * Copyright (c) 2012      Oak Ridge National Labs.  All rights reserved.
+ * Copyright (c) 2015      Los Alamos National Security, LLC.  All rights
+ *                         reserved.
+ * Copyright (c) 2015      Research Organization for Information Science
+ *                         and Technology (RIST). All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -27,14 +32,16 @@
 #include "ompi/request/request_default.h"
 #include "ompi/constants.h"
 
-opal_pointer_array_t             ompi_request_f_to_c_table;
+opal_pointer_array_t             ompi_request_f_to_c_table = {{0}};
 size_t                           ompi_request_waiting = 0;
 size_t                           ompi_request_completed = 0;
-opal_mutex_t                     ompi_request_lock;
-opal_condition_t                 ompi_request_cond;
-ompi_predefined_request_t        ompi_request_null;
-ompi_request_t                   ompi_request_empty;
-ompi_status_public_t             ompi_status_empty;
+size_t                           ompi_request_failed = 0;
+opal_recursive_mutex_t           ompi_request_lock = {{0}};
+opal_condition_t                 ompi_request_cond = {{0}};
+ompi_predefined_request_t        ompi_request_null = {{{{{0}}}}};
+ompi_predefined_request_t        *ompi_request_null_addr = &ompi_request_null;
+ompi_request_t                   ompi_request_empty = {{{{0}}}};
+ompi_status_public_t             ompi_status_empty = {0};
 ompi_request_fns_t               ompi_request_functions = {
     ompi_request_default_test,
     ompi_request_default_test_any,
@@ -48,10 +55,15 @@ ompi_request_fns_t               ompi_request_functions = {
 
 static void ompi_request_construct(ompi_request_t* req)
 {
-    OMPI_REQUEST_INIT(req, false);
+    /* don't call _INIT, we don't to set the request to _INACTIVE and there will
+     * be no matching _FINI invocation */
+    req->req_state        = OMPI_REQUEST_INVALID;
+    req->req_complete     = false;
+    req->req_persistent   = false;
     req->req_free         = NULL;
     req->req_cancel       = NULL;
     req->req_complete_cb  = NULL;
+    req->req_complete_cb_data = NULL;
     req->req_f_to_c_index = MPI_UNDEFINED;
     req->req_mpi_object.comm = (struct ompi_communicator_t*) NULL;
 }
@@ -90,14 +102,14 @@ int ompi_request_persistent_proc_null_free(ompi_request_t** request)
 
 OBJ_CLASS_INSTANCE(
     ompi_request_t,
-    ompi_free_list_item_t,
+    opal_free_list_item_t,
     ompi_request_construct,
     ompi_request_destruct);
 
 
 int ompi_request_init(void)
 {
-    OBJ_CONSTRUCT(&ompi_request_lock, opal_mutex_t);
+    OBJ_CONSTRUCT(&ompi_request_lock, opal_recursive_mutex_t);
     OBJ_CONSTRUCT(&ompi_request_cond, opal_condition_t);
 
     OBJ_CONSTRUCT(&ompi_request_null, ompi_request_t);
@@ -107,13 +119,13 @@ int ompi_request_init(void)
         return OMPI_ERROR;
     }
     ompi_request_null.request.req_type = OMPI_REQUEST_NULL;
-    ompi_request_null.request.req_status.MPI_SOURCE = MPI_PROC_NULL;
+    ompi_request_null.request.req_status.MPI_SOURCE = MPI_ANY_SOURCE;
     ompi_request_null.request.req_status.MPI_TAG = MPI_ANY_TAG;
     ompi_request_null.request.req_status.MPI_ERROR = MPI_SUCCESS;
     ompi_request_null.request.req_status._ucount = 0;
     ompi_request_null.request.req_status._cancelled = 0;
 
-    ompi_request_null.request.req_complete = true;
+    ompi_request_null.request.req_complete = REQUEST_COMPLETED;
     ompi_request_null.request.req_state = OMPI_REQUEST_INACTIVE;
     ompi_request_null.request.req_persistent = false;
     ompi_request_null.request.req_f_to_c_index =
@@ -145,7 +157,7 @@ int ompi_request_init(void)
     ompi_request_empty.req_status._ucount = 0;
     ompi_request_empty.req_status._cancelled = 0;
 
-    ompi_request_empty.req_complete = true;
+    ompi_request_empty.req_complete = REQUEST_COMPLETED;
     ompi_request_empty.req_state = OMPI_REQUEST_ACTIVE;
     ompi_request_empty.req_persistent = false;
     ompi_request_empty.req_f_to_c_index =

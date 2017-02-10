@@ -10,6 +10,7 @@
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
+ * Copyright (c) 2014      Intel, Inc. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -22,24 +23,21 @@
 #ifndef OPAL_CONFIG_H
 #define OPAL_CONFIG_H
 
+#include "opal_config_top.h"
+
+
 
 /* Define if building universal (internal helper macro) */
 #undef AC_APPLE_UNIVERSAL_BUILD
 
-/* enable openib BTL failover */
-#undef BTL_OPENIB_FAILOVER_ENABLED
+/* rdmacm without IB_AF addressing support */
+#undef BTL_OPENIB_RDMACM_IB_ADDR
 
-/* Whether the openib BTL malloc hooks are enabled */
-#undef BTL_OPENIB_MALLOC_HOOKS_ENABLED
+/* defined to 1 if cray wlm available, 0 otherwise */
+#undef CRAY_WLM_DETECT
 
-/* BLCR cr_request_file check */
-#undef CRS_BLCR_HAVE_CR_REQUEST
-
-/* BLCR cr_request_checkpoint check */
-#undef CRS_BLCR_HAVE_CR_REQUEST_CHECKPOINT
-
-/* BLCRs cr_checkpoint_info.requester member availability */
-#undef CRS_BLCR_HAVE_INFO_REQUESTER
+/* Version of event */
+#undef EVENT_EXTERNAL_EVENT_VERSION
 
 /* Define to 1 if you have the <aio.h> header file. */
 #undef HAVE_AIO_H
@@ -47,14 +45,14 @@
 /* Define to 1 if you have the <alloca.h> header file. */
 #undef HAVE_ALLOCA_H
 
+/* Define to 1 if you have the <alps/apInfo.h> header file. */
+#undef HAVE_ALPS_APINFO_H
+
 /* Define to 1 if you have the <arpa/inet.h> header file. */
 #undef HAVE_ARPA_INET_H
 
 /* Define to 1 if you have the `asprintf' function. */
 #undef HAVE_ASPRINTF
-
-/* Define to 1 if you have the `backtrace' function. */
-#undef HAVE_BACKTRACE
 
 /* Define to 1 if the system has the type `CACHE_DESCRIPTOR'. */
 #undef HAVE_CACHE_DESCRIPTOR
@@ -62,35 +60,50 @@
 /* Define to 1 if the system has the type `CACHE_RELATIONSHIP'. */
 #undef HAVE_CACHE_RELATIONSHIP
 
-/* Define to 1 if you have the <catamount/cnos_mpi_os.h> header file. */
-#undef HAVE_CATAMOUNT_CNOS_MPI_OS_H
-
-/* Define to 1 if you have the <catamount/dclock.h> header file. */
-#undef HAVE_CATAMOUNT_DCLOCK_H
-
-/* Define to 1 if you have the `ceil' function. */
-#undef HAVE_CEIL
-
 /* Define to 1 if you have the `clz' function. */
 #undef HAVE_CLZ
 
 /* Define to 1 if you have the `clzl' function. */
 #undef HAVE_CLZL
 
-/* Define to 1 if you have the <cnos_mpi_os.h> header file. */
-#undef HAVE_CNOS_MPI_OS_H
+/* Define to 1 if you have the <CL/cl_ext.h> header file. */
+#undef HAVE_CL_CL_EXT_H
+
+/* Define to 1 if you have the <complex.h> header file. */
+#undef HAVE_COMPLEX_H
+
+/* Define to 1 if you have the `cpuset_setaffinity' function. */
+#undef HAVE_CPUSET_SETAFFINITY
+
+/* Define to 1 if you have the `cpuset_setid' function. */
+#undef HAVE_CPUSET_SETID
 
 /* Define to 1 if you have the <crt_externs.h> header file. */
 #undef HAVE_CRT_EXTERNS_H
 
-/* Define to 1 if you have the `cr_request_checkpoint' function. */
-#undef HAVE_CR_REQUEST_CHECKPOINT
+/* Define to 1 if you have the <ctype.h> header file. */
+#undef HAVE_CTYPE_H
 
-/* Define to 1 if you have the `cr_request_file' function. */
-#undef HAVE_CR_REQUEST_FILE
+/* Define to 1 if we have -lcuda */
+#undef HAVE_CUDA
 
-/* uDAPL DAT_MEM_TYPE_SO_VIRTUAL check */
-#undef HAVE_DAT_MEM_TYPE_SO_VIRTUAL
+/* Define to 1 if you have the <cuda.h> header file. */
+#undef HAVE_CUDA_H
+
+/* Define to 1 if you have the <cuda_runtime_api.h> header file. */
+#undef HAVE_CUDA_RUNTIME_API_H
+
+/* Define to 1 if you have the <curl/curl.h> header file. */
+#undef HAVE_CURL_CURL_H
+
+/* Define to 1 if you have the `dbm_open' function. */
+#undef HAVE_DBM_OPEN
+
+/* Define to 1 if you have the `dbopen' function. */
+#undef HAVE_DBOPEN
+
+/* Define to 1 if you have the <db.h> header file. */
+#undef HAVE_DB_H
 
 /* Define to 1 if you have the declaration of `AF_INET6', and to 0 if you
    don't. */
@@ -100,9 +113,29 @@
    don't. */
 #undef HAVE_DECL_AF_UNSPEC
 
+/* Define to 1 if you have the declaration of `CL_DEVICE_TOPOLOGY_AMD', and to
+   0 if you don't. */
+#undef HAVE_DECL_CL_DEVICE_TOPOLOGY_AMD
+
 /* Define to 1 if you have the declaration of `CTL_HW', and to 0 if you don't.
    */
 #undef HAVE_DECL_CTL_HW
+
+/* Define to 1 if you have the declaration of `fabsf', and to 0 if you don't.
+   */
+#undef HAVE_DECL_FABSF
+
+/* Define to 1 if you have the declaration of `getexecname', and to 0 if you
+   don't. */
+#undef HAVE_DECL_GETEXECNAME
+
+/* Define to 1 if you have the declaration of `GetModuleFileName', and to 0 if
+   you don't. */
+#undef HAVE_DECL_GETMODULEFILENAME
+
+/* Define to 1 if you have the declaration of `getprogname', and to 0 if you
+   don't. */
+#undef HAVE_DECL_GETPROGNAME
 
 /* Define to 1 if you have the declaration of `HW_NCPU', and to 0 if you
    don't. */
@@ -111,25 +144,77 @@
 /* Define to 1 if you have the declaration of `HZ', and to 0 if you don't. */
 #undef HAVE_DECL_HZ
 
+/* Define to 1 if you have the declaration of `IBV_ACCESS_ALLOCATE_MR', and to
+   0 if you don't. */
+#undef HAVE_DECL_IBV_ACCESS_ALLOCATE_MR
+
+/* Define to 1 if you have the declaration of
+   `IBV_ACCESS_SHARED_MR_USER_READ', and to 0 if you don't. */
+#undef HAVE_DECL_IBV_ACCESS_SHARED_MR_USER_READ
+
 /* Define to 1 if you have the declaration of `IBV_ACCESS_SO', and to 0 if you
    don't. */
 #undef HAVE_DECL_IBV_ACCESS_SO
+
+/* Define to 1 if you have the declaration of `IBV_ATOMIC_HCA', and to 0 if
+   you don't. */
+#undef HAVE_DECL_IBV_ATOMIC_HCA
+
+/* Define to 1 if you have the declaration of `ibv_cmd_open_xrcd', and to 0 if
+   you don't. */
+#undef HAVE_DECL_IBV_CMD_OPEN_XRCD
+
+/* Define to 1 if you have the declaration of `ibv_create_xrc_rcv_qp', and to
+   0 if you don't. */
+#undef HAVE_DECL_IBV_CREATE_XRC_RCV_QP
+
+/* Define to 1 if you have the declaration of `IBV_DEVICE_XRC', and to 0 if
+   you don't. */
+#undef HAVE_DECL_IBV_DEVICE_XRC
 
 /* Define to 1 if you have the declaration of `IBV_EVENT_CLIENT_REREGISTER',
    and to 0 if you don't. */
 #undef HAVE_DECL_IBV_EVENT_CLIENT_REREGISTER
 
+/* Define to 1 if you have the declaration of `IBV_EXP_ACCESS_ALLOCATE_MR',
+   and to 0 if you don't. */
+#undef HAVE_DECL_IBV_EXP_ACCESS_ALLOCATE_MR
+
+/* Define to 1 if you have the declaration of
+   `IBV_EXP_ACCESS_SHARED_MR_USER_READ', and to 0 if you don't. */
+#undef HAVE_DECL_IBV_EXP_ACCESS_SHARED_MR_USER_READ
+
+/* Define to 1 if you have the declaration of `IBV_EXP_ATOMIC_HCA_REPLY_BE',
+   and to 0 if you don't. */
+#undef HAVE_DECL_IBV_EXP_ATOMIC_HCA_REPLY_BE
+
+/* Define to 1 if you have the declaration of `ibv_exp_create_qp', and to 0 if
+   you don't. */
+#undef HAVE_DECL_IBV_EXP_CREATE_QP
+
+/* Define to 1 if you have the declaration of
+   `IBV_EXP_QP_CREATE_ATOMIC_BE_REPLY', and to 0 if you don't. */
+#undef HAVE_DECL_IBV_EXP_QP_CREATE_ATOMIC_BE_REPLY
+
+/* Define to 1 if you have the declaration of
+   `IBV_EXP_QP_INIT_ATTR_ATOMICS_ARG', and to 0 if you don't. */
+#undef HAVE_DECL_IBV_EXP_QP_INIT_ATTR_ATOMICS_ARG
+
+/* Define to 1 if you have the declaration of `ibv_exp_query_device', and to 0
+   if you don't. */
+#undef HAVE_DECL_IBV_EXP_QUERY_DEVICE
+
 /* Define to 1 if you have the declaration of `IBV_LINK_LAYER_ETHERNET', and
    to 0 if you don't. */
 #undef HAVE_DECL_IBV_LINK_LAYER_ETHERNET
 
-/* Define to 1 if you have the declaration of `MPOL_MF_MOVE', and to 0 if you
+/* Define to 1 if you have the declaration of `IBV_SRQT_XRC', and to 0 if you
    don't. */
-#undef HAVE_DECL_MPOL_MF_MOVE
+#undef HAVE_DECL_IBV_SRQT_XRC
 
-/* Define to 1 if you have the declaration of `PCI_LOOKUP_NO_NUMBERS', and to
-   0 if you don't. */
-#undef HAVE_DECL_PCI_LOOKUP_NO_NUMBERS
+/* Define to 1 if you have the declaration of
+   `nvmlDeviceGetMaxPcieLinkGeneration', and to 0 if you don't. */
+#undef HAVE_DECL_NVMLDEVICEGETMAXPCIELINKGENERATION
 
 /* Define to 1 if you have the declaration of `PF_INET6', and to 0 if you
    don't. */
@@ -147,17 +232,41 @@
    0 if you don't. */
 #undef HAVE_DECL_PTHREAD_SETAFFINITY_NP
 
+/* Define to 1 if you have the declaration of `RLIMIT_AS', and to 0 if you
+   don't. */
+#undef HAVE_DECL_RLIMIT_AS
+
+/* Define to 1 if you have the declaration of `RLIMIT_CORE', and to 0 if you
+   don't. */
+#undef HAVE_DECL_RLIMIT_CORE
+
+/* Define to 1 if you have the declaration of `RLIMIT_FSIZE', and to 0 if you
+   don't. */
+#undef HAVE_DECL_RLIMIT_FSIZE
+
 /* Define to 1 if you have the declaration of `RLIMIT_MEMLOCK', and to 0 if
    you don't. */
 #undef HAVE_DECL_RLIMIT_MEMLOCK
+
+/* Define to 1 if you have the declaration of `RLIMIT_NOFILE', and to 0 if you
+   don't. */
+#undef HAVE_DECL_RLIMIT_NOFILE
 
 /* Define to 1 if you have the declaration of `RLIMIT_NPROC', and to 0 if you
    don't. */
 #undef HAVE_DECL_RLIMIT_NPROC
 
+/* Define to 1 if you have the declaration of `RLIMIT_STACK', and to 0 if you
+   don't. */
+#undef HAVE_DECL_RLIMIT_STACK
+
 /* Define to 1 if you have the declaration of `sbrk', and to 0 if you don't.
    */
 #undef HAVE_DECL_SBRK
+
+/* Define to 1 if you have the declaration of `strtoull', and to 0 if you
+   don't. */
+#undef HAVE_DECL_STRTOULL
 
 /* Define to 1 if you have the declaration of `_SC_LARGE_PAGESIZE', and to 0
    if you don't. */
@@ -179,18 +288,28 @@
    you don't. */
 #undef HAVE_DECL__SC_NPROC_ONLN
 
+/* Define to 1 if you have the declaration of `_SC_PAGESIZE', and to 0 if you
+   don't. */
+#undef HAVE_DECL__SC_PAGESIZE
+
+/* Define to 1 if you have the declaration of `_SC_PAGE_SIZE', and to 0 if you
+   don't. */
+#undef HAVE_DECL__SC_PAGE_SIZE
+
 /* Define to 1 if you have the declaration of `__func__', and to 0 if you
    don't. */
 #undef HAVE_DECL___FUNC__
 
-/* Define if /dev/poll is available */
-#undef HAVE_DEVPOLL
+/* Define to 1 if you have the declaration of `__mmap', and to 0 if you don't.
+   */
+#undef HAVE_DECL___MMAP
+
+/* Define to 1 if you have the declaration of `__syscall', and to 0 if you
+   don't. */
+#undef HAVE_DECL___SYSCALL
 
 /* Define to 1 if you have the <dirent.h> header file. */
 #undef HAVE_DIRENT_H
-
-/* Define to 1 if you have the `dirname' function. */
-#undef HAVE_DIRNAME
 
 /* Define to 1 if you have the <dlfcn.h> header file. */
 #undef HAVE_DLFCN_H
@@ -198,20 +317,17 @@
 /* Define to 1 if you have the `dlsym' function. */
 #undef HAVE_DLSYM
 
+/* Define to 1 if the system has the type `Dl_info'. */
+#undef HAVE_DL_INFO
+
 /* Define to 1 if the system has the type `double _Complex'. */
 #undef HAVE_DOUBLE__COMPLEX
-
-/* Define if your system supports the epoll interface */
-#undef HAVE_EPOLL
-
-/* Define to 1 if you have the `epoll_ctl' function. */
-#undef HAVE_EPOLL_CTL
 
 /* Define to 1 if you have the <err.h> header file. */
 #undef HAVE_ERR_H
 
-/* Define if your system supports event ports */
-#undef HAVE_EVENT_PORTS
+/* Define to 1 if you have the <event.h> header file. */
+#undef HAVE_EVENT_H
 
 /* Define to 1 if you have the <execinfo.h> header file. */
 #undef HAVE_EXECINFO_H
@@ -219,8 +335,11 @@
 /* Define to 1 if you have the `execve' function. */
 #undef HAVE_EXECVE
 
-/* Define to 1 if you have the `fcntl' function. */
-#undef HAVE_FCNTL
+/* Experimental verbs */
+#undef HAVE_EXP_VERBS
+
+/* Define to 1 if you have the <fca/fca_api.h> header file. */
+#undef HAVE_FCA_FCA_API_H
 
 /* Define to 1 if you have the <fcntl.h> header file. */
 #undef HAVE_FCNTL_H
@@ -249,8 +368,11 @@
 /* Define to 1 if you have the `getpwuid' function. */
 #undef HAVE_GETPWUID
 
-/* Define to 1 if you have the `gettimeofday' function. */
-#undef HAVE_GETTIMEOFDAY
+/* Define to 1 if you have the <glob.h> header file. */
+#undef HAVE_GLOB_H
+
+/* Define to 1 if you have the `GNI_GetJobResInfo' function. */
+#undef HAVE_GNI_GETJOBRESINFO
 
 /* Define to 1 if the system has the type `GROUP_AFFINITY'. */
 #undef HAVE_GROUP_AFFINITY
@@ -261,11 +383,23 @@
 /* Define to 1 if you have the <grp.h> header file. */
 #undef HAVE_GRP_H
 
+/* Define to 1 if you have the <hcoll/api/hcoll_api.h> header file. */
+#undef HAVE_HCOLL_API_HCOLL_API_H
+
+/* Define to 1 if you have the `hcoll_context_free' function. */
+#undef HAVE_HCOLL_CONTEXT_FREE
+
 /* Define to 1 if you have the <hostLib.h> header file. */
 #undef HAVE_HOSTLIB_H
 
 /* Define to 1 if you have the `host_info' function. */
 #undef HAVE_HOST_INFO
+
+/* Define to 1 if you have the <hwloc.h> header file. */
+#undef HAVE_HWLOC_H
+
+/* Define to 1 if you have the `ibv_cmd_open_xrcd' function. */
+#undef HAVE_IBV_CMD_OPEN_XRCD
 
 /* Define to 1 if you have the `ibv_create_xrc_rcv_qp' function. */
 #undef HAVE_IBV_CREATE_XRC_RCV_QP
@@ -284,6 +418,9 @@
 
 /* Define to 1 if you have the <infiniband/driver.h> header file. */
 #undef HAVE_INFINIBAND_DRIVER_H
+
+/* Define to 1 if you have the <infiniband/verbs.h> header file. */
+#undef HAVE_INFINIBAND_VERBS_H
 
 /* Define to 1 if the system has the type `int128_t'. */
 #undef HAVE_INT128_T
@@ -315,11 +452,17 @@
 /* Define to 1 if the system has the type `KAFFINITY'. */
 #undef HAVE_KAFFINITY
 
-/* Define to 1 if you have the `kqueue' function. */
-#undef HAVE_KQUEUE
+/* Define to 1 if you have the <knem_io.h> header file. */
+#undef HAVE_KNEM_IO_H
 
 /* Define to 1 if you have the <kstat.h> header file. */
 #undef HAVE_KSTAT_H
+
+/* Define to 1 if you have the `event' library (-levent). */
+#undef HAVE_LIBEVENT
+
+/* Define to 1 if you have the `event_pthreads' library (-levent_pthreads). */
+#undef HAVE_LIBEVENT_PTHREADS
 
 /* Define to 1 if we have -lgdi32 */
 #undef HAVE_LIBGDI32
@@ -333,17 +476,14 @@
 /* Define to 1 if we have -llgrp */
 #undef HAVE_LIBLGRP
 
-/* Define to 1 if you have the `nsl' library (-lnsl). */
-#undef HAVE_LIBNSL
-
-/* Define to 1 if you have the `pci' library (-lpci). */
-#undef HAVE_LIBPCI
-
-/* Define to 1 if you have the `socket' library (-lsocket). */
-#undef HAVE_LIBSOCKET
+/* Define to 1 if you have the <libudev.h> header file. */
+#undef HAVE_LIBUDEV_H
 
 /* Define to 1 if you have the <libutil.h> header file. */
 #undef HAVE_LIBUTIL_H
+
+/* Define to 1 if you have the <linux/mman.h> header file. */
+#undef HAVE_LINUX_MMAN_H
 
 /* Define to 1 if the system has the type `LOGICAL_PROCESSOR_RELATIONSHIP'. */
 #undef HAVE_LOGICAL_PROCESSOR_RELATIONSHIP
@@ -357,6 +497,18 @@
 /* Define to 1 if the system has the type `long long'. */
 #undef HAVE_LONG_LONG
 
+/* Define to 1 if you have the <lsf/lsbatch.h> header file. */
+#undef HAVE_LSF_LSBATCH_H
+
+/* Define to 1 if you have the <lsf/lsf.h> header file. */
+#undef HAVE_LSF_LSF_H
+
+/* Define to 1 if you have the <ltdl.h> header file. */
+#undef HAVE_LTDL_H
+
+/* Define to 1 if you have the <lustre/liblustreapi.h> header file. */
+#undef HAVE_LUSTRE_LIBLUSTREAPI_H
+
 /* Define to 1 if you have the <mach/mach_host.h> header file. */
 #undef HAVE_MACH_MACH_HOST_H
 
@@ -365,15 +517,6 @@
 
 /* Define to 1 if you have the <mach/mach_time.h> header file. */
 #undef HAVE_MACH_MACH_TIME_H
-
-/* Define to 1 if you have the <mach/mach_vm.h> header file. */
-#undef HAVE_MACH_MACH_VM_H
-
-/* Define to 1 if you have the `mach_vm_read' function. */
-#undef HAVE_MACH_VM_READ
-
-/* Define to 1 if you have the `mach_vm_region' function. */
-#undef HAVE_MACH_VM_REGION
 
 /* Define to 1 if you have the <malloc.h> header file. */
 #undef HAVE_MALLOC_H
@@ -390,17 +533,20 @@
 /* Define to 1 if you have the `mmap' function. */
 #undef HAVE_MMAP
 
+/* Define to 1 if you have the <mntent.h> header file. */
+#undef HAVE_MNTENT_H
+
 /* Define to 1 if the system has the type `mode_t'. */
 #undef HAVE_MODE_T
 
-/* Define to 1 if you have the <mx_extensions.h> header file. */
-#undef HAVE_MX_EXTENSIONS_H
+/* Define to 1 if you have the <munge.h> header file. */
+#undef HAVE_MUNGE_H
 
-/* Define to 1 if you have the `mx_forget' function. */
-#undef HAVE_MX_FORGET
+/* Define to 1 if you have the <mxm/api/mxm_api.h> header file. */
+#undef HAVE_MXM_API_MXM_API_H
 
-/* Define to 1 if you have the `mx_register_unexp_handler' function. */
-#undef HAVE_MX_REGISTER_UNEXP_HANDLER
+/* Define to 1 if you have the <ndbm.h> header file. */
+#undef HAVE_NDBM_H
 
 /* Define to 1 if you have the <netdb.h> header file. */
 #undef HAVE_NETDB_H
@@ -423,41 +569,44 @@
 /* Define to 1 if the system has the type `NUMA_NODE_RELATIONSHIP'. */
 #undef HAVE_NUMA_NODE_RELATIONSHIP
 
+/* Define to 1 if you have the <NVCtrl/NVCtrl.h> header file. */
+#undef HAVE_NVCTRL_NVCTRL_H
+
+/* Define to 1 if you have the <nvml.h> header file. */
+#undef HAVE_NVML_H
+
+/* Define to 1 if you have the `on_exit' function. */
+#undef HAVE_ON_EXIT
+
 /* Define to 1 if you have the `openat' function. */
 #undef HAVE_OPENAT
 
 /* Define to 1 if you have the `openpty' function. */
 #undef HAVE_OPENPTY
 
-/* Define to 1 if you have the <pci/pci.h> header file. */
-#undef HAVE_PCI_PCI_H
+/* Define to 1 if you have the <paths.h> header file. */
+#undef HAVE_PATHS_H
+
+/* Define to 1 if you have the <picl.h> header file. */
+#undef HAVE_PICL_H
 
 /* Define to 1 if you have the `pipe' function. */
 #undef HAVE_PIPE
 
-/* Define to 1 if you have the <pmapi.h> header file. */
-#undef HAVE_PMAPI_H
+/* Define to 1 if you have the <plfs.h> header file. */
+#undef HAVE_PLFS_H
 
-/* Define to 1 if you have the <pmi.h> header file. */
-#undef HAVE_PMI_H
-
-/* Define to 1 if you have the `pm_cycles' function. */
-#undef HAVE_PM_CYCLES
-
-/* Define to 1 if you have the `poll' function. */
-#undef HAVE_POLL
+/* Define to 1 if you have the <pmix.h> header file. */
+#undef HAVE_PMIX_H
 
 /* Define to 1 if you have the <poll.h> header file. */
 #undef HAVE_POLL_H
 
-/* Define to 1 if you have the `port_create' function. */
-#undef HAVE_PORT_CREATE
+/* Define to 1 if you have the <portals4.h> header file. */
+#undef HAVE_PORTALS4_H
 
 /* Define to 1 if you have the `posix_memalign' function. */
 #undef HAVE_POSIX_MEMALIGN
-
-/* Define to 1 if `srr0' is a member of `ppc_thread_state_t'. */
-#undef HAVE_PPC_THREAD_STATE_T_SRR0
 
 /* Define to 1 if you have the `printstack' function. */
 #undef HAVE_PRINTSTACK
@@ -468,8 +617,14 @@
 /* Define to 1 if the system has the type `PROCESSOR_GROUP_INFO'. */
 #undef HAVE_PROCESSOR_GROUP_INFO
 
+/* Define to 1 if the system has the type `PROCESSOR_NUMBER'. */
+#undef HAVE_PROCESSOR_NUMBER
+
 /* Define to 1 if the system has the type `PROCESSOR_RELATIONSHIP'. */
 #undef HAVE_PROCESSOR_RELATIONSHIP
+
+/* Define to '1' if program_invocation_name is present and usable */
+#undef HAVE_PROGRAM_INVOCATION_NAME
 
 /* Define to 1 if the system has the type `PSAPI_WORKING_SET_EX_BLOCK'. */
 #undef HAVE_PSAPI_WORKING_SET_EX_BLOCK
@@ -478,8 +633,20 @@
    */
 #undef HAVE_PSAPI_WORKING_SET_EX_INFORMATION
 
+/* Define to 1 if you have the <psm2.h> header file. */
+#undef HAVE_PSM2_H
+
+/* Define to 1 if you have the <psm.h> header file. */
+#undef HAVE_PSM_H
+
+/* Define to 1 if you have the `pthread_condattr_setpshared' function. */
+#undef HAVE_PTHREAD_CONDATTR_SETPSHARED
+
 /* Define to 1 if you have the <pthread.h> header file. */
 #undef HAVE_PTHREAD_H
+
+/* Define to 1 if you have the `pthread_mutexattr_setpshared' function. */
+#undef HAVE_PTHREAD_MUTEXATTR_SETPSHARED
 
 /* Define to 1 if you have the <pthread_np.h> header file. */
 #undef HAVE_PTHREAD_NP_H
@@ -496,11 +663,20 @@
 /* Define to 1 if you have the <pty.h> header file. */
 #undef HAVE_PTY_H
 
+/* Define to 1 if you have the <pvfs2.h> header file. */
+#undef HAVE_PVFS2_H
+
 /* Define to 1 if you have the <pwd.h> header file. */
 #undef HAVE_PWD_H
 
+/* Define to 1 if you have the <rdma/fabric.h> header file. */
+#undef HAVE_RDMA_FABRIC_H
+
 /* Define to 1 if you have the <rdma/rdma_cma.h> header file. */
 #undef HAVE_RDMA_RDMA_CMA_H
+
+/* Define to 1 if you have the <rdma/rsocket.h> header file. */
+#undef HAVE_RDMA_RSOCKET_H
 
 /* Define to 1 if you have the `regcmp' function. */
 #undef HAVE_REGCMP
@@ -517,23 +693,26 @@
 /* Define to 1 if the system has the type `RelationProcessorPackage'. */
 #undef HAVE_RELATIONPROCESSORPACKAGE
 
-/* Define if your system supports POSIX realtime signals */
-#undef HAVE_RTSIG
-
 /* Define to 1 if you have the <sched.h> header file. */
 #undef HAVE_SCHED_H
 
-/* Define to 1 if you have the `sched_yield' function. */
-#undef HAVE_SCHED_YIELD
+/* Define to 1 if you have the <scif.h> header file. */
+#undef HAVE_SCIF_H
 
-/* Define to 1 if you have the `select' function. */
-#undef HAVE_SELECT
+/* Define to 1 if you have the `sem_init' function. */
+#undef HAVE_SEM_INIT
 
-/* Define if F_SETFD is defined in <fcntl.h> */
-#undef HAVE_SETFD
+/* Define to 1 if you have the `sem_open' function. */
+#undef HAVE_SEM_OPEN
+
+/* Define to 1 if you have the `setenv' function. */
+#undef HAVE_SETENV
 
 /* Define to 1 if you have the `setlocale' function. */
 #undef HAVE_SETLOCALE
+
+/* Define to 1 if you have the `setpgid' function. */
+#undef HAVE_SETPGID
 
 /* Define to 1 if you have the `setsid' function. */
 #undef HAVE_SETSID
@@ -546,12 +725,6 @@
 
 /* Define to 1 if `si_fd' is a member of `siginfo_t'. */
 #undef HAVE_SIGINFO_T_SI_FD
-
-/* Define to 1 if you have the <signal.h> header file. */
-#undef HAVE_SIGNAL_H
-
-/* Define to 1 if you have the `sigtimedwait' function. */
-#undef HAVE_SIGTIMEDWAIT
 
 /* Define to 1 if you have the `snprintf' function. */
 #undef HAVE_SNPRINTF
@@ -568,14 +741,14 @@
 /* Define to 1 if the system has the type `ssize_t'. */
 #undef HAVE_SSIZE_T
 
-/* Define to 1 if you have the <stdarg.h> header file. */
-#undef HAVE_STDARG_H
+/* Define to 1 if you have the `statfs' function. */
+#undef HAVE_STATFS
+
+/* Define to 1 if you have the `statvfs' function. */
+#undef HAVE_STATVFS
 
 /* Define to 1 if you have the <stdbool.h> header file. */
 #undef HAVE_STDBOOL_H
-
-/* Define to 1 if you have the <stddef.h> header file. */
-#undef HAVE_STDDEF_H
 
 /* Define to 1 if you have the <stdint.h> header file. */
 #undef HAVE_STDINT_H
@@ -604,14 +777,24 @@
 /* Define to 1 if you have the `strsignal' function. */
 #undef HAVE_STRSIGNAL
 
-/* Define to 1 if you have the `strtoll' function. */
-#undef HAVE_STRTOLL
-
 /* Define to 1 if `d_type' is a member of `struct dirent'. */
 #undef HAVE_STRUCT_DIRENT_D_TYPE
 
 /* Define to 1 if `transport_type' is a member of `struct ibv_device'. */
 #undef HAVE_STRUCT_IBV_DEVICE_TRANSPORT_TYPE
+
+/* Define to 1 if `exp_atomic_cap' is a member of `struct
+   ibv_exp_device_attr'. */
+#undef HAVE_STRUCT_IBV_EXP_DEVICE_ATTR_EXP_ATOMIC_CAP
+
+/* Define to 1 if `ext_atom' is a member of `struct ibv_exp_device_attr'. */
+#undef HAVE_STRUCT_IBV_EXP_DEVICE_ATTR_EXT_ATOM
+
+/* Define to 1 if `ifr_hwaddr' is a member of `struct ifreq'. */
+#undef HAVE_STRUCT_IFREQ_IFR_HWADDR
+
+/* Define to 1 if `ifr_mtu' is a member of `struct ifreq'. */
+#undef HAVE_STRUCT_IFREQ_IFR_MTU
 
 /* Define to 1 if the system has the type `struct sockaddr_in'. */
 #undef HAVE_STRUCT_SOCKADDR_IN
@@ -625,16 +808,31 @@
 /* Define to 1 if the system has the type `struct sockaddr_storage'. */
 #undef HAVE_STRUCT_SOCKADDR_STORAGE
 
+/* Define to 1 if the system has the type `struct sockaddr_un'. */
+#undef HAVE_STRUCT_SOCKADDR_UN
+
+/* Define to 1 if `f_fstypename' is a member of `struct statfs'. */
+#undef HAVE_STRUCT_STATFS_F_FSTYPENAME
+
+/* Define to 1 if `f_type' is a member of `struct statfs'. */
+#undef HAVE_STRUCT_STATFS_F_TYPE
+
+/* Define to 1 if `f_basetype' is a member of `struct statvfs'. */
+#undef HAVE_STRUCT_STATVFS_F_BASETYPE
+
+/* Define to 1 if `f_fstypename' is a member of `struct statvfs'. */
+#undef HAVE_STRUCT_STATVFS_F_FSTYPENAME
+
 /* Define to 1 if you have the `syscall' function. */
 #undef HAVE_SYSCALL
 
 /* Define to 1 if you have the `sysconf' function. */
 #undef HAVE_SYSCONF
 
-/* Define to 1 if you have the `sysctl' function. */
+/* Define to '1' if sysctl is present and usable */
 #undef HAVE_SYSCTL
 
-/* Define to 1 if you have the `sysctlbyname' function. */
+/* Define to '1' if sysctlbyname is present and usable */
 #undef HAVE_SYSCTLBYNAME
 
 /* Define to 1 if you have the `syslog' function. */
@@ -653,15 +851,6 @@
 
 /* Define to 1 if you have the <sys/cpuset.h> header file. */
 #undef HAVE_SYS_CPUSET_H
-
-/* Define to 1 if you have the <sys/devpoll.h> header file. */
-#undef HAVE_SYS_DEVPOLL_H
-
-/* Define to 1 if you have the <sys/epoll.h> header file. */
-#undef HAVE_SYS_EPOLL_H
-
-/* Define to 1 if you have the <sys/event.h> header file. */
-#undef HAVE_SYS_EVENT_H
 
 /* Define to 1 if you have the <sys/fcntl.h> header file. */
 #undef HAVE_SYS_FCNTL_H
@@ -686,6 +875,9 @@
 
 /* Define to 1 if you have the <sys/poll.h> header file. */
 #undef HAVE_SYS_POLL_H
+
+/* Define to 1 if you have the <sys/prctl.h> header file. */
+#undef HAVE_SYS_PRCTL_H
 
 /* Define to 1 if you have the <sys/queue.h> header file. */
 #undef HAVE_SYS_QUEUE_H
@@ -717,6 +909,9 @@
 /* Define to 1 if you have the <sys/synch.h> header file. */
 #undef HAVE_SYS_SYNCH_H
 
+/* Define to 1 if you have the <sys/syscall.h> header file. */
+#undef HAVE_SYS_SYSCALL_H
+
 /* Define to 1 if you have the <sys/sysctl.h> header file. */
 #undef HAVE_SYS_SYSCTL_H
 
@@ -732,6 +927,9 @@
 /* Define to 1 if you have the <sys/uio.h> header file. */
 #undef HAVE_SYS_UIO_H
 
+/* Define to 1 if you have the <sys/un.h> header file. */
+#undef HAVE_SYS_UN_H
+
 /* Define to 1 if you have the <sys/utsname.h> header file. */
 #undef HAVE_SYS_UTSNAME_H
 
@@ -741,8 +939,8 @@
 /* Define to 1 if you have the <sys/wait.h> header file. */
 #undef HAVE_SYS_WAIT_H
 
-/* Define if TAILQ_FOREACH is defined in <sys/queue.h> */
-#undef HAVE_TAILQFOREACH
+/* Define to 1 if you have the <TargetConditionals.h> header file. */
+#undef HAVE_TARGETCONDITIONALS_H
 
 /* Define to 1 if you have the `tcgetpgrp' function. */
 #undef HAVE_TCGETPGRP
@@ -750,14 +948,14 @@
 /* Define to 1 if you have the <termios.h> header file. */
 #undef HAVE_TERMIOS_H
 
-/* Define if timeradd is defined in <sys/time.h> */
-#undef HAVE_TIMERADD
-
-/* Define to 1 if you have the <time.h> header file. */
-#undef HAVE_TIME_H
+/* Define to 1 if you have the <tm.h> header file. */
+#undef HAVE_TM_H
 
 /* Define to 1 if you have the <ucontext.h> header file. */
 #undef HAVE_UCONTEXT_H
+
+/* Define to 1 if you have the <ucp/api/ucp.h> header file. */
+#undef HAVE_UCP_API_UCP_H
 
 /* Define to 1 if the system has the type `uint128_t'. */
 #undef HAVE_UINT128_T
@@ -805,29 +1003,41 @@
 /* Define to 1 if you have the `vasprintf' function. */
 #undef HAVE_VASPRINTF
 
-/* Define to 1 if you have the `vm_read_overwrite' function. */
-#undef HAVE_VM_READ_OVERWRITE
-
 /* Define to 1 if you have the `vsnprintf' function. */
 #undef HAVE_VSNPRINTF
+
+/* Define to 1 if you have the `vsyslog' function. */
+#undef HAVE_VSYSLOG
 
 /* Define to 1 if you have the `waitpid' function. */
 #undef HAVE_WAITPID
 
-/* Define if kqueue works correctly with pipes */
-#undef HAVE_WORKING_KQUEUE
+/* Define to 1 if you have the <X11/keysym.h> header file. */
+#undef HAVE_X11_KEYSYM_H
 
-/* Whether poll works for file descriptors and devices */
-#undef HAVE_WORKING_POLL
+/* Define to 1 if you have the <X11/Xlib.h> header file. */
+#undef HAVE_X11_XLIB_H
 
-/* Define if realtime signals work on pipes */
-#undef HAVE_WORKING_RTSIG
+/* Define to 1 if you have the <X11/Xutil.h> header file. */
+#undef HAVE_X11_XUTIL_H
+
+/* Define to 1 if you have the <xpmem.h> header file. */
+#undef HAVE_XPMEM_H
 
 /* Define to 1 if you have the `_NSGetEnviron' function. */
 #undef HAVE__NSGETENVIRON
 
-/* Define to 1 if you have the `_strdup' function. */
-#undef HAVE__STRDUP
+/* Define to 1 if you have the `__curbrk' function. */
+#undef HAVE___CURBRK
+
+/* Define to 1 if the system has the type `__float128'. */
+#undef HAVE___FLOAT128
+
+/* Define to 1 if the system has the type `__int128'. */
+#undef HAVE___INT128
+
+/* Define to 1 if you have the `__malloc_initialize_hook' function. */
+#undef HAVE___MALLOC_INITIALIZE_HOOK
 
 /* Define to 1 if you have the `__mmap' function. */
 #undef HAVE___MMAP
@@ -835,8 +1045,17 @@
 /* Define to 1 if you have the `__munmap' function. */
 #undef HAVE___MUNMAP
 
+/* Define to '1' if __progname is present and usable */
+#undef HAVE___PROGNAME
+
+/* Define to 1 if you have the `__syscall' function. */
+#undef HAVE___SYSCALL
+
 /* Define to 1 on AIX */
 #undef HWLOC_AIX_SYS
+
+/* Define to 1 on BlueGene/Q */
+#undef HWLOC_BGQ_SYS
 
 /* Whether C compiler supports symbol visibility or not */
 #undef HWLOC_C_HAVE_VISIBILITY
@@ -919,14 +1138,14 @@
 /* Define to 1 if you have the `clzl' function. */
 #undef HWLOC_HAVE_CLZL
 
-/* Define to 1 if you have cpuid */
-#undef HWLOC_HAVE_CPUID
-
 /* Define to 1 if the CPU_SET macro works */
 #undef HWLOC_HAVE_CPU_SET
 
 /* Define to 1 if the CPU_SET_S macro works */
 #undef HWLOC_HAVE_CPU_SET_S
+
+/* Define to 1 if you have the `cudart' SDK. */
+#undef HWLOC_HAVE_CUDART
 
 /* Define to 1 if function `clz' is declared by system headers */
 #undef HWLOC_HAVE_DECL_CLZ
@@ -946,6 +1165,9 @@
 /* Define to 1 if function `flsl' is declared by system headers */
 #undef HWLOC_HAVE_DECL_FLSL
 
+/* Define to 1 if function `strncasecmp' is declared by system headers */
+#undef HWLOC_HAVE_DECL_STRNCASECMP
+
 /* Define to 1 if you have the `ffs' function. */
 #undef HWLOC_HAVE_FFS
 
@@ -958,11 +1180,17 @@
 /* Define to 1 if you have the `flsl' function. */
 #undef HWLOC_HAVE_FLSL
 
-/* Define to 1 if you have the `libpci' library. */
-#undef HWLOC_HAVE_LIBPCI
+/* Define to 1 if you have the GL module components. */
+#undef HWLOC_HAVE_GL
+
+/* Define to 1 if you have libudev. */
+#undef HWLOC_HAVE_LIBUDEV
 
 /* Define to 1 if you have the `libxml2' library. */
 #undef HWLOC_HAVE_LIBXML2
+
+/* Define to 1 if building the Linux PCI component */
+#undef HWLOC_HAVE_LINUXPCI
 
 /* Define to 1 if mbind is available. */
 #undef HWLOC_HAVE_MBIND
@@ -970,21 +1198,25 @@
 /* Define to 1 if migrate_pages is available. */
 #undef HWLOC_HAVE_MIGRATE_PAGES
 
+/* Define to 1 if you have the `NVML' library. */
+#undef HWLOC_HAVE_NVML
+
 /* Define to 1 if glibc provides the old prototype (without length) of
    sched_setaffinity() */
 #undef HWLOC_HAVE_OLD_SCHED_SETAFFINITY
 
-/* Define to 1 if struct pci_dev has a `device_class' field. */
-#undef HWLOC_HAVE_PCIDEV_DEVICE_CLASS
+/* Define to 1 if you have the `OpenCL' library. */
+#undef HWLOC_HAVE_OPENCL
 
-/* Define to 1 if struct pci_dev has a `domain' field. */
-#undef HWLOC_HAVE_PCIDEV_DOMAIN
-
-/* Define to 1 if `libpci' has the `pci_find_cap' function. */
-#undef HWLOC_HAVE_PCI_FIND_CAP
+/* Define to 1 if the hwloc library should support dynamically-loaded plugins
+   */
+#undef HWLOC_HAVE_PLUGINS
 
 /* `Define to 1 if you have pthread_getthrds_np' */
 #undef HWLOC_HAVE_PTHREAD_GETTHRDS_NP
+
+/* Define to 1 if pthread mutexes are available */
+#undef HWLOC_HAVE_PTHREAD_MUTEX
 
 /* Define to 1 if glibc provides a prototype of sched_setaffinity() */
 #undef HWLOC_HAVE_SCHED_SETAFFINITY
@@ -995,23 +1227,32 @@
 /* Define to 1 if you have the <stdint.h> header file. */
 #undef HWLOC_HAVE_STDINT_H
 
+/* Define to 1 if function `syscall' is available */
+#undef HWLOC_HAVE_SYSCALL
+
 /* Define to 1 if you have the `windows.h' header. */
 #undef HWLOC_HAVE_WINDOWS_H
 
-/* Define to 1 if the _syscall3 macro works */
-#undef HWLOC_HAVE__SYSCALL3
+/* Define to 1 if X11 headers including Xutil.h and keysym.h are available. */
+#undef HWLOC_HAVE_X11_KEYSYM
+
+/* Define to 1 if you have x86 cpuid */
+#undef HWLOC_HAVE_X86_CPUID
 
 /* Define to 1 on HP-UX */
 #undef HWLOC_HPUX_SYS
 
 /* Version of hwloc */
-#undef HWLOC_HWLOC132_HWLOC_VERSION
+#undef HWLOC_HWLOC1112_HWLOC_VERSION
 
 /* Define to 1 on Irix */
 #undef HWLOC_IRIX_SYS
 
 /* Define to 1 on Linux */
 #undef HWLOC_LINUX_SYS
+
+/* Define to 1 on *NETBSD */
+#undef HWLOC_NETBSD_SYS
 
 /* Define to 1 on OSF */
 #undef HWLOC_OSF_SYS
@@ -1037,6 +1278,10 @@
 /* Define to 1 on unsupported systems */
 #undef HWLOC_UNSUPPORTED_SYS
 
+/* The library version, always available, even in embedded mode, contrary to
+   VERSION */
+#undef HWLOC_VERSION
+
 /* Define to 1 on WINDOWS */
 #undef HWLOC_WIN_SYS
 
@@ -1046,19 +1291,27 @@
 /* Define to 1 on x86_64 */
 #undef HWLOC_X86_64_ARCH
 
-/* Define to the sub-directory in which libtool stores uninstalled libraries.
-   */
+/* Define to the sub-directory where libtool stores uninstalled libraries. */
 #undef LT_OBJDIR
+
+/* Header to include for event implementation */
+#undef MCA_event_IMPLEMENTATION_HEADER
 
 /* Header to include for hwloc implementation */
 #undef MCA_hwloc_IMPLEMENTATION_HEADER
 
+/* Location of external hwloc header */
+#undef MCA_hwloc_external_header
+
+/* Location of external hwloc OpenFabrics header */
+#undef MCA_hwloc_external_openfabrics_header
+
 /* Complete set of command line arguments given to ROMIOs configure script */
-#undef MCA_io_romio_COMPLETE_CONFIGURE_FLAGS
+#undef MCA_io_romio314_COMPLETE_CONFIGURE_FLAGS
 
 /* Set of user-defined configure flags given to ROMIOs configure script via
    --with-io-romio-flags */
-#undef MCA_io_romio_USER_CONFIGURE_FLAGS
+#undef MCA_io_romio314_USER_CONFIGURE_FLAGS
 
 /* Header to include for memcpy implementation */
 #undef MCA_memcpy_IMPLEMENTATION_HEADER
@@ -1066,26 +1319,59 @@
 /* Header to include for parts of the memory implementation */
 #undef MCA_memory_IMPLEMENTATION_HEADER
 
-/* Defined to 1 if mtl should use direct calls instead of components */
-#undef MCA_mtl_DIRECT_CALL
+/* Defined to 1 if ompi:mtl should use direct calls instead of components */
+#undef MCA_ompi_mtl_DIRECT_CALL
 
-/* name of component to use for direct calls, if MCA_mtl_DIRECT_CALL is 1 */
-#undef MCA_mtl_DIRECT_CALL_COMPONENT
+/* name of component to use for direct calls, if MCA_ompi_mtl_DIRECT_CALL is 1
+   */
+#undef MCA_ompi_mtl_DIRECT_CALL_COMPONENT
 
-/* Header mtl includes to be direct called */
-#undef MCA_mtl_DIRECT_CALL_HEADER
+/* Header ompi:mtl includes to be direct called */
+#undef MCA_ompi_mtl_DIRECT_CALL_HEADER
 
-/* Defined to 1 if pml should use direct calls instead of components */
-#undef MCA_pml_DIRECT_CALL
+/* Defined to 1 if ompi:pml should use direct calls instead of components */
+#undef MCA_ompi_pml_DIRECT_CALL
 
-/* name of component to use for direct calls, if MCA_pml_DIRECT_CALL is 1 */
-#undef MCA_pml_DIRECT_CALL_COMPONENT
+/* name of component to use for direct calls, if MCA_ompi_pml_DIRECT_CALL is 1
+   */
+#undef MCA_ompi_pml_DIRECT_CALL_COMPONENT
 
-/* Header pml includes to be direct called */
-#undef MCA_pml_DIRECT_CALL_HEADER
+/* Header ompi:pml includes to be direct called */
+#undef MCA_ompi_pml_DIRECT_CALL_HEADER
+
+/* Defined to 1 if oshmem:memheap should use direct calls instead of
+   components */
+#undef MCA_oshmem_memheap_DIRECT_CALL
+
+/* name of component to use for direct calls, if
+   MCA_oshmem_memheap_DIRECT_CALL is 1 */
+#undef MCA_oshmem_memheap_DIRECT_CALL_COMPONENT
+
+/* Header oshmem:memheap includes to be direct called */
+#undef MCA_oshmem_memheap_DIRECT_CALL_HEADER
+
+/* Defined to 1 if oshmem:spml should use direct calls instead of components
+   */
+#undef MCA_oshmem_spml_DIRECT_CALL
+
+/* name of component to use for direct calls, if MCA_oshmem_spml_DIRECT_CALL
+   is 1 */
+#undef MCA_oshmem_spml_DIRECT_CALL_COMPONENT
+
+/* Header oshmem:spml includes to be direct called */
+#undef MCA_oshmem_spml_DIRECT_CALL_HEADER
+
+/* Header to include for rte implementation */
+#undef MCA_rte_IMPLEMENTATION_HEADER
 
 /* Header to include for timer implementation */
 #undef MCA_timer_IMPLEMENTATION_HEADER
+
+/* Whether the system has Memory Allocation Hooks */
+#undef MEMORY_LINUX_HAVE_MALLOC_HOOK_SUPPORT
+
+/* Whether the memory linux malloc alignment is enabled */
+#undef MEMORY_LINUX_MALLOC_ALIGN_ENABLED
 
 /* Whether ptmalloc2 is supported on this system or not */
 #undef MEMORY_LINUX_PTMALLOC2
@@ -1093,97 +1379,111 @@
 /* Whether ummunotify is supported on this system or not */
 #undef MEMORY_LINUX_UMMUNOTIFY
 
+/* Whether we can use M-PAGE supported since MOFED 1.8 */
+#undef MPAGE_ENABLE
+
+/* create_flags field is part of ibv_exp_reg_mr_in */
+#undef MPAGE_HAVE_IBV_EXP_REG_MR_CREATE_FLAGS
+
+/* exp_access field is part of ibv_exp_reg_shared_mr_in */
+#undef MPAGE_HAVE_SMR_EXP_ACCESS
+
+/* Macro that is set to 1 when CUDA-aware support is configured in and 0 when
+   it is not */
+#undef MPIX_CUDA_AWARE_SUPPORT
+
+/* Maximum value for an MPI_Count */
+#undef MPI_COUNT_MAX
+
 /* Whether we want to check MPI parameters always, never, or decide at
    run-time */
 #undef MPI_PARAM_CHECK
 
-/* MX installation provide access to the mx_open_board and
-   mx__get_mapper_state functions */
-#undef MX_HAVE_MAPPER_STATE
-
-/* Define to 1 if your C compiler doesn't accept -c and -o together. */
-#undef NO_MINUS_C_MINUS_O
-
-/* Alignment of Fortran 77 CHARACTER */
+/* Alignment of Fortran CHARACTER */
 #undef OMPI_ALIGNMENT_FORTRAN_CHARACTER
 
-/* Alignment of Fortran 77 COMPLEX */
+/* Alignment of Fortran COMPLEX */
 #undef OMPI_ALIGNMENT_FORTRAN_COMPLEX
 
-/* Alignment of Fortran 77 COMPLEX*16 */
+/* Alignment of Fortran COMPLEX*16 */
 #undef OMPI_ALIGNMENT_FORTRAN_COMPLEX16
 
-/* Alignment of Fortran 77 COMPLEX*32 */
+/* Alignment of Fortran COMPLEX*32 */
 #undef OMPI_ALIGNMENT_FORTRAN_COMPLEX32
 
-/* Alignment of Fortran 77 COMPLEX*8 */
+/* Alignment of Fortran COMPLEX*4 */
+#undef OMPI_ALIGNMENT_FORTRAN_COMPLEX4
+
+/* Alignment of Fortran COMPLEX*8 */
 #undef OMPI_ALIGNMENT_FORTRAN_COMPLEX8
 
-/* Alignment of Fortran 77 DOUBLE COMPLEX */
+/* Alignment of Fortran DOUBLE COMPLEX */
 #undef OMPI_ALIGNMENT_FORTRAN_DOUBLE_COMPLEX
 
-/* Alignment of Fortran 77 DOUBLE PRECISION */
+/* Alignment of Fortran DOUBLE PRECISION */
 #undef OMPI_ALIGNMENT_FORTRAN_DOUBLE_PRECISION
 
-/* Alignment of Fortran 77 INTEGER */
+/* Alignment of Fortran INTEGER */
 #undef OMPI_ALIGNMENT_FORTRAN_INTEGER
 
-/* Alignment of Fortran 77 INTEGER*1 */
+/* Alignment of Fortran INTEGER*1 */
 #undef OMPI_ALIGNMENT_FORTRAN_INTEGER1
 
-/* Alignment of Fortran 77 INTEGER*16 */
+/* Alignment of Fortran INTEGER*16 */
 #undef OMPI_ALIGNMENT_FORTRAN_INTEGER16
 
-/* Alignment of Fortran 77 INTEGER*2 */
+/* Alignment of Fortran INTEGER*2 */
 #undef OMPI_ALIGNMENT_FORTRAN_INTEGER2
 
-/* Alignment of Fortran 77 INTEGER*4 */
+/* Alignment of Fortran INTEGER*4 */
 #undef OMPI_ALIGNMENT_FORTRAN_INTEGER4
 
-/* Alignment of Fortran 77 INTEGER*8 */
+/* Alignment of Fortran INTEGER*8 */
 #undef OMPI_ALIGNMENT_FORTRAN_INTEGER8
 
-/* Alignment of Fortran 77 LOGICAL */
+/* Alignment of Fortran LOGICAL */
 #undef OMPI_ALIGNMENT_FORTRAN_LOGICAL
 
-/* Alignment of Fortran 77 LOGICAL*1 */
+/* Alignment of Fortran LOGICAL*1 */
 #undef OMPI_ALIGNMENT_FORTRAN_LOGICAL1
 
-/* Alignment of Fortran 77 LOGICAL*2 */
+/* Alignment of Fortran LOGICAL*2 */
 #undef OMPI_ALIGNMENT_FORTRAN_LOGICAL2
 
-/* Alignment of Fortran 77 LOGICAL*4 */
+/* Alignment of Fortran LOGICAL*4 */
 #undef OMPI_ALIGNMENT_FORTRAN_LOGICAL4
 
-/* Alignment of Fortran 77 LOGICAL*8 */
+/* Alignment of Fortran LOGICAL*8 */
 #undef OMPI_ALIGNMENT_FORTRAN_LOGICAL8
 
-/* Alignment of Fortran 77 REAL */
+/* Alignment of Fortran REAL */
 #undef OMPI_ALIGNMENT_FORTRAN_REAL
 
-/* Alignment of Fortran 77 REAL*16 */
+/* Alignment of Fortran REAL*16 */
 #undef OMPI_ALIGNMENT_FORTRAN_REAL16
 
-/* Alignment of Fortran 77 REAL*2 */
+/* Alignment of Fortran REAL*2 */
 #undef OMPI_ALIGNMENT_FORTRAN_REAL2
 
-/* Alignment of Fortran 77 REAL*4 */
+/* Alignment of Fortran REAL*4 */
 #undef OMPI_ALIGNMENT_FORTRAN_REAL4
 
-/* Alignment of Fortran 77 REAL*8 */
+/* Alignment of Fortran REAL*8 */
 #undef OMPI_ALIGNMENT_FORTRAN_REAL8
 
-/* If knem support can be enabled */
-#undef OMPI_BTL_SM_HAVE_KNEM
+/* Whether we want MPI C++ support or not */
+#undef OMPI_BUILD_CXX_BINDINGS
+
+/* The level of fortran bindings to be built */
+#undef OMPI_BUILD_FORTRAN_BINDINGS
+
+/* Whether we built the 'use mpi_f08' prototype subarray-based implementation
+   or not (i.e., whether to build the use-mpi-f08-desc prototype or the
+   regular use-mpi-f08 implementation) */
+#undef OMPI_BUILD_FORTRAN_F08_SUBARRAYS
 
 /* OMPI underlying C++ compiler */
 #undef OMPI_CXX
-
-/* Whether C++ compiler supports DEC style inline assembly */
-#undef OMPI_CXX_DEC_INLINE_ASSEMBLY
-
-/* Whether C++ compiler supports GCC style inline assembly */
-#undef OMPI_CXX_GCC_INLINE_ASSEMBLY
 
 /* Whether C++ compiler supports __builtin_expect */
 #undef OMPI_CXX_HAVE_BUILTIN_EXPECT
@@ -1194,48 +1494,134 @@
 /* Whether a const_cast on a 2-d array will work with the C++ compiler */
 #undef OMPI_CXX_SUPPORTS_2D_CONST_CAST
 
-/* Whether C++ compiler supports XLC style inline assembly */
-#undef OMPI_CXX_XLC_INLINE_ASSEMBLY
-
 /* Enable contributed software package libompitrace */
 #undef OMPI_ENABLE_CONTRIB_libompitrace
-
-/* Enable contributed software package vt */
-#undef OMPI_ENABLE_CONTRIB_vt
-
-/* Enable features required for dynamic SL support */
-#undef OMPI_ENABLE_DYNAMIC_SL
-
-/* Whether we want MPI profiling or not */
-#undef OMPI_ENABLE_MPI_PROFILING
 
 /* Enable MPI_THREAD_MULTIPLE */
 #undef OMPI_ENABLE_THREAD_MULTIPLE
 
-/* MPI Extended Interface Components */
-#undef OMPI_EXT_COMPONENTS
+/* Underlying Fortran compiler */
+#undef OMPI_FC
 
-/* OMPI underlying F77 compiler */
-#undef OMPI_F77
+/* Absolutey path to the underlying Fortran compiler found by configure */
+#undef OMPI_FC_ABSOLUTE
+
+/* Whether the mpif.h interface supports the MPI_SIZEOF interface or not */
+#undef OMPI_FORTRAN_BUILD_SIZEOF
 
 /* Whether fortran symbols are all caps or not */
-#undef OMPI_F77_CAPS
+#undef OMPI_FORTRAN_CAPS
 
 /* Whether fortran symbols have a trailing double underscore or not */
-#undef OMPI_F77_DOUBLE_UNDERSCORE
+#undef OMPI_FORTRAN_DOUBLE_UNDERSCORE
 
-/* Whether fortran symbols have no trailing underscore or not */
-#undef OMPI_F77_PLAIN
+/* How many bytes the mpi_f08 TYPE(MPI_<foo>) handles will be aligned to */
+#undef OMPI_FORTRAN_F08_HANDLE_ALIGNMENT
 
-/* Whether fortran symbols have a trailing underscore or not */
-#undef OMPI_F77_SINGLE_UNDERSCORE
-
-/* OMPI underlying F90 compiler */
-#undef OMPI_F90
+/* How many bytes the mpi_f08 TYPE(MPI_<foo>) handles will be */
+#undef OMPI_FORTRAN_F08_HANDLE_SIZE
 
 /* Max handle value for fortran MPI handles, effectively min(INT_MAX, max
    fortran INTEGER value) */
 #undef OMPI_FORTRAN_HANDLE_MAX
+
+/* For mpi-f08-interfaces-callbacks.f90 and ompi_info: whether the compiler
+   supports the "abstract" keyword or not */
+#undef OMPI_FORTRAN_HAVE_ABSTRACT
+
+/* For ompi/mpi/fortran/use-mpi-f08/blah.F90 and blah.h and ompi_info: whether
+   the compiler supports the "asynchronous" keyword or not */
+#undef OMPI_FORTRAN_HAVE_ASYNCHRONOUS
+
+/* For ompi_info: Whether the compiler supports all forms of BIND(C) that we
+   need */
+#undef OMPI_FORTRAN_HAVE_BIND_C
+
+/* For ompi_info: Whether the compiler supports SUBROUTINE ... BIND(C) or not
+   */
+#undef OMPI_FORTRAN_HAVE_BIND_C_SUB
+
+/* For ompi_info: Whether the compiler supports TYPE, BIND(C) or not */
+#undef OMPI_FORTRAN_HAVE_BIND_C_TYPE
+
+/* For ompi_info: Whether the compiler supports TYPE, BIND(C, NAME="name") or
+   not */
+#undef OMPI_FORTRAN_HAVE_BIND_C_TYPE_NAME
+
+/* For ompi/mpi/fortran/use-mpi-f08/blah.F90 and blah.h and ompi_info: whether
+   the compiler supports c_funloc or not */
+#undef OMPI_FORTRAN_HAVE_C_FUNLOC
+
+/* For ompi_info: Whether the Fortran compiler supports the Fortran 2008
+   "assumed rank" syntax or not */
+#undef OMPI_FORTRAN_HAVE_F08_ASSUMED_RANK
+
+/* Whether the Fortran compiler supports ignore TKR functionality or not */
+#undef OMPI_FORTRAN_HAVE_IGNORE_TKR
+
+/* Whether the compiler supports INTERFACE or not */
+#undef OMPI_FORTRAN_HAVE_INTERFACE
+
+/* For ompi_info: Whether the compiler supports ISO_C_BINDING or not */
+#undef OMPI_FORTRAN_HAVE_ISO_C_BINDING
+
+/* Whether the compiler supports ISO_FORTRAN_ENV or not */
+#undef OMPI_FORTRAN_HAVE_ISO_FORTRAN_ENV
+
+/* For ompi_info: whether the Fortran compiler supports optional arguments or
+   not */
+#undef OMPI_FORTRAN_HAVE_OPTIONAL_ARGS
+
+/* For mpi-f08-types.f90 and ompi_info: whether the compiler supports the
+   "private" keyword or not (used in MPI_Status) */
+#undef OMPI_FORTRAN_HAVE_PRIVATE
+
+/* For ompi/mpi/fortran/use-mpi-f08/blah.F90 and blah.h and ompi_info: whether
+   the compiler supports the "procedure" keyword or not */
+#undef OMPI_FORTRAN_HAVE_PROCEDURE
+
+/* For mpi-f08-types.f90 and .F90 and ompi_info: whether the compiler supports
+   the "protected" keyword or not */
+#undef OMPI_FORTRAN_HAVE_PROTECTED
+
+/* Whether the compiler supports STORAGE_SIZE on relevant types */
+#undef OMPI_FORTRAN_HAVE_STORAGE_SIZE
+
+/* For ompi/mpi/fortran/use-mpi-f08/blah.F90 and blah.h and ompi_info: whether
+   the compiler supports "USE ... ONLY" notation properly or not */
+#undef OMPI_FORTRAN_HAVE_USE_ONLY
+
+/* Pre declaration for FORTRAN ignore parameter TKR behavior */
+#undef OMPI_FORTRAN_IGNORE_TKR_PREDECL
+
+/* Type declaration for FORTRAN ignore parameter TKR behavior */
+#undef OMPI_FORTRAN_IGNORE_TKR_TYPE
+
+/* Max dimension rank of Fortran arrays */
+#undef OMPI_FORTRAN_MAX_ARRAY_RANK
+
+/* Whether we are building support for the mpif.h bindings or not */
+#undef OMPI_FORTRAN_MPIFH_BINDINGS
+
+/* Whether the mpi_f08 implementation is using wrapper routines ("bad" Fortran
+   compiler) or weak symbols ("good" Fortran compiler) for the F08 interface
+   definition implementations */
+#undef OMPI_FORTRAN_NEED_WRAPPER_ROUTINES
+
+/* Whether fortran symbols have no trailing underscore or not */
+#undef OMPI_FORTRAN_PLAIN
+
+/* Whether fortran symbols have a trailing underscore or not */
+#undef OMPI_FORTRAN_SINGLE_UNDERSCORE
+
+/* Value to load to the MPI_SUBARRAYS_SUPPORTED compile-time constant */
+#undef OMPI_FORTRAN_SUBARRAYS_SUPPORTED
+
+/* Whether we are building support for the "use mpif08" bindings or not */
+#undef OMPI_FORTRAN_USEMPIF08_BINDINGS
+
+/* Whether we are building support for the "use mpi" bindings or not */
+#undef OMPI_FORTRAN_USEMPI_BINDINGS
 
 /* Fortran value for LOGICAL .TRUE. value */
 #undef OMPI_FORTRAN_VALUE_TRUE
@@ -1246,207 +1632,204 @@
 /* Wether we want sparse process groups */
 #undef OMPI_GROUP_SPARSE
 
-/* whether to use cnos_barrier or not */
-#undef OMPI_GRPCOMM_CNOS_HAVE_BARRIER
-
-/* Enable features required for ConnectX XRC support */
-#undef OMPI_HAVE_CONNECTX_XRC
-
 /* Whether or not we have compiled with C++ exceptions support */
 #undef OMPI_HAVE_CXX_EXCEPTION_SUPPORT
 
-/* Whether we have Fortran 90 $ofc_fortran_type or not */
-#undef OMPI_HAVE_F90_CHARACTER
-
-/* Whether we have Fortran 90 $ofc_fortran_type or not */
-#undef OMPI_HAVE_F90_COMPLEX
-
-/* Whether we have Fortran 90 $ofc_fortran_type or not */
-#undef OMPI_HAVE_F90_COMPLEX16
-
-/* Whether we have Fortran 90 $ofc_fortran_type or not */
-#undef OMPI_HAVE_F90_COMPLEX32
-
-/* Whether we have Fortran 90 $ofc_fortran_type or not */
-#undef OMPI_HAVE_F90_COMPLEX8
-
-/* Whether we have Fortran 90 $ofc_fortran_type or not */
-#undef OMPI_HAVE_F90_DOUBLE_COMPLEX
-
-/* Whether we have Fortran 90 $ofc_fortran_type or not */
-#undef OMPI_HAVE_F90_DOUBLE_PRECISION
-
-/* Whether we have Fortran 90 $ofc_fortran_type or not */
-#undef OMPI_HAVE_F90_INTEGER
-
-/* Whether we have Fortran 90 $ofc_fortran_type or not */
-#undef OMPI_HAVE_F90_INTEGER1
-
-/* Whether we have Fortran 90 $ofc_fortran_type or not */
-#undef OMPI_HAVE_F90_INTEGER16
-
-/* Whether we have Fortran 90 $ofc_fortran_type or not */
-#undef OMPI_HAVE_F90_INTEGER2
-
-/* Whether we have Fortran 90 $ofc_fortran_type or not */
-#undef OMPI_HAVE_F90_INTEGER4
-
-/* Whether we have Fortran 90 $ofc_fortran_type or not */
-#undef OMPI_HAVE_F90_INTEGER8
-
-/* Whether we have Fortran 90 $ofc_fortran_type or not */
-#undef OMPI_HAVE_F90_LOGICAL
-
-/* Whether we have Fortran 90 $ofc_fortran_type or not */
-#undef OMPI_HAVE_F90_LOGICAL1
-
-/* Whether we have Fortran 90 $ofc_fortran_type or not */
-#undef OMPI_HAVE_F90_LOGICAL2
-
-/* Whether we have Fortran 90 $ofc_fortran_type or not */
-#undef OMPI_HAVE_F90_LOGICAL4
-
-/* Whether we have Fortran 90 $ofc_fortran_type or not */
-#undef OMPI_HAVE_F90_LOGICAL8
-
-/* Whether we have Fortran 90 $ofc_fortran_type or not */
-#undef OMPI_HAVE_F90_REAL
-
-/* Whether we have Fortran 90 $ofc_fortran_type or not */
-#undef OMPI_HAVE_F90_REAL16
-
-/* Whether we have Fortran 90 $ofc_fortran_type or not */
-#undef OMPI_HAVE_F90_REAL2
-
-/* Whether we have Fortran 90 $ofc_fortran_type or not */
-#undef OMPI_HAVE_F90_REAL4
-
-/* Whether we have Fortran 90 $ofc_fortran_type or not */
-#undef OMPI_HAVE_F90_REAL8
-
-/* Whether we have Fortran 77 CHARACTER or not */
+/* Whether we have Fortran CHARACTER or not */
 #undef OMPI_HAVE_FORTRAN_CHARACTER
 
-/* Whether we have Fortran 77 COMPLEX or not */
+/* Whether we have Fortran COMPLEX or not */
 #undef OMPI_HAVE_FORTRAN_COMPLEX
 
-/* Whether we have Fortran 77 COMPLEX*16 or not */
+/* Whether we have Fortran COMPLEX*16 or not */
 #undef OMPI_HAVE_FORTRAN_COMPLEX16
 
-/* Whether we have Fortran 77 COMPLEX*32 or not */
+/* Whether we have Fortran COMPLEX*32 or not */
 #undef OMPI_HAVE_FORTRAN_COMPLEX32
 
-/* Whether we have Fortran 77 COMPLEX*8 or not */
+/* Whether we have Fortran COMPLEX*4 or not */
+#undef OMPI_HAVE_FORTRAN_COMPLEX4
+
+/* Whether we have Fortran COMPLEX*8 or not */
 #undef OMPI_HAVE_FORTRAN_COMPLEX8
 
-/* Whether we have Fortran 77 DOUBLE COMPLEX or not */
+/* Whether we have Fortran DOUBLE COMPLEX or not */
 #undef OMPI_HAVE_FORTRAN_DOUBLE_COMPLEX
 
-/* Whether we have Fortran 77 DOUBLE PRECISION or not */
+/* Whether we have Fortran DOUBLE PRECISION or not */
 #undef OMPI_HAVE_FORTRAN_DOUBLE_PRECISION
 
-/* Whether we have Fortran 77 INTEGER or not */
+/* Whether we have Fortran INTEGER or not */
 #undef OMPI_HAVE_FORTRAN_INTEGER
 
-/* Whether we have Fortran 77 INTEGER*1 or not */
+/* Whether we have Fortran INTEGER*1 or not */
 #undef OMPI_HAVE_FORTRAN_INTEGER1
 
-/* Whether we have Fortran 77 INTEGER*16 or not */
+/* Whether we have Fortran INTEGER*16 or not */
 #undef OMPI_HAVE_FORTRAN_INTEGER16
 
-/* Whether we have Fortran 77 INTEGER*2 or not */
+/* Whether we have Fortran INTEGER*2 or not */
 #undef OMPI_HAVE_FORTRAN_INTEGER2
 
-/* Whether we have Fortran 77 INTEGER*4 or not */
+/* Whether we have Fortran INTEGER*4 or not */
 #undef OMPI_HAVE_FORTRAN_INTEGER4
 
-/* Whether we have Fortran 77 INTEGER*8 or not */
+/* Whether we have Fortran INTEGER*8 or not */
 #undef OMPI_HAVE_FORTRAN_INTEGER8
 
-/* Whether we have Fortran 77 LOGICAL or not */
+/* Whether we have Fortran LOGICAL or not */
 #undef OMPI_HAVE_FORTRAN_LOGICAL
 
-/* Whether we have Fortran 77 LOGICAL*1 or not */
+/* Whether we have Fortran LOGICAL*1 or not */
 #undef OMPI_HAVE_FORTRAN_LOGICAL1
 
-/* Whether we have Fortran 77 LOGICAL*2 or not */
+/* Whether we have Fortran LOGICAL*2 or not */
 #undef OMPI_HAVE_FORTRAN_LOGICAL2
 
-/* Whether we have Fortran 77 LOGICAL*4 or not */
+/* Whether we have Fortran LOGICAL*4 or not */
 #undef OMPI_HAVE_FORTRAN_LOGICAL4
 
-/* Whether we have Fortran 77 LOGICAL*8 or not */
+/* Whether we have Fortran LOGICAL*8 or not */
 #undef OMPI_HAVE_FORTRAN_LOGICAL8
 
-/* Whether we have Fortran 77 REAL or not */
+/* Whether we have Fortran REAL or not */
 #undef OMPI_HAVE_FORTRAN_REAL
 
-/* Whether we have Fortran 77 REAL*16 or not */
+/* Whether we have Fortran REAL*16 or not */
 #undef OMPI_HAVE_FORTRAN_REAL16
 
-/* Whether we have Fortran 77 REAL*2 or not */
+/* Whether we have Fortran REAL*2 or not */
 #undef OMPI_HAVE_FORTRAN_REAL2
 
-/* Whether we have Fortran 77 REAL*4 or not */
+/* Whether we have Fortran REAL*4 or not */
 #undef OMPI_HAVE_FORTRAN_REAL4
 
-/* Whether we have Fortran 77 REAL*8 or not */
+/* Whether we have Fortran REAL*8 or not */
 #undef OMPI_HAVE_FORTRAN_REAL8
 
-/* If PTHREADS implementation supports PTHREAD_MUTEX_ERRORCHECK */
-#undef OMPI_HAVE_PTHREAD_MUTEX_ERRORCHECK
+/* Fortrn KIND number for CHARACTER */
+#undef OMPI_KIND_FORTRAN_CHARACTER
 
-/* If PTHREADS implementation supports PTHREAD_MUTEX_ERRORCHECK_NP */
-#undef OMPI_HAVE_PTHREAD_MUTEX_ERRORCHECK_NP
+/* Fortrn KIND number for COMPLEX */
+#undef OMPI_KIND_FORTRAN_COMPLEX
 
-/* Whether RDMA CM is available or not */
-#undef OMPI_HAVE_RDMACM
+/* Fortrn KIND number for COMPLEX*16 */
+#undef OMPI_KIND_FORTRAN_COMPLEX16
 
-/* Enable RDMAoE support */
-#undef OMPI_HAVE_RDMAOE
+/* Fortrn KIND number for COMPLEX*32 */
+#undef OMPI_KIND_FORTRAN_COMPLEX32
 
-/* Number of arguments to ibv_create_cq */
-#undef OMPI_IBV_CREATE_CQ_ARGS
+/* Fortrn KIND number for COMPLEX*4 */
+#undef OMPI_KIND_FORTRAN_COMPLEX4
+
+/* Fortrn KIND number for COMPLEX*8 */
+#undef OMPI_KIND_FORTRAN_COMPLEX8
+
+/* Fortrn KIND number for DOUBLE COMPLEX */
+#undef OMPI_KIND_FORTRAN_DOUBLE_COMPLEX
+
+/* Fortrn KIND number for DOUBLE PRECISION */
+#undef OMPI_KIND_FORTRAN_DOUBLE_PRECISION
+
+/* Fortrn KIND number for INTEGER */
+#undef OMPI_KIND_FORTRAN_INTEGER
+
+/* Fortrn KIND number for INTEGER*1 */
+#undef OMPI_KIND_FORTRAN_INTEGER1
+
+/* Fortrn KIND number for INTEGER*16 */
+#undef OMPI_KIND_FORTRAN_INTEGER16
+
+/* Fortrn KIND number for INTEGER*2 */
+#undef OMPI_KIND_FORTRAN_INTEGER2
+
+/* Fortrn KIND number for INTEGER*4 */
+#undef OMPI_KIND_FORTRAN_INTEGER4
+
+/* Fortrn KIND number for INTEGER*8 */
+#undef OMPI_KIND_FORTRAN_INTEGER8
+
+/* Fortrn KIND number for LOGICAL */
+#undef OMPI_KIND_FORTRAN_LOGICAL
+
+/* Fortrn KIND number for LOGICAL*1 */
+#undef OMPI_KIND_FORTRAN_LOGICAL1
+
+/* Fortrn KIND number for LOGICAL*2 */
+#undef OMPI_KIND_FORTRAN_LOGICAL2
+
+/* Fortrn KIND number for LOGICAL*4 */
+#undef OMPI_KIND_FORTRAN_LOGICAL4
+
+/* Fortrn KIND number for LOGICAL*8 */
+#undef OMPI_KIND_FORTRAN_LOGICAL8
+
+/* Fortrn KIND number for REAL */
+#undef OMPI_KIND_FORTRAN_REAL
+
+/* Fortrn KIND number for REAL*16 */
+#undef OMPI_KIND_FORTRAN_REAL16
+
+/* Fortrn KIND number for REAL*2 */
+#undef OMPI_KIND_FORTRAN_REAL2
+
+/* Fortrn KIND number for REAL*4 */
+#undef OMPI_KIND_FORTRAN_REAL4
+
+/* Fortrn KIND number for REAL*8 */
+#undef OMPI_KIND_FORTRAN_REAL8
 
 /* Major release number of Open MPI */
 #undef OMPI_MAJOR_VERSION
 
-/* False if you can use iovec's directly with SCTP BTL */
-#undef OMPI_MCA_BTL_SCTP_CONCATENATES_IOVS
-
-/* Default value for socket style to use with SCTP BTL */
-#undef OMPI_MCA_BTL_SCTP_USE_ONE_TO_ONE_SOCKET
-
-/* Whether any opal memory mca components were found */
-#undef OMPI_MEMORY_HAVE_COMPONENT
-
 /* Minor release number of Open MPI */
 #undef OMPI_MINOR_VERSION
+
+/* MPI Extensions included in libmpi */
+#undef OMPI_MPIEXT_COMPONENTS
+
+/* Type of MPI_Aint */
+#undef OMPI_MPI_AINT_TYPE
+
+/* Contributed software packages built with Open MPI */
+#undef OMPI_MPI_CONTRIBS
+
+/* Size of the MPI_Count datatype */
+#undef OMPI_MPI_COUNT_SIZE
+
+/* Type of the MPI_Count datatype */
+#undef OMPI_MPI_COUNT_TYPE
 
 /* Size of the MPI_Offset */
 #undef OMPI_MPI_OFFSET_SIZE
 
-/* Type of MPI_Offset -- has to be defined here and typedef'ed later because
-   mpi.h does not get AC SUBST's */
+/* Type of MPI_Offset */
 #undef OMPI_MPI_OFFSET_TYPE
+
+/* Enable flow control for Portals4 MTL */
+#undef OMPI_MTL_PORTALS4_FLOW_CONTROL
 
 /* MPI datatype corresponding to MPI_Offset */
 #undef OMPI_OFFSET_DATATYPE
 
-/* Add padding bytes to the openib control header */
-#undef OMPI_OPENIB_PAD_HDR
+/* Whether we want to check MPI parameters never or possible (an integer
+   constant) */
+#undef OMPI_PARAM_CHECK
 
-/* Use the Cray XT-3 implementation of Portals */
-#undef OMPI_PORTALS_CRAYXT3
+/* Index into endpoint array for BML */
+#undef OMPI_PROC_ENDPOINT_TAG_BML
 
-/* Use the Cray XT-3 implementation of Portals using Modex */
-#undef OMPI_PORTALS_CRAYXT3_MODEX
+/* Maximum number of endpoint entries to be attached to an ompi_proc_t */
+#undef OMPI_PROC_ENDPOINT_TAG_MAX
 
-/* Does Portals send a PTL_EVENT_UNLINK event */
-#undef OMPI_PORTALS_HAVE_EVENT_UNLINK
+/* Index into endpoint array for MTL */
+#undef OMPI_PROC_ENDPOINT_TAG_MTL
 
-/* Use the UTCP reference implementation of Portals */
-#undef OMPI_PORTALS_UTCP
+/* Index into endpoint array for PML */
+#undef OMPI_PROC_ENDPOINT_TAG_PML
+
+/* Index into endpoint array for PORTALS4 */
+#undef OMPI_PROC_ENDPOINT_TAG_PORTALS4
 
 /* Whether OMPI should provide MPI File interface */
 #undef OMPI_PROVIDE_MPI_FILE_INTERFACE
@@ -1460,163 +1843,97 @@
 /* Release release number of Open MPI */
 #undef OMPI_RELEASE_VERSION
 
-/* Size of Fortran 77 $ofc_fortran_type */
-#undef OMPI_SIZEOF_F90_CHARACTER
+/* The repository version Open MPI */
+#undef OMPI_REPO_REV
 
-/* Size of Fortran 77 $ofc_fortran_type */
-#undef OMPI_SIZEOF_F90_COMPLEX
+/* Defined to 1 if the OMPI runtime component is ORTE */
+#undef OMPI_RTE_ORTE
 
-/* Size of Fortran 77 $ofc_fortran_type */
-#undef OMPI_SIZEOF_F90_COMPLEX16
-
-/* Size of Fortran 77 $ofc_fortran_type */
-#undef OMPI_SIZEOF_F90_COMPLEX32
-
-/* Size of Fortran 77 $ofc_fortran_type */
-#undef OMPI_SIZEOF_F90_COMPLEX8
-
-/* Size of Fortran 77 $ofc_fortran_type */
-#undef OMPI_SIZEOF_F90_DOUBLE_COMPLEX
-
-/* Size of Fortran 77 $ofc_fortran_type */
-#undef OMPI_SIZEOF_F90_DOUBLE_PRECISION
-
-/* Size of Fortran 77 $ofc_fortran_type */
-#undef OMPI_SIZEOF_F90_INTEGER
-
-/* Size of Fortran 77 $ofc_fortran_type */
-#undef OMPI_SIZEOF_F90_INTEGER1
-
-/* Size of Fortran 77 $ofc_fortran_type */
-#undef OMPI_SIZEOF_F90_INTEGER16
-
-/* Size of Fortran 77 $ofc_fortran_type */
-#undef OMPI_SIZEOF_F90_INTEGER2
-
-/* Size of Fortran 77 $ofc_fortran_type */
-#undef OMPI_SIZEOF_F90_INTEGER4
-
-/* Size of Fortran 77 $ofc_fortran_type */
-#undef OMPI_SIZEOF_F90_INTEGER8
-
-/* Size of Fortran 77 $ofc_fortran_type */
-#undef OMPI_SIZEOF_F90_LOGICAL
-
-/* Size of Fortran 77 $ofc_fortran_type */
-#undef OMPI_SIZEOF_F90_LOGICAL1
-
-/* Size of Fortran 77 $ofc_fortran_type */
-#undef OMPI_SIZEOF_F90_LOGICAL2
-
-/* Size of Fortran 77 $ofc_fortran_type */
-#undef OMPI_SIZEOF_F90_LOGICAL4
-
-/* Size of Fortran 77 $ofc_fortran_type */
-#undef OMPI_SIZEOF_F90_LOGICAL8
-
-/* Size of Fortran 77 $ofc_fortran_type */
-#undef OMPI_SIZEOF_F90_REAL
-
-/* Size of Fortran 77 $ofc_fortran_type */
-#undef OMPI_SIZEOF_F90_REAL16
-
-/* Size of Fortran 77 $ofc_fortran_type */
-#undef OMPI_SIZEOF_F90_REAL2
-
-/* Size of Fortran 77 $ofc_fortran_type */
-#undef OMPI_SIZEOF_F90_REAL4
-
-/* Size of Fortran 77 $ofc_fortran_type */
-#undef OMPI_SIZEOF_F90_REAL8
-
-/* Size of Fortran 77 CHARACTER */
+/* Size of Fortran CHARACTER */
 #undef OMPI_SIZEOF_FORTRAN_CHARACTER
 
-/* Size of Fortran 77 COMPLEX */
+/* Size of Fortran COMPLEX */
 #undef OMPI_SIZEOF_FORTRAN_COMPLEX
 
-/* Size of Fortran 77 COMPLEX*16 */
+/* Size of Fortran COMPLEX*16 */
 #undef OMPI_SIZEOF_FORTRAN_COMPLEX16
 
-/* Size of Fortran 77 COMPLEX*32 */
+/* Size of Fortran COMPLEX*32 */
 #undef OMPI_SIZEOF_FORTRAN_COMPLEX32
 
-/* Size of Fortran 77 COMPLEX*8 */
+/* Size of Fortran COMPLEX*4 */
+#undef OMPI_SIZEOF_FORTRAN_COMPLEX4
+
+/* Size of Fortran COMPLEX*8 */
 #undef OMPI_SIZEOF_FORTRAN_COMPLEX8
 
-/* Size of Fortran 77 DOUBLE COMPLEX */
+/* Size of Fortran DOUBLE COMPLEX */
 #undef OMPI_SIZEOF_FORTRAN_DOUBLE_COMPLEX
 
-/* Size of Fortran 77 DOUBLE PRECISION */
+/* Size of Fortran DOUBLE PRECISION */
 #undef OMPI_SIZEOF_FORTRAN_DOUBLE_PRECISION
 
-/* Size of Fortran 77 INTEGER */
+/* Size of Fortran INTEGER */
 #undef OMPI_SIZEOF_FORTRAN_INTEGER
 
-/* Size of Fortran 77 INTEGER*1 */
+/* Size of Fortran INTEGER*1 */
 #undef OMPI_SIZEOF_FORTRAN_INTEGER1
 
-/* Size of Fortran 77 INTEGER*16 */
+/* Size of Fortran INTEGER*16 */
 #undef OMPI_SIZEOF_FORTRAN_INTEGER16
 
-/* Size of Fortran 77 INTEGER*2 */
+/* Size of Fortran INTEGER*2 */
 #undef OMPI_SIZEOF_FORTRAN_INTEGER2
 
-/* Size of Fortran 77 INTEGER*4 */
+/* Size of Fortran INTEGER*4 */
 #undef OMPI_SIZEOF_FORTRAN_INTEGER4
 
-/* Size of Fortran 77 INTEGER*8 */
+/* Size of Fortran INTEGER*8 */
 #undef OMPI_SIZEOF_FORTRAN_INTEGER8
 
-/* Size of Fortran 77 LOGICAL */
+/* Size of Fortran LOGICAL */
 #undef OMPI_SIZEOF_FORTRAN_LOGICAL
 
-/* Size of Fortran 77 LOGICAL*1 */
+/* Size of Fortran LOGICAL*1 */
 #undef OMPI_SIZEOF_FORTRAN_LOGICAL1
 
-/* Size of Fortran 77 LOGICAL*2 */
+/* Size of Fortran LOGICAL*2 */
 #undef OMPI_SIZEOF_FORTRAN_LOGICAL2
 
-/* Size of Fortran 77 LOGICAL*4 */
+/* Size of Fortran LOGICAL*4 */
 #undef OMPI_SIZEOF_FORTRAN_LOGICAL4
 
-/* Size of Fortran 77 LOGICAL*8 */
+/* Size of Fortran LOGICAL*8 */
 #undef OMPI_SIZEOF_FORTRAN_LOGICAL8
 
-/* Size of Fortran 77 REAL */
+/* Size of Fortran REAL */
 #undef OMPI_SIZEOF_FORTRAN_REAL
 
-/* Size of Fortran 77 REAL*16 */
+/* Size of Fortran REAL*16 */
 #undef OMPI_SIZEOF_FORTRAN_REAL16
 
-/* Size of Fortran 77 REAL*2 */
+/* Size of Fortran REAL*2 */
 #undef OMPI_SIZEOF_FORTRAN_REAL2
 
-/* Size of Fortran 77 REAL*4 */
+/* Size of Fortran REAL*4 */
 #undef OMPI_SIZEOF_FORTRAN_REAL4
 
-/* Size of Fortran 77 REAL*8 */
+/* Size of Fortran REAL*8 */
 #undef OMPI_SIZEOF_FORTRAN_REAL8
+
+/* Tarball filename version string of Open MPI */
+#undef OMPI_TARBALL_VERSION
 
 /* Complete release number of Open MPI */
 #undef OMPI_VERSION
 
-/* Whether we want MPI C++ support or not */
-#undef OMPI_WANT_CXX_BINDINGS
-
-/* Whether we want the MPI f77 bindings or not */
-#undef OMPI_WANT_F77_BINDINGS
-
-/* Whether we want the MPI f90 bindings or not */
-#undef OMPI_WANT_F90_BINDINGS
-
-/* if the memory and buffer checking should be enabled */
-#undef OMPI_WANT_MEMCHECKER
+/* do we want java mpi bindings */
+#undef OMPI_WANT_JAVA_BINDINGS
 
 /* do we want to try to work around C++ bindings SEEK_* issue? */
 #undef OMPI_WANT_MPI_CXX_SEEK
 
-/* Enable warnings in wrong usage (e.g. deprecated) in user-level code */
+/* Enable warnings when using deprecated MPI functions */
 #undef OMPI_WANT_MPI_INTERFACE_WARNING
 
 /* if the peruse interface should be enabled */
@@ -1676,11 +1993,17 @@
 /* Alignment of type short */
 #undef OPAL_ALIGNMENT_SHORT
 
+/* Alignment of type size_t */
+#undef OPAL_ALIGNMENT_SIZE_T
+
 /* Alignment of type void * */
 #undef OPAL_ALIGNMENT_VOID_P
 
 /* Alignment of type wchar_t */
 #undef OPAL_ALIGNMENT_WCHAR
+
+/* Alignment of type __float128 */
+#undef OPAL_ALIGNMENT___FLOAT128
 
 /* set to 1 if word-size integers must be aligned to word-size padding to
    prevent bus errors */
@@ -1714,17 +2037,47 @@
    outside of the assembly header files */
 #undef OPAL_ASM_SUPPORT_64BIT
 
+/* Whether 64-bit is supported by the __sync builtin atomics */
+#undef OPAL_ASM_SYNC_HAVE_64BIT
+
 /* Assembly directive for setting text section */
 #undef OPAL_ASM_TEXT
 
 /* How to set function type in .type directive */
 #undef OPAL_ASM_TYPE
 
-/* Architecture type of assembly to use for atomic operations */
+/* Architecture type of assembly to use for atomic operations and CMA */
 #undef OPAL_ASSEMBLY_ARCH
+
+/* Whether to use builtin atomics */
+#undef OPAL_ASSEMBLY_BUILTIN
 
 /* Format of assembly file */
 #undef OPAL_ASSEMBLY_FORMAT
+
+/* Whether we have support for RDTSCP instruction */
+#undef OPAL_ASSEMBLY_SUPPORTS_RDTSCP
+
+/* Enable flow control for Portals4 BTL */
+#undef OPAL_BTL_PORTALS4_FLOW_CONTROL
+
+/* If CMA support can be enabled */
+#undef OPAL_BTL_SM_HAVE_CMA
+
+/* If knem support can be enabled */
+#undef OPAL_BTL_SM_HAVE_KNEM
+
+/* define to 1 if usnic BTL unit tests are enabled, 0 otherwise */
+#undef OPAL_BTL_USNIC_UNIT_TESTS
+
+/* If CMA support can be enabled within vader */
+#undef OPAL_BTL_VADER_HAVE_CMA
+
+/* If KNEM support can be enabled within vader */
+#undef OPAL_BTL_VADER_HAVE_KNEM
+
+/* If XPMEM support can be enabled within vader */
+#undef OPAL_BTL_VADER_HAVE_XPMEM
 
 /* The compiler $lower which OMPI was built with */
 #undef OPAL_BUILD_PLATFORM_COMPILER_FAMILYID
@@ -1753,6 +2106,24 @@
 /* Use #pragma ident strings for C files */
 #undef OPAL_CC_USE_PRAGMA_IDENT
 
+/* Need CMA syscalls defined */
+#undef OPAL_CMA_NEED_SYSCALL_DEFS
+
+/* Whether the common/usnic_verbs component is being built or not */
+#undef OPAL_COMMON_VERBS_USNIC_HAPPY
+
+/* Whether we have CUDA GDR support available */
+#undef OPAL_CUDA_GDR_SUPPORT
+
+/* Whether we have CUDA cuPointerGetAttributes function available */
+#undef OPAL_CUDA_GET_ATTRIBUTES
+
+/* Whether we want cuda device pointer support */
+#undef OPAL_CUDA_SUPPORT
+
+/* Whether we have CUDA CU_POINTER_ATTRIBUTE_SYNC_MEMOPS support available */
+#undef OPAL_CUDA_SYNC_MEMOPS
+
 /* OPAL underlying C++ compiler */
 #undef OPAL_CXX
 
@@ -1774,6 +2145,9 @@
 /* Whether C compiler supports GCC style inline assembly */
 #undef OPAL_C_GCC_INLINE_ASSEMBLY
 
+/* Whether C compiler supports __builtin_clz */
+#undef OPAL_C_HAVE_BUILTIN_CLZ
+
 /* Whether C compiler supports __builtin_expect */
 #undef OPAL_C_HAVE_BUILTIN_EXPECT
 
@@ -1786,17 +2160,24 @@
 /* Whether C compiler supports XLC style inline assembly */
 #undef OPAL_C_XLC_INLINE_ASSEMBLY
 
+/* Whether we have lt_dladvise or not */
+#undef OPAL_DL_LIBLTDL_HAVE_LT_DLADVISE
+
+/* Whether we want checkpoint/restart enabled debugging functionality or not
+   */
+#undef OPAL_ENABLE_CRDEBUG
+
 /* Whether we want developer-level debugging code or not */
 #undef OPAL_ENABLE_DEBUG
 
-/* Enable fault tolerance general components and logic */
-#undef OPAL_ENABLE_FT
+/* Whether we want to enable dlopen support */
+#undef OPAL_ENABLE_DLOPEN_SUPPORT
 
-/* Enable fault tolerance checkpoint/restart components and logic */
-#undef OPAL_ENABLE_FT_CR
+/* Enable features required for dynamic SL support */
+#undef OPAL_ENABLE_DYNAMIC_SL
 
-/* Enable fault tolerance thread in Open PAL */
-#undef OPAL_ENABLE_FT_THREAD
+/* Disable getpwuid support (default: enabled) */
+#undef OPAL_ENABLE_GETPWUID
 
 /* Enable features required for heterogeneous support */
 #undef OPAL_ENABLE_HETEROGENEOUS_SUPPORT
@@ -1810,17 +2191,17 @@
 /* Whether we want the memory profiling or not */
 #undef OPAL_ENABLE_MEM_PROFILE
 
-/* Whether we should enable OPAL support for threads */
+/* Whether we should enable thread support within the OPAL code base */
 #undef OPAL_ENABLE_MULTI_THREADS
 
-/* Hardcode the OPAL progress thread to be off */
+/* Whether we want BTL progress threads enabled */
 #undef OPAL_ENABLE_PROGRESS_THREADS
 
 /* Whether user wants PTY support or not */
 #undef OPAL_ENABLE_PTY_SUPPORT
 
-/* Enable run-time tracing of internal functions */
-#undef OPAL_ENABLE_TRACE
+/* Whether we want developer-level timing framework or not */
+#undef OPAL_ENABLE_TIMING
 
 /* Greek - alpha, beta, etc - release number of Open Portable Access Layer */
 #undef OPAL_GREEK_VERSION
@@ -1850,6 +2231,9 @@
    */
 #undef OPAL_HAVE_ATTRIBUTE_DEPRECATED_ARGUMENT
 
+/* Whether your compiler has __attribute__ destructor or not */
+#undef OPAL_HAVE_ATTRIBUTE_DESTRUCTOR
+
 /* Whether your compiler has __attribute__ format or not */
 #undef OPAL_HAVE_ATTRIBUTE_FORMAT
 
@@ -1865,6 +2249,9 @@
 
 /* Whether your compiler has __attribute__ may_alias or not */
 #undef OPAL_HAVE_ATTRIBUTE_MAY_ALIAS
+
+/* Whether your compiler has __attribute__ noinline or not */
+#undef OPAL_HAVE_ATTRIBUTE_NOINLINE
 
 /* Whether your compiler has __attribute__ nonnull or not */
 #undef OPAL_HAVE_ATTRIBUTE_NONNULL
@@ -1900,27 +2287,79 @@
 /* Whether your compiler has __attribute__ weak alias or not */
 #undef OPAL_HAVE_ATTRIBUTE_WEAK_ALIAS
 
+/* whether backtrace_execinfo is found and available */
+#undef OPAL_HAVE_BACKTRACE_EXECINFO
+
 /* whether qsort is broken or not */
 #undef OPAL_HAVE_BROKEN_QSORT
 
-/* Whether we have hwloc support or not */
-#undef OPAL_HAVE_HWLOC
+/* whether ceil is found and available */
+#undef OPAL_HAVE_CEIL
+
+/* whether clock_gettime is found and available */
+#undef OPAL_HAVE_CLOCK_GETTIME
+
+/* Whether the processor supports the cmpxchg16b instruction */
+#undef OPAL_HAVE_CMPXCHG16B
+
+/* Enable features required for ConnectX XRC support */
+#undef OPAL_HAVE_CONNECTX_XRC
+
+/* Enable features required for XRC domains support */
+#undef OPAL_HAVE_CONNECTX_XRC_DOMAINS
+
+/* whether dirname is found and available */
+#undef OPAL_HAVE_DIRNAME
+
+/* Whether the OPAL DL framework is functional or not */
+#undef OPAL_HAVE_DL_SUPPORT
+
+/* whether fbtl_posix is found and available */
+#undef OPAL_HAVE_FBTL_POSIX
+
+/* whether gethostbyname is found and available */
+#undef OPAL_HAVE_GETHOSTBYNAME
+
+/* do we have Java support */
+#undef OPAL_HAVE_JAVA_SUPPORT
 
 /* Do not use outside of mpi.h. Define to 1 if the system has the type `long
    long'. */
 #undef OPAL_HAVE_LONG_LONG
 
-/* Whether libltdl appears to have the lt_dladvise interface */
-#undef OPAL_HAVE_LTDL_ADVISE
+/* whether openpty is found and available */
+#undef OPAL_HAVE_OPENPTY
 
-/* Do we have POSIX threads */
-#undef OPAL_HAVE_POSIX_THREADS
+/* If PTHREADS implementation supports PTHREAD_MUTEX_ERRORCHECK */
+#undef OPAL_HAVE_PTHREAD_MUTEX_ERRORCHECK
+
+/* If PTHREADS implementation supports PTHREAD_MUTEX_ERRORCHECK_NP */
+#undef OPAL_HAVE_PTHREAD_MUTEX_ERRORCHECK_NP
+
+/* Whether RDMA CM is available or not */
+#undef OPAL_HAVE_RDMACM
+
+/* Enable RDMAoE support */
+#undef OPAL_HAVE_RDMAOE
 
 /* Whether we have SA_RESTART in <signal.h> or not */
 #undef OPAL_HAVE_SA_RESTART
 
-/* Do we have native Solaris threads */
-#undef OPAL_HAVE_SOLARIS_THREADS
+/* whether sched_yield is found and available */
+#undef OPAL_HAVE_SCHED_YIELD
+
+/* whether shmem_posix is found and available */
+#undef OPAL_HAVE_SHMEM_POSIX
+
+/* whether socket is found and available */
+#undef OPAL_HAVE_SOCKET
+
+/* Whether or not we have solaris */
+#undef OPAL_HAVE_SOLARIS
+
+/* Whether the __sync builtin atomic compare and swap supports 128-bit values
+   */
+#undef OPAL_HAVE_SYNC_BUILTIN_CSWAP_INT128
 
 /* Do not use outside of mpi.h. Define to 1 if you have the <sys/synch.h>
    header file. */
@@ -1929,6 +2368,9 @@
 /* Do not use outside of mpi.h. Define to 1 if you have the <sys/time.h>
    header file. */
 #undef OPAL_HAVE_SYS_TIME_H
+
+/* Whether UD CM is available or not */
+#undef OPAL_HAVE_UDCM
 
 /* Whether we have __va_copy or not */
 #undef OPAL_HAVE_UNDERSCORE_VA_COPY
@@ -1939,15 +2381,22 @@
 /* Whether we have weak symbols or not */
 #undef OPAL_HAVE_WEAK_SYMBOLS
 
+/* Whether our event component has working event operations or not (if not,
+   then assumedly it only has working timers and signals) */
+#undef OPAL_HAVE_WORKING_EVENTOPS
+
+/* whether yp_all_nsl is found and available */
+#undef OPAL_HAVE_YP_ALL_NSL
+
 /* Define to 1 ifyou have the declaration of _SC_NPROCESSORS_ONLN, and to 0
    otherwise */
 #undef OPAL_HAVE__SC_NPROCESSORS_ONLN
 
+/* Number of arguments to ibv_create_cq */
+#undef OPAL_IBV_CREATE_CQ_ARGS
+
 /* ident string for Open MPI */
 #undef OPAL_IDENT_STRING
-
-/* Whether we are using the internal libltdl or not */
-#undef OPAL_LIBLTDL_INTERNAL
 
 /* Major release number of Open Portable Access Layer */
 #undef OPAL_MAJOR_VERSION
@@ -1973,6 +2422,15 @@
 /* Maximum length of processor names (default is 256) */
 #undef OPAL_MAX_PROCESSOR_NAME
 
+/* MCA cmd line identifier */
+#undef OPAL_MCA_CMD_LINE_ID
+
+/* MCA prefix string for envars */
+#undef OPAL_MCA_PREFIX
+
+/* Whether any opal memory mca components were found */
+#undef OPAL_MEMORY_HAVE_COMPONENT
+
 /* Minor release number of Open Portable Access Layer */
 #undef OPAL_MINOR_VERSION
 
@@ -1980,8 +2438,22 @@
    <stdbool.h>) */
 #undef OPAL_NEED_C_BOOL
 
+/* Whether libraries can be configured with destructor functions */
+#undef OPAL_NO_LIB_DESTRUCTOR
+
+/* Add padding bytes to the openib BTL control header */
+#undef OPAL_OPENIB_PAD_HDR
+
 /* package/branding string for Open MPI */
 #undef OPAL_PACKAGE_STRING
+
+/* Log base 2 of the maximum size in bytes of a memory descriptor. Set to 0 if
+   MD can bind all of memory. */
+#undef OPAL_PORTALS4_MAX_MD_SIZE
+
+/* Log base 2 of the maximum size in bytes of the user virtual address space.
+   Set to 0 if MD can bind all of memory. */
+#undef OPAL_PORTALS4_MAX_VA_SIZE
 
 /* Whether r notation is used for ppc registers */
 #undef OPAL_POWERPC_R_REGISTERS
@@ -1995,6 +2467,9 @@
 /* Release release number of Open Portable Access Layer */
 #undef OPAL_RELEASE_VERSION
 
+/* The repository version Open Portable Access Layer */
+#undef OPAL_REPO_REV
+
 /* Whether we have shared memory support for mmap or not */
 #undef OPAL_SHMEM_MMAP
 
@@ -2004,15 +2479,12 @@
 /* Whether we have shared memory support for SYSV or not */
 #undef OPAL_SHMEM_SYSV
 
-/* Whether we have shared memory support for POSIX or not */
-#undef OPAL_SHMEM_WINDOWS
-
 /* Do not use outside of mpi.h. Define to 1 if you have the ANSI C header
    files. */
 #undef OPAL_STDC_HEADERS
 
-/* Do threads have different pids (pthreads on linux) */
-#undef OPAL_THREADS_HAVE_DIFFERENT_PIDS
+/* Tarball filename version string of Open Portable Access Layer */
+#undef OPAL_TARBALL_VERSION
 
 /* Whether to use <stdbool.h> or not */
 #undef OPAL_USE_STDBOOL_H
@@ -2023,20 +2495,17 @@
 /* Enable per-user config files */
 #undef OPAL_WANT_HOME_CONFIG_FILES
 
-/* Whether to include support for libltdl or not */
-#undef OPAL_WANT_LIBLTDL
+/* if the memory and buffer checking should be enabled */
+#undef OPAL_WANT_MEMCHECKER
 
 /* if want pretty-print stack trace feature */
 #undef OPAL_WANT_PRETTY_PRINT_STACKTRACE
 
-/* whether we want to have smp locks in atomic ops or not */
-#undef OPAL_WANT_SMP_LOCKS
-
 /* Specific ps command to use in orte-clean */
 #undef ORTE_CLEAN_PS_CMD
 
-/* Build full RTE support */
-#undef ORTE_DISABLE_FULL_SUPPORT
+/* Whether we want static ports enabled */
+#undef ORTE_ENABLE_STATIC_PORTS
 
 /* Greek - alpha, beta, etc - release number of Open MPI Run-Time Environment
    */
@@ -2044,9 +2513,6 @@
 
 /* Major release number of Open MPI Run-Time Environment */
 #undef ORTE_MAJOR_VERSION
-
-/* Whether we have CNOS support in alps ess or not */
-#undef ORTE_MCA_ESS_ALPS_HAVE_CNOS
 
 /* Minor release number of Open MPI Run-Time Environment */
 #undef ORTE_MINOR_VERSION
@@ -2057,11 +2523,59 @@
 /* Release release number of Open MPI Run-Time Environment */
 #undef ORTE_RELEASE_VERSION
 
+/* The repository version Open MPI Run-Time Environment */
+#undef ORTE_REPO_REV
+
+/* Tarball filename version string of Open MPI Run-Time Environment */
+#undef ORTE_TARBALL_VERSION
+
 /* Complete release number of Open MPI Run-Time Environment */
 #undef ORTE_VERSION
 
 /* Whether we want orterun to effect "--prefix $prefix" by default */
 #undef ORTE_WANT_ORTERUN_PREFIX_BY_DEFAULT
+
+/* Greek - alpha, beta, etc - release number of Open SHMEM */
+#undef OSHMEM_GREEK_VERSION
+
+/* mxm support is available */
+#undef OSHMEM_HAS_ATOMIC_MXM
+
+/* Major release number of Open SHMEM */
+#undef OSHMEM_MAJOR_VERSION
+
+/* Minor release number of Open SHMEM */
+#undef OSHMEM_MINOR_VERSION
+
+/* Whether we want to check OSHMEM parameters always or never */
+#undef OSHMEM_PARAM_CHECK
+
+/* Release date of Open SHMEM */
+#undef OSHMEM_RELEASE_DATE
+
+/* Release release number of Open SHMEM */
+#undef OSHMEM_RELEASE_VERSION
+
+/* The repository version Open SHMEM */
+#undef OSHMEM_REPO_REV
+
+/* Whether user wants OSHMEM in compatibility mode or not */
+#undef OSHMEM_SPEC_COMPAT
+
+/* Whether we have shared memory support for mmap or not */
+#undef OSHMEM_SSHMEM_MMAP
+
+/* Whether we have shared memory support for SYSV or not */
+#undef OSHMEM_SSHMEM_SYSV
+
+/* Whether we have shared memory support for verbs or not */
+#undef OSHMEM_SSHMEM_VERBS
+
+/* Tarball filename version string of Open SHMEM */
+#undef OSHMEM_TARBALL_VERSION
+
+/* Complete release number of Open SHMEM */
+#undef OSHMEM_VERSION
 
 /* Define to the address where bug reports for this package should be sent. */
 #undef PACKAGE_BUGREPORT
@@ -2144,11 +2658,14 @@
 /* The size of `_Bool', as computed by sizeof. */
 #undef SIZEOF__BOOL
 
+/* The size of `__float128', as computed by sizeof. */
+#undef SIZEOF___FLOAT128
+
+/* defined to 1 if slurm cray env, 0 otherwise */
+#undef SLURM_CRAY_ENV
+
 /* Define to 1 if you have the ANSI C header files. */
 #undef STDC_HEADERS
-
-/* Define to 1 if you can safely include both <sys/time.h> and <time.h>. */
-#undef TIME_WITH_SYS_TIME
 
 /* Enable extensions on HP-UX. */
 #ifndef _HPUX_SOURCE
@@ -2181,12 +2698,6 @@
 #endif
 
 
-/* Whether we want to use Cray PMI2 extensions */
-#undef WANT_CRAY_PMI2_EXT
-
-/* Whether we want PMI support */
-#undef WANT_PMI_SUPPORT
-
 /* Define WORDS_BIGENDIAN to 1 if your processor stores words with the most
    significant byte first (like Motorola and SPARC, unlike Intel). */
 #if defined AC_APPLE_UNIVERSAL_BUILD
@@ -2202,20 +2713,32 @@
 /* Additional CFLAGS to pass through the wrapper compilers */
 #undef WRAPPER_EXTRA_CFLAGS
 
+/* Additional CFLAGS_PREFIX to pass through the wrapper compilers */
+#undef WRAPPER_EXTRA_CFLAGS_PREFIX
+
 /* Additional CXXFLAGS to pass through the wrapper compilers */
 #undef WRAPPER_EXTRA_CXXFLAGS
+
+/* Additional CXXFLAGS_PREFIX to pass through the wrapper compilers */
+#undef WRAPPER_EXTRA_CXXFLAGS_PREFIX
 
 /* Additional FCFLAGS to pass through the wrapper compilers */
 #undef WRAPPER_EXTRA_FCFLAGS
 
-/* Additional FFLAGS to pass through the wrapper compilers */
-#undef WRAPPER_EXTRA_FFLAGS
+/* Additional FCFLAGS to pass through the wrapper compilers */
+#undef WRAPPER_EXTRA_FCFLAGS_PREFIX
 
 /* Additional LDFLAGS to pass through the wrapper compilers */
 #undef WRAPPER_EXTRA_LDFLAGS
 
 /* Additional LIBS to pass through the wrapper compilers */
 #undef WRAPPER_EXTRA_LIBS
+
+/* Whether the wrapper compilers add rpath flags by default */
+#undef WRAPPER_RPATH_SUPPORT
+
+/* Define to 1 if the X Window System is missing or not being used. */
+#undef X_DISPLAY_MISSING
 
 /* Define to 1 if `lex' declares `yytext' as a `char *' by default, not a
    `char[]'. */
@@ -2242,110 +2765,84 @@
 /* Define this to the process ID type */
 #undef hwloc_pid_t
 
-/* Define this to either strncasecmp or strncmp */
-#undef hwloc_strncasecmp
-
 /* Define this to the thread ID type */
 #undef hwloc_thread_t
-
-/* Define to `__inline__' or `__inline' if that's what the C compiler
-   calls it, or to nothing if 'inline' is not supported under any name.  */
-#ifndef __cplusplus
-#undef inline
-#endif
 
 /* A bogus type that allows us to have sentinel type values that are still
    valid */
 #undef ompi_fortran_bogus_type_t
 
-/* C type corresponding to Fortran 77 CHARACTER */
+/* C type corresponding to Fortran CHARACTER */
 #undef ompi_fortran_character_t
 
-/* C type corresponding to Fortran 77 COMPLEX*16 */
+/* C type corresponding to Fortran COMPLEX*16 */
 #undef ompi_fortran_complex16_t
 
-/* C type corresponding to Fortran 77 COMPLEX*32 */
+/* C type corresponding to Fortran COMPLEX*32 */
 #undef ompi_fortran_complex32_t
 
-/* C type corresponding to Fortran 77 COMPLEX*8 */
+/* C type corresponding to Fortran COMPLEX*4 */
+#undef ompi_fortran_complex4_t
+
+/* C type corresponding to Fortran COMPLEX*8 */
 #undef ompi_fortran_complex8_t
 
-/* C type corresponding to Fortran 77 COMPLEX */
+/* C type corresponding to Fortran COMPLEX */
 #undef ompi_fortran_complex_t
 
-/* C type corresponding to Fortran 77 DOUBLE COMPLEX */
+/* C type corresponding to Fortran DOUBLE COMPLEX */
 #undef ompi_fortran_double_complex_t
 
-/* C type corresponding to Fortran 77 DOUBLE PRECISION */
+/* C type corresponding to Fortran DOUBLE PRECISION */
 #undef ompi_fortran_double_precision_t
 
-/* C type corresponding to Fortran 77 INTEGER*16 */
+/* C type corresponding to Fortran INTEGER*16 */
 #undef ompi_fortran_integer16_t
 
-/* C type corresponding to Fortran 77 INTEGER*1 */
+/* C type corresponding to Fortran INTEGER*1 */
 #undef ompi_fortran_integer1_t
 
-/* C type corresponding to Fortran 77 INTEGER*2 */
+/* C type corresponding to Fortran INTEGER*2 */
 #undef ompi_fortran_integer2_t
 
-/* C type corresponding to Fortran 77 INTEGER*4 */
+/* C type corresponding to Fortran INTEGER*4 */
 #undef ompi_fortran_integer4_t
 
-/* C type corresponding to Fortran 77 INTEGER*8 */
+/* C type corresponding to Fortran INTEGER*8 */
 #undef ompi_fortran_integer8_t
 
-/* C type corresponding to Fortran 77 INTEGER */
+/* C type corresponding to Fortran INTEGER */
 #undef ompi_fortran_integer_t
 
-/* C type corresponding to Fortran 77 LOGICAL*1 */
+/* C type corresponding to Fortran LOGICAL*1 */
 #undef ompi_fortran_logical1_t
 
-/* C type corresponding to Fortran 77 LOGICAL*2 */
+/* C type corresponding to Fortran LOGICAL*2 */
 #undef ompi_fortran_logical2_t
 
-/* C type corresponding to Fortran 77 LOGICAL*4 */
+/* C type corresponding to Fortran LOGICAL*4 */
 #undef ompi_fortran_logical4_t
 
-/* C type corresponding to Fortran 77 LOGICAL*8 */
+/* C type corresponding to Fortran LOGICAL*8 */
 #undef ompi_fortran_logical8_t
 
-/* C type corresponding to Fortran 77 LOGICAL */
+/* C type corresponding to Fortran LOGICAL */
 #undef ompi_fortran_logical_t
 
-/* C type corresponding to Fortran 77 REAL*16 */
+/* C type corresponding to Fortran REAL*16 */
 #undef ompi_fortran_real16_t
 
-/* C type corresponding to Fortran 77 REAL*2 */
+/* C type corresponding to Fortran REAL*2 */
 #undef ompi_fortran_real2_t
 
-/* C type corresponding to Fortran 77 REAL*4 */
+/* C type corresponding to Fortran REAL*4 */
 #undef ompi_fortran_real4_t
 
-/* C type corresponding to Fortran 77 REAL*8 */
+/* C type corresponding to Fortran REAL*8 */
 #undef ompi_fortran_real8_t
 
-/* C type corresponding to Fortran 77 REAL */
+/* C type corresponding to Fortran REAL */
 #undef ompi_fortran_real_t
-
-/* Define to `int' if <sys/types.h> does not define. */
-#undef pid_t
-
-/* Define to the equivalent of the C99 'restrict' keyword, or to
-   nothing if this is not supported.  Do not define if restrict is
-   supported directly.  */
-#undef restrict
-/* Work around a bug in Sun C++: it does not support _Restrict or
-   __restrict__, even though the corresponding Sun C compiler ends up with
-   "#define restrict _Restrict" or "#define restrict __restrict__" in the
-   previous line.  Perhaps some future version of Sun C++ will work with
-   restrict; if so, hopefully it defines __RESTRICT like Sun C does.  */
-#if defined __SUNPRO_CC && !defined __RESTRICT
-# define _Restrict
-# define __restrict__
-#endif
-
-/* Define to `unsigned int' if <sys/types.h> does not define. */
-#undef size_t
 
 
 #include "opal_config_bottom.h"

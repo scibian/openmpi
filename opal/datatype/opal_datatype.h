@@ -1,16 +1,16 @@
-/* -*- Mode: C; c-basic-offset:4 ; -*- */
+/* -*- Mode: C; c-basic-offset:4 ; indent-tabs-mode:nil -*- */
 /*
  * Copyright (c) 2004-2006 The Trustees of Indiana University and Indiana
  *                         University Research and Technology
  *                         Corporation.  All rights reserved.
- * Copyright (c) 2004-2010 The University of Tennessee and The University
+ * Copyright (c) 2004-2015 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
  * Copyright (c) 2004-2006 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2006 The Regents of the University of California.
  *                         All rights reserved.
- * Copyright (c) 2007      Los Alamos National Security, LLC.  All rights
+ * Copyright (c) 2007-2013 Los Alamos National Security, LLC.  All rights
  *                         reserved.
  * Copyright (c) 2009      Sun Microsystems, Inc.  All rights reserved.
  * Copyright (c) 2009      Oak Ridge National Labs.  All rights reserved.
@@ -35,9 +35,6 @@
 #include "opal_config.h"
 
 #include <stddef.h>
-#ifdef HAVE_STDINT_H
-#include <stdint.h>
-#endif
 
 #include "opal/class/opal_object.h"
 
@@ -49,20 +46,22 @@ BEGIN_C_DECLS
  *
  * This must match the same definition as in opal_datatype_internal.h
  */
+#if !defined(OPAL_DATATYPE_MAX_PREDEFINED)
 #define OPAL_DATATYPE_MAX_PREDEFINED 25
+#endif
 /*
  * No more than this number of _Basic_ datatypes in C/CPP or Fortran
  * are supported (in order to not change setup and usage of btypes).
  *
  * XXX TODO Adapt to whatever the OMPI-layer needs
  */
-#define OPAL_DATATYPE_MAX_SUPPORTED  46
+#define OPAL_DATATYPE_MAX_SUPPORTED  47
 
 
 /* flags for the datatypes. */
 #define OPAL_DATATYPE_FLAG_UNAVAILABLE   0x0001  /**< datatypes unavailable on the build (OS or compiler dependant) */
 #define OPAL_DATATYPE_FLAG_PREDEFINED    0x0002  /**< cannot be removed: initial and predefined datatypes */
-#define OPAL_DATATYPE_FLAG_COMMITED      0x0004  /**< ready to be used for a send/recv operation */
+#define OPAL_DATATYPE_FLAG_COMMITTED      0x0004  /**< ready to be used for a send/recv operation */
 #define OPAL_DATATYPE_FLAG_OVERLAP       0x0008  /**< datatype is unpropper for a recv operation */
 #define OPAL_DATATYPE_FLAG_CONTIGUOUS    0x0010  /**< contiguous datatype */
 #define OPAL_DATATYPE_FLAG_NO_GAPS       0x0020  /**< no gaps around the datatype, aka OPAL_DATATYPE_FLAG_CONTIGUOUS and extent == size */
@@ -77,7 +76,7 @@ BEGIN_C_DECLS
                                           OPAL_DATATYPE_FLAG_CONTIGUOUS | \
                                           OPAL_DATATYPE_FLAG_NO_GAPS |    \
                                           OPAL_DATATYPE_FLAG_DATA |       \
-                                          OPAL_DATATYPE_FLAG_COMMITED)
+                                          OPAL_DATATYPE_FLAG_COMMITTED)
 
 
 /**
@@ -112,12 +111,12 @@ struct opal_datatype_t {
     OPAL_PTRDIFF_TYPE  lb;       /**< lower bound in memory */
     OPAL_PTRDIFF_TYPE  ub;       /**< upper bound in memory */
     /* --- cacheline 1 boundary (64 bytes) --- */
+    size_t             nbElems;  /**< total number of elements inside the datatype */
     uint32_t           align;    /**< data should be aligned to */
-    uint32_t           nbElems;  /**< total number of elements inside the datatype */
 
     /* Attribute fields */
-    char               name[OPAL_MAX_OBJECT_NAME];  /* TODO: Can this be deleted??? It's just sugar...*/
-    /* --- cacheline 2 boundary (128 bytes) was 8 bytes ago --- */
+    char               name[OPAL_MAX_OBJECT_NAME];  /**< name of the datatype */
+    /* --- cacheline 2 boundary (128 bytes) was 8-12 bytes ago --- */
     dt_type_desc_t     desc;     /**< the data description */
     dt_type_desc_t     opt_desc; /**< short description of the data used when conversion is useless
                                       or in the send case (without conversion) */
@@ -127,10 +126,10 @@ struct opal_datatype_t {
                                       datatype for remote nodes. The length of the array is dependent on
                                       the maximum number of datatypes of all top layers.
                                       Reason being is that Fortran is not at the OPAL layer. */
-    /* --- cacheline 5 boundary (320 bytes) was 32 bytes ago --- */
+    /* --- cacheline 5 boundary (320 bytes) was 32-36 bytes ago --- */
 
     /* size: 352, cachelines: 6, members: 15 */
-    /* last cacheline: 32 bytes */
+    /* last cacheline: 28-32 bytes */
 };
 
 typedef struct opal_datatype_t opal_datatype_t;
@@ -166,9 +165,9 @@ OPAL_DECLSPEC extern const opal_datatype_t opal_datatype_float4;     /* in bytes
 OPAL_DECLSPEC extern const opal_datatype_t opal_datatype_float8;     /* in bytes */
 OPAL_DECLSPEC extern const opal_datatype_t opal_datatype_float12;    /* in bytes */
 OPAL_DECLSPEC extern const opal_datatype_t opal_datatype_float16;    /* in bytes */
-OPAL_DECLSPEC extern const opal_datatype_t opal_datatype_complex8;   /* in bytes */
-OPAL_DECLSPEC extern const opal_datatype_t opal_datatype_complex16;  /* in bytes */
-OPAL_DECLSPEC extern const opal_datatype_t opal_datatype_complex32;  /* in bytes */
+OPAL_DECLSPEC extern const opal_datatype_t opal_datatype_float_complex;
+OPAL_DECLSPEC extern const opal_datatype_t opal_datatype_double_complex;
+OPAL_DECLSPEC extern const opal_datatype_t opal_datatype_long_double_complex;
 OPAL_DECLSPEC extern const opal_datatype_t opal_datatype_bool;
 OPAL_DECLSPEC extern const opal_datatype_t opal_datatype_wchar;
 
@@ -187,7 +186,7 @@ OPAL_DECLSPEC int32_t opal_datatype_destroy( opal_datatype_t** );
 static inline int32_t
 opal_datatype_is_committed( const opal_datatype_t* type )
 {
-    return ((type->flags & OPAL_DATATYPE_FLAG_COMMITED) == OPAL_DATATYPE_FLAG_COMMITED);
+    return ((type->flags & OPAL_DATATYPE_FLAG_COMMITTED) == OPAL_DATATYPE_FLAG_COMMITTED);
 }
 
 static inline int32_t
@@ -272,10 +271,10 @@ opal_datatype_get_true_extent( const opal_datatype_t* pData, OPAL_PTRDIFF_TYPE* 
     return 0;
 }
 
-OPAL_DECLSPEC int32_t
+OPAL_DECLSPEC ssize_t
 opal_datatype_get_element_count( const opal_datatype_t* pData, size_t iSize );
 OPAL_DECLSPEC int32_t
-opal_datatype_set_element_count( const opal_datatype_t* pData, uint32_t count, size_t* length );
+opal_datatype_set_element_count( const opal_datatype_t* pData, size_t count, size_t* length );
 OPAL_DECLSPEC int32_t
 opal_datatype_copy_content_same_ddt( const opal_datatype_t* pData, int32_t count,
                                      char* pDestBuf, char* pSrcBuf );
@@ -329,6 +328,25 @@ struct opal_proc_t;
 OPAL_DECLSPEC opal_datatype_t*
 opal_datatype_create_from_packed_description( void** packed_buffer,
                                               struct opal_proc_t* remote_processor );
+
+/* Compute the span in memory of count datatypes. This function help with temporary
+ * memory allocations for receiving already typed data (such as those used for reduce
+ * operations). This span is the distance between the minimum and the maximum byte
+ * in the memory layout of count datatypes, or in other terms the memory needed to
+ * allocate count times the datatype without the gap in the beginning and at the end.
+ *
+ * Returns: the memory span of count repetition of the datatype, and in the gap
+ *          argument, the number of bytes of the gap at the beginning.
+ */
+static inline OPAL_PTRDIFF_TYPE
+opal_datatype_span( const opal_datatype_t* pData, int64_t count,
+                    OPAL_PTRDIFF_TYPE* gap)
+{
+    OPAL_PTRDIFF_TYPE extent = (pData->ub - pData->lb);
+    OPAL_PTRDIFF_TYPE true_extent = (pData->true_ub - pData->true_lb);
+    *gap = pData->true_lb;
+    return true_extent + (count - 1) * extent;
+}
 
 #if OPAL_ENABLE_DEBUG
 /*

@@ -1,3 +1,4 @@
+/* -*- Mode: C; c-basic-offset:4 ; indent-tabs-mode:nil -*- */
 /*
  * Copyright (c) 2004-2008 The Trustees of Indiana University and Indiana
  *                         University Research and Technology
@@ -5,17 +6,19 @@
  * Copyright (c) 2004-2005 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
  * Copyright (c) 2006-2007 Cisco Systems, Inc.  All rights reserved.
  * Copyright (c) 2008      Institut National de Recherche en Informatique
  *                         et Automatique. All rights reserved.
+ * Copyright (c) 2015      Los Alamos National Security, LLC. All rights
+ *                         reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  *
  * These symbols are in a file by themselves to provide nice linker
@@ -30,7 +33,6 @@
 
 #include <lsf/lsbatch.h>
 
-#include "opal/mca/base/mca_base_param.h"
 #include "opal/util/output.h"
 
 
@@ -66,24 +68,23 @@ orte_plm_lsf_component_t mca_plm_lsf_component = {
         /* First, the mca_component_t struct containing meta information
            about the component itself */
 
-        {
+        .base_version = {
             ORTE_PLM_BASE_VERSION_2_0_0,
 
             /* Component name and version */
-            "lsf",
-            ORTE_MAJOR_VERSION,
-            ORTE_MINOR_VERSION,
-            ORTE_RELEASE_VERSION,
+            .mca_component_name = "lsf",
+            MCA_BASE_MAKE_VERSION(component, ORTE_MAJOR_VERSION, ORTE_MINOR_VERSION,
+                                  ORTE_RELEASE_VERSION),
 
             /* Component open and close functions */
-            plm_lsf_open,
-            plm_lsf_close,
-            orte_plm_lsf_component_query
+            .mca_open_component = plm_lsf_open,
+            .mca_close_component = plm_lsf_close,
+            .mca_query_component = orte_plm_lsf_component_query,
         },
-        {
+        .base_data = {
             /* The component is checkpoint ready */
             MCA_BASE_METADATA_PARAM_CHECKPOINT
-        }
+        },
     }
 };
 
@@ -102,16 +103,16 @@ static int plm_lsf_close(void)
 
 static int orte_plm_lsf_component_query(mca_base_module_t **module, int *priority)
 {
-    
+
     /* check if lsf is running here */
     if (NULL == getenv("LSB_JOBID") || lsb_init("ORTE launcher") < 0) {
         /* nope, not here */
-        opal_output_verbose(10, orte_plm_globals.output,
+        opal_output_verbose(10, orte_plm_base_framework.framework_output,
                             "plm:lsf: NOT available for selection");
         *module = NULL;
         return ORTE_ERROR;
     }
-    
+
     *priority = 75;
     *module = (mca_base_module_t *) &orte_plm_lsf_module;
     return ORTE_SUCCESS;

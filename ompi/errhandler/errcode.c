@@ -1,4 +1,4 @@
-/* -*- Mode: C; c-basic-offset:4 ; -*- */
+/* -*- Mode: C; c-basic-offset:4 ; indent-tabs-mode:nil -*- */
 /*
  * Copyright (c) 2004-2005 The Trustees of Indiana University and Indiana
  *                         University Research and Technology
@@ -6,24 +6,27 @@
  * Copyright (c) 2004-2007 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
  * Copyright (c) 2006      University of Houston. All rights reserved.
+ * Copyright (c) 2013 Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2013      Los Alamos National Security, LLC.  All rights
+ *                         reserved.
+ * Copyright (c) 2015      Research Organization for Information Science
+ *                         and Technology (RIST). All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
 #include "ompi_config.h"
 
 #include <stdio.h>
-#ifdef HAVE_STRING_H
 #include <string.h>
-#endif
 
 #include "mpi.h"
 
@@ -31,65 +34,85 @@
 #include "ompi/constants.h"
 
 /* Table holding all error codes */
-opal_pointer_array_t ompi_mpi_errcodes;
+opal_pointer_array_t ompi_mpi_errcodes = {{0}};
 int ompi_mpi_errcode_lastused=0;
 int ompi_mpi_errcode_lastpredefined=0;
 
-ompi_mpi_errcode_t ompi_success;
-ompi_mpi_errcode_t ompi_err_buffer;
-ompi_mpi_errcode_t ompi_err_count;
-ompi_mpi_errcode_t ompi_err_type;
-ompi_mpi_errcode_t ompi_err_tag;
-ompi_mpi_errcode_t ompi_err_comm;
-ompi_mpi_errcode_t ompi_err_rank;
-ompi_mpi_errcode_t ompi_err_request;
-ompi_mpi_errcode_t ompi_err_root;
-ompi_mpi_errcode_t ompi_err_group;
-ompi_mpi_errcode_t ompi_err_op;
-ompi_mpi_errcode_t ompi_err_topology;
-ompi_mpi_errcode_t ompi_err_dims;
-ompi_mpi_errcode_t ompi_err_arg;
-ompi_mpi_errcode_t ompi_err_unknown;
-ompi_mpi_errcode_t ompi_err_truncate;
-ompi_mpi_errcode_t ompi_err_other;
-ompi_mpi_errcode_t ompi_err_intern;
-ompi_mpi_errcode_t ompi_err_in_status;
-ompi_mpi_errcode_t ompi_err_pending;
+static ompi_mpi_errcode_t ompi_success;
+static ompi_mpi_errcode_t ompi_err_buffer;
+static ompi_mpi_errcode_t ompi_err_count;
+static ompi_mpi_errcode_t ompi_err_type;
+static ompi_mpi_errcode_t ompi_err_tag;
+static ompi_mpi_errcode_t ompi_err_comm;
+static ompi_mpi_errcode_t ompi_err_rank;
+static ompi_mpi_errcode_t ompi_err_request;
+static ompi_mpi_errcode_t ompi_err_root;
+static ompi_mpi_errcode_t ompi_err_group;
+static ompi_mpi_errcode_t ompi_err_op;
+static ompi_mpi_errcode_t ompi_err_topology;
+static ompi_mpi_errcode_t ompi_err_dims;
+static ompi_mpi_errcode_t ompi_err_arg;
+ompi_mpi_errcode_t ompi_err_unknown = {{0}};
+static ompi_mpi_errcode_t ompi_err_truncate;
+static ompi_mpi_errcode_t ompi_err_other;
+static ompi_mpi_errcode_t ompi_err_intern;
+static ompi_mpi_errcode_t ompi_err_in_status;
+static ompi_mpi_errcode_t ompi_err_pending;
 
-ompi_mpi_errcode_t ompi_err_access;
-ompi_mpi_errcode_t ompi_err_amode;
-ompi_mpi_errcode_t ompi_err_assert;
-ompi_mpi_errcode_t ompi_err_bad_file;
-ompi_mpi_errcode_t ompi_err_base;
-ompi_mpi_errcode_t ompi_err_conversion;
-ompi_mpi_errcode_t ompi_err_disp;
-ompi_mpi_errcode_t ompi_err_dup_datarep;
-ompi_mpi_errcode_t ompi_err_file_exists;
-ompi_mpi_errcode_t ompi_err_file_in_use;
-ompi_mpi_errcode_t ompi_err_file;
-ompi_mpi_errcode_t ompi_err_info_key;
-ompi_mpi_errcode_t ompi_err_info_nokey;
-ompi_mpi_errcode_t ompi_err_info_value;
-ompi_mpi_errcode_t ompi_err_info;
-ompi_mpi_errcode_t ompi_err_io;
-ompi_mpi_errcode_t ompi_err_keyval;
-ompi_mpi_errcode_t ompi_err_locktype;
-ompi_mpi_errcode_t ompi_err_name;
-ompi_mpi_errcode_t ompi_err_no_mem;
-ompi_mpi_errcode_t ompi_err_not_same;
-ompi_mpi_errcode_t ompi_err_no_space;
-ompi_mpi_errcode_t ompi_err_no_such_file;
-ompi_mpi_errcode_t ompi_err_port;
-ompi_mpi_errcode_t ompi_err_quota;
-ompi_mpi_errcode_t ompi_err_read_only;
-ompi_mpi_errcode_t ompi_err_rma_conflict;
-ompi_mpi_errcode_t ompi_err_rma_sync;
-ompi_mpi_errcode_t ompi_err_service;
-ompi_mpi_errcode_t ompi_err_size;
-ompi_mpi_errcode_t ompi_err_spawn;
-ompi_mpi_errcode_t ompi_err_unsupported_datarep;
-ompi_mpi_errcode_t ompi_err_unsupported_operation;
-ompi_mpi_errcode_t ompi_err_win;
+static ompi_mpi_errcode_t ompi_err_access;
+static ompi_mpi_errcode_t ompi_err_amode;
+static ompi_mpi_errcode_t ompi_err_assert;
+static ompi_mpi_errcode_t ompi_err_bad_file;
+static ompi_mpi_errcode_t ompi_err_base;
+static ompi_mpi_errcode_t ompi_err_conversion;
+static ompi_mpi_errcode_t ompi_err_disp;
+static ompi_mpi_errcode_t ompi_err_dup_datarep;
+static ompi_mpi_errcode_t ompi_err_file_exists;
+static ompi_mpi_errcode_t ompi_err_file_in_use;
+static ompi_mpi_errcode_t ompi_err_file;
+static ompi_mpi_errcode_t ompi_err_info_key;
+static ompi_mpi_errcode_t ompi_err_info_nokey;
+static ompi_mpi_errcode_t ompi_err_info_value;
+static ompi_mpi_errcode_t ompi_err_info;
+static ompi_mpi_errcode_t ompi_err_io;
+static ompi_mpi_errcode_t ompi_err_keyval;
+static ompi_mpi_errcode_t ompi_err_locktype;
+static ompi_mpi_errcode_t ompi_err_name;
+static ompi_mpi_errcode_t ompi_err_no_mem;
+static ompi_mpi_errcode_t ompi_err_not_same;
+static ompi_mpi_errcode_t ompi_err_no_space;
+static ompi_mpi_errcode_t ompi_err_no_such_file;
+static ompi_mpi_errcode_t ompi_err_port;
+static ompi_mpi_errcode_t ompi_err_quota;
+static ompi_mpi_errcode_t ompi_err_read_only;
+static ompi_mpi_errcode_t ompi_err_rma_conflict;
+static ompi_mpi_errcode_t ompi_err_rma_sync;
+static ompi_mpi_errcode_t ompi_err_service;
+static ompi_mpi_errcode_t ompi_err_size;
+static ompi_mpi_errcode_t ompi_err_spawn;
+static ompi_mpi_errcode_t ompi_err_unsupported_datarep;
+static ompi_mpi_errcode_t ompi_err_unsupported_operation;
+static ompi_mpi_errcode_t ompi_err_win;
+static ompi_mpi_errcode_t ompi_t_err_memory;
+static ompi_mpi_errcode_t ompi_t_err_not_initialized;
+static ompi_mpi_errcode_t ompi_t_err_cannot_init;
+static ompi_mpi_errcode_t ompi_t_err_invalid_index;
+static ompi_mpi_errcode_t ompi_t_err_invalid_item;
+static ompi_mpi_errcode_t ompi_t_err_invalid_handle;
+static ompi_mpi_errcode_t ompi_t_err_out_of_handles;
+static ompi_mpi_errcode_t ompi_t_err_out_of_sessions;
+static ompi_mpi_errcode_t ompi_t_err_invalid_session;
+static ompi_mpi_errcode_t ompi_t_err_cvar_set_not_now;
+static ompi_mpi_errcode_t ompi_t_err_cvar_set_never;
+static ompi_mpi_errcode_t ompi_t_err_pvar_no_startstop;
+static ompi_mpi_errcode_t ompi_t_err_pvar_no_write;
+static ompi_mpi_errcode_t ompi_t_err_pvar_no_atomic;
+static ompi_mpi_errcode_t ompi_err_rma_range;
+static ompi_mpi_errcode_t ompi_err_rma_attach;
+static ompi_mpi_errcode_t ompi_err_rma_flavor;
+static ompi_mpi_errcode_t ompi_err_rma_shared;
+static ompi_mpi_errcode_t ompi_t_err_invalid;
+static ompi_mpi_errcode_t ompi_t_err_invalid_name;
 
 static void ompi_mpi_errcode_construct(ompi_mpi_errcode_t* errcode);
 static void ompi_mpi_errcode_destruct(ompi_mpi_errcode_t* errcode);
@@ -171,9 +194,31 @@ int ompi_mpi_errcode_init (void)
     CONSTRUCT_ERRCODE( ompi_err_unsupported_datarep, MPI_ERR_UNSUPPORTED_DATAREP, "MPI_ERR_UNSUPPORTED_DATAREP: data representation not supported" );
     CONSTRUCT_ERRCODE( ompi_err_unsupported_operation, MPI_ERR_UNSUPPORTED_OPERATION, "MPI_ERR_UNSUPPORTED_OPERATION: operation not supported" );
     CONSTRUCT_ERRCODE( ompi_err_win, MPI_ERR_WIN, "MPI_ERR_WIN: invalid window" );
+    CONSTRUCT_ERRCODE( ompi_t_err_memory, MPI_T_ERR_MEMORY, "MPI_T_ERR_MEMORY: out of memory" );
+    CONSTRUCT_ERRCODE( ompi_t_err_not_initialized, MPI_T_ERR_NOT_INITIALIZED, "MPI_T_ERR_NOT_INITIALIZED: interface not initialized" );
+    CONSTRUCT_ERRCODE( ompi_t_err_cannot_init, MPI_T_ERR_CANNOT_INIT, "MPI_T_ERR_CANNOT_INIT: interface not in the state to be initialized" );
+    CONSTRUCT_ERRCODE( ompi_t_err_invalid_index, MPI_T_ERR_INVALID_INDEX, "MPI_T_ERR_INVALID_INDEX: invalid index" );
+    CONSTRUCT_ERRCODE( ompi_t_err_invalid_item, MPI_T_ERR_INVALID_ITEM, "MPI_T_ERR_INVALID_ITEM: the item index queried is out of range" );
+    CONSTRUCT_ERRCODE( ompi_t_err_invalid_handle, MPI_T_ERR_INVALID_HANDLE, "MPI_T_ERR_INVALID_HANDLE: the handle is invalid" );
+    CONSTRUCT_ERRCODE( ompi_t_err_out_of_handles, MPI_T_ERR_OUT_OF_HANDLES, "MPI_T_ERR_OUT_OF_HANDLES: no more handles available" );
+    CONSTRUCT_ERRCODE( ompi_t_err_out_of_sessions, MPI_T_ERR_OUT_OF_SESSIONS, "MPI_T_ERR_OUT_OF_SESSIONS: no more sessions available" );
+    CONSTRUCT_ERRCODE( ompi_t_err_invalid_session, MPI_T_ERR_INVALID_SESSION, "MPI_T_ERR_INVALID_SESSION: session argument is not a valid session" );
+    CONSTRUCT_ERRCODE( ompi_t_err_cvar_set_not_now, MPI_T_ERR_CVAR_SET_NOT_NOW, "MPI_T_ERR_CVAR_SET_NOT_NOW: variable cannot be set at this moment" );
+    CONSTRUCT_ERRCODE( ompi_t_err_cvar_set_never, MPI_T_ERR_CVAR_SET_NEVER, "MPI_T_ERR_CVAR_SET_NEVER: variable cannot be set until end of execution" );
+    CONSTRUCT_ERRCODE( ompi_t_err_pvar_no_startstop, MPI_T_ERR_PVAR_NO_STARTSTOP, "MPI_T_ERR_PVAR_NO_STARTSTOP: variable cannot be started or stopped" );
+    CONSTRUCT_ERRCODE( ompi_t_err_pvar_no_write, MPI_T_ERR_PVAR_NO_WRITE, "MPI_T_ERR_PVAR_NO_WRITE: variable cannot be written or reset" );
+    CONSTRUCT_ERRCODE( ompi_t_err_pvar_no_atomic, MPI_T_ERR_PVAR_NO_ATOMIC, "MPI_T_ERR_PVAR_NO_ATOMIC: variable cannot be read and written atomically" );
+    CONSTRUCT_ERRCODE( ompi_err_rma_range, MPI_ERR_RMA_RANGE, "MPI_ERR_RMA_RANGE: invalid RMA address range" );
+    CONSTRUCT_ERRCODE( ompi_err_rma_attach, MPI_ERR_RMA_ATTACH, "MPI_ERR_RMA_ATTACH: Could not attach RMA segment" );
+    CONSTRUCT_ERRCODE( ompi_err_rma_flavor, MPI_ERR_RMA_FLAVOR, "MPI_ERR_RMA_FLAVOR: Invalid type of window" );
+    CONSTRUCT_ERRCODE( ompi_err_rma_shared, MPI_ERR_RMA_SHARED, "MPI_ERR_RMA_SHARED: Memory cannot be shared" );
+    CONSTRUCT_ERRCODE( ompi_t_err_invalid, MPI_T_ERR_INVALID, "MPI_T_ERR_INVALID: Invalid use of the interface or bad parameter value(s)" );
+    CONSTRUCT_ERRCODE( ompi_t_err_invalid_name, MPI_T_ERR_INVALID_NAME, "MPI_T_ERR_INVALID_NAME: The variable or category name is invalid" );
 
-    ompi_mpi_errcode_lastused = MPI_ERR_WIN;
-    ompi_mpi_errcode_lastpredefined = MPI_ERR_WIN;
+    /* Per MPI-3 p353:27-32, MPI_LASTUSEDCODE must be >=
+       MPI_ERR_LASTCODE.  So just start it as == MPI_ERR_LASTCODE. */
+    ompi_mpi_errcode_lastused = MPI_ERR_LASTCODE;
+    ompi_mpi_errcode_lastpredefined = MPI_ERR_LASTCODE;
     return OMPI_SUCCESS;
 }
 
@@ -181,9 +226,9 @@ int ompi_mpi_errcode_finalize(void)
 {
     int i;
     ompi_mpi_errcode_t *errc;
-    
+
     for (i=ompi_mpi_errcode_lastpredefined+1; i<=ompi_mpi_errcode_lastused; i++) {
-        /* 
+        /*
          * there are some user defined error-codes, which
          * we have to free.
          */
@@ -245,6 +290,26 @@ int ompi_mpi_errcode_finalize(void)
     OBJ_DESTRUCT(&ompi_err_unsupported_datarep);
     OBJ_DESTRUCT(&ompi_err_unsupported_operation);
     OBJ_DESTRUCT(&ompi_err_win);
+    OBJ_DESTRUCT(&ompi_t_err_memory);
+    OBJ_DESTRUCT(&ompi_t_err_not_initialized);
+    OBJ_DESTRUCT(&ompi_t_err_cannot_init);
+    OBJ_DESTRUCT(&ompi_t_err_invalid_index);
+    OBJ_DESTRUCT(&ompi_t_err_invalid_item);
+    OBJ_DESTRUCT(&ompi_t_err_invalid_handle);
+    OBJ_DESTRUCT(&ompi_t_err_out_of_handles);
+    OBJ_DESTRUCT(&ompi_t_err_out_of_sessions);
+    OBJ_DESTRUCT(&ompi_t_err_invalid_session);
+    OBJ_DESTRUCT(&ompi_t_err_cvar_set_not_now);
+    OBJ_DESTRUCT(&ompi_t_err_cvar_set_never);
+    OBJ_DESTRUCT(&ompi_t_err_pvar_no_startstop);
+    OBJ_DESTRUCT(&ompi_t_err_pvar_no_write);
+    OBJ_DESTRUCT(&ompi_t_err_pvar_no_atomic);
+    OBJ_DESTRUCT(&ompi_err_rma_range);
+    OBJ_DESTRUCT(&ompi_err_rma_attach);
+    OBJ_DESTRUCT(&ompi_err_rma_flavor);
+    OBJ_DESTRUCT(&ompi_err_rma_shared);
+    OBJ_DESTRUCT(&ompi_t_err_invalid);
+    OBJ_DESTRUCT(&ompi_t_err_invalid_name);
 
     OBJ_DESTRUCT(&ompi_mpi_errcodes);
     return OMPI_SUCCESS;
@@ -258,7 +323,7 @@ int ompi_mpi_errcode_add(int errclass )
     newerrcode->code = (ompi_mpi_errcode_lastused+1);
     newerrcode->cls = errclass;
     opal_pointer_array_set_item(&ompi_mpi_errcodes, newerrcode->code, newerrcode);
-    
+
     ompi_mpi_errcode_lastused++;
     return newerrcode->code;
 }
@@ -270,24 +335,24 @@ int ompi_mpi_errclass_add(void)
     newerrcode = OBJ_NEW(ompi_mpi_errcode_t);
     newerrcode->cls = ( ompi_mpi_errcode_lastused+1);
     opal_pointer_array_set_item(&ompi_mpi_errcodes, newerrcode->cls, newerrcode);
-    
+
     ompi_mpi_errcode_lastused++;
     return newerrcode->cls;
 }
 
-int ompi_mpi_errnum_add_string(int errnum, char *errstring, int len)
+int ompi_mpi_errnum_add_string(int errnum, const char *errstring, int len)
 {
     ompi_mpi_errcode_t *errcodep;
 
     errcodep = (ompi_mpi_errcode_t *)opal_pointer_array_get_item(&ompi_mpi_errcodes, errnum);
-    if ( NULL == errcodep ) { 
+    if ( NULL == errcodep ) {
         return OMPI_ERROR;
     }
 
     if ( MPI_MAX_ERROR_STRING > len ) {
         len = MPI_MAX_ERROR_STRING;
     }
-    
+
     strncpy ( errcodep->errstring, errstring, len );
     return OMPI_SUCCESS;
 }

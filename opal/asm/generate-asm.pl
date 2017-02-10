@@ -1,4 +1,12 @@
 #!/usr/bin/perl -w
+#
+# Copyright (c) 2014 Cisco Systems, Inc.  All rights reserved.
+# $COPYRIGHT$
+#
+# Additional copyrights may follow
+#
+# $HEADER$
+#
 
 
 my $asmarch = shift;
@@ -6,14 +14,14 @@ my $asmformat = shift;
 my $basedir = shift;
 my $output = shift;
 
-if ( ! $asmarch) { 
+if ( ! $asmarch) {
     print "usage: generate-asm.pl [ASMARCH] [ASMFORMAT] [BASEDIR] [OUTPUT NAME]\n";
     exit(1);
 }
 
-open(INPUT, "$basedir/$asmarch.asm") || 
+open(INPUT, "$basedir/$asmarch.asm") ||
     die "Could not open $basedir/$asmarch.asm: $!\n";
-open(OUTPUT, ">$output") || die "Could not open $output: $1\n";
+open(OUTPUT, ">$output") || die "Could not open $output: $!\n";
 
 $CONFIG = "default";
 $TEXT = "";
@@ -92,9 +100,9 @@ while (<INPUT>) {
             $delete = 1;
     }
     }
-    if (/^\#END_64BIT/) { 
+    if (/^\#END_64BIT/) {
         $_ = "";
-        $delete = 0; 
+        $delete = 0;
     }
 
     if ($delete == 0) {

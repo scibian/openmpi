@@ -1,19 +1,25 @@
+/* -*- Mode: C; c-basic-offset:4 ; indent-tabs-mode:nil -*- */
 /*
  * Copyright (c) 2004-2007 The Trustees of Indiana University and Indiana
  *                         University Research and Technology
  *                         Corporation.  All rights reserved.
- * Copyright (c) 2004-2005 The University of Tennessee and The University
+ * Copyright (c) 2004-2013 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2008 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2008 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
  * Copyright (c) 2007-2008 Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2012-2013 Los Alamos National Security, LLC.  All rights
+ *                         reserved.
+ * Copyright (c) 2012-2013 Inria.  All rights reserved.
+ * Copyright (c) 2015      Research Organization for Information Science
+ *                         and Technology (RIST). All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 #include "ompi_config.h"
@@ -26,22 +32,21 @@
 #include "ompi/mca/topo/base/base.h"
 #include "ompi/memchecker.h"
 
-#if OPAL_HAVE_WEAK_SYMBOLS && OMPI_PROFILING_DEFINES
+#if OMPI_BUILD_MPI_PROFILING
+#if OPAL_HAVE_WEAK_SYMBOLS
 #pragma weak MPI_Cart_create = PMPI_Cart_create
 #endif
-
-#if OMPI_PROFILING_DEFINES
-#include "ompi/mpi/c/profile/defines.h"
+#define MPI_Cart_create PMPI_Cart_create
 #endif
 
 static const char FUNC_NAME[] = "MPI_Cart_create";
 
 
-int MPI_Cart_create(MPI_Comm old_comm, int ndims, int *dims,
-                    int *periods, int reorder, MPI_Comm *comm_cart) {
-
+int MPI_Cart_create(MPI_Comm old_comm, int ndims, const int dims[],
+                    const int periods[], int reorder, MPI_Comm *comm_cart)
+{
+    mca_topo_base_module_t* topo;
     int err;
-    bool re_order = false;
 
     MEMCHECKER(
         memchecker_comm(old_comm);
@@ -53,9 +58,8 @@ int MPI_Cart_create(MPI_Comm old_comm, int ndims, int *dims,
         if (ompi_comm_invalid(old_comm)) {
             return OMPI_ERRHANDLER_INVOKE (MPI_COMM_WORLD, MPI_ERR_COMM,
                                           FUNC_NAME);
-        }
-        if (OMPI_COMM_IS_INTER(old_comm)) {
-            return OMPI_ERRHANDLER_INVOKE (old_comm, MPI_ERR_COMM,
+        } else if (OMPI_COMM_IS_INTER(old_comm)) {
+            return OMPI_ERRHANDLER_INVOKE(MPI_COMM_WORLD, MPI_ERR_COMM,
                                           FUNC_NAME);
         }
         if (ndims < 0) {
@@ -69,14 +73,12 @@ int MPI_Cart_create(MPI_Comm old_comm, int ndims, int *dims,
 
         /* check if the number of processes on the grid are correct */
         {
-           int i;
-           int *p = dims;
-           int count_nodes = 1;
+           int i, count_nodes = 1;
+           const int *p = dims;
            int parent_procs = ompi_comm_size(old_comm);
 
-           for (i=0; i < ndims; i++) {
+           for (i=0; i < ndims; i++, p++) {
                count_nodes *= *p;
-               p++;
            }
 
            if (parent_procs < count_nodes) {
@@ -87,45 +89,26 @@ int MPI_Cart_create(MPI_Comm old_comm, int ndims, int *dims,
     }
 
     /*
-     * Now we have to check if the topo module exists or not. This has been
-     * removed from initialization since most of the MPI calls do not use 
-     * this module 
+     * everything seems to be alright with the communicator, we can go
+     * ahead and select a topology module for this purpose and create
+     * the new graph communicator
      */
-    if (!(mca_topo_base_components_opened_valid ||
-          mca_topo_base_components_available_valid)) {
-        if (OMPI_SUCCESS != (err = mca_topo_base_open())) {
-            return OMPI_ERRHANDLER_INVOKE(old_comm, err, FUNC_NAME);
-        }
-        if (OMPI_SUCCESS != 
-            (err = mca_topo_base_find_available(OPAL_ENABLE_PROGRESS_THREADS,
-                                                OMPI_ENABLE_THREAD_MULTIPLE))) {
-            return OMPI_ERRHANDLER_INVOKE(old_comm, err, FUNC_NAME);
-        }
+    if (OMPI_SUCCESS != (err = mca_topo_base_comm_select(old_comm,
+                                                         NULL,
+                                                         &topo,
+                                                         OMPI_COMM_CART))) {
+        return err;
     }
 
-    OPAL_CR_ENTER_LIBRARY();
-
-    /* everything seems to be alright with the communicator, we can go 
-     * ahead and select a topology module for this purpose and create 
-     * the new cartesian communicator
-     */
-
-    re_order = (0 == reorder)? false : true;
-
-    err = ompi_topo_create (old_comm,
-                            ndims,
-                            dims,
-                            periods,
-                            re_order,
-                            comm_cart,
-                            OMPI_COMM_CART);
-
-    OPAL_CR_EXIT_LIBRARY();
-    /* check the error status */
+    /* Now let that topology module rearrange procs/ranks if it wants to */
+    err = topo->topo.cart.cart_create(topo, old_comm,
+                                      ndims, dims, periods,
+                                      (0 == reorder) ? false : true, comm_cart);
     if (MPI_SUCCESS != err) {
+        OBJ_RELEASE(topo);
         return OMPI_ERRHANDLER_INVOKE(old_comm, err, FUNC_NAME);
     }
-    
+
     /* All done */
     return MPI_SUCCESS;
 }

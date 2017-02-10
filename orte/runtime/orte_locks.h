@@ -5,14 +5,14 @@
  * Copyright (c) 2004-2006 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -35,7 +35,8 @@ ORTE_DECLSPEC extern opal_atomic_lock_t orte_finalize_lock;
 
 /* for HNPs */
 ORTE_DECLSPEC extern opal_atomic_lock_t orte_abort_inprogress_lock;
-
+ORTE_DECLSPEC extern opal_atomic_lock_t orte_jobs_complete_lock;
+ORTE_DECLSPEC extern opal_atomic_lock_t orte_quit_lock;
 
 /**
  * Initialize the locks

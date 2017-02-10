@@ -5,20 +5,20 @@
  * Copyright (c) 2004-2005 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2006 The Regents of the University of California.
  *                         All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
 #include "ompi_config.h"
 
-#include "opal/mca/mca.h"
+#include "ompi/mca/mca.h"
 #include "ompi/mca/mtl/mtl.h"
 #include "ompi/mca/mtl/base/base.h"
 #include "ompi/constants.h"
@@ -26,7 +26,10 @@
 #include "opal/datatype/opal_convertor.h"
 #include "opal/datatype/opal_datatype_internal.h"
 
-static inline int
+#ifndef MTL_BASE_DATATYPE_H_INCLUDED
+#define MTL_BASE_DATATYPE_H_INCLUDED
+
+__opal_attribute_always_inline__ static inline int
 ompi_mtl_datatype_pack(struct opal_convertor_t *convertor,
                        void **buffer,
                        size_t *buffer_len,
@@ -34,6 +37,18 @@ ompi_mtl_datatype_pack(struct opal_convertor_t *convertor,
 {
     struct iovec iov;
     uint32_t iov_count = 1;
+
+#if !(OPAL_ENABLE_HETEROGENEOUS_SUPPORT)
+    if (convertor->pDesc &&
+	!(convertor->flags & CONVERTOR_COMPLETED) &&
+	opal_datatype_is_contiguous_memory_layout(convertor->pDesc,
+						  convertor->count)) {
+	    *freeAfter = false;
+	    *buffer = convertor->pBaseBuf;
+	    *buffer_len = convertor->local_size;
+	    return OPAL_SUCCESS;
+    }
+#endif
 
     opal_convertor_get_packed_size(convertor, buffer_len);
     *freeAfter  = false;
@@ -48,16 +63,16 @@ ompi_mtl_datatype_pack(struct opal_convertor_t *convertor,
         if (NULL == iov.iov_base) return OMPI_ERR_OUT_OF_RESOURCE;
         *freeAfter = true;
     }
-    
+
     opal_convertor_pack( convertor, &iov, &iov_count, buffer_len );
-    
+
     *buffer = iov.iov_base;
 
     return OMPI_SUCCESS;
 }
 
 
-static inline int
+__opal_attribute_always_inline__ static inline int
 ompi_mtl_datatype_recv_buf(struct opal_convertor_t *convertor,
                            void ** buffer,
                            size_t *buffer_len,
@@ -74,14 +89,14 @@ ompi_mtl_datatype_recv_buf(struct opal_convertor_t *convertor,
         *buffer = malloc(*buffer_len);
         *free_on_error = true;
     } else {
-        *buffer = convertor->pBaseBuf + 
+        *buffer = convertor->pBaseBuf +
             convertor->use_desc->desc[convertor->use_desc->used].end_loop.first_elem_disp;
     }
     return OMPI_SUCCESS;
 }
 
 
-static inline int
+__opal_attribute_always_inline__ static inline int
 ompi_mtl_datatype_unpack(struct opal_convertor_t *convertor,
                          void *buffer,
                          size_t buffer_len)
@@ -100,3 +115,5 @@ ompi_mtl_datatype_unpack(struct opal_convertor_t *convertor,
 
     return OMPI_SUCCESS;
 }
+
+#endif /* MTL_BASE_DATATYPE_H_INCLUDED */

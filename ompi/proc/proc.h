@@ -2,20 +2,23 @@
  * Copyright (c) 2004-2005 The Trustees of Indiana University and Indiana
  *                         University Research and Technology
  *                         Corporation.  All rights reserved.
- * Copyright (c) 2004-2005 The University of Tennessee and The University
+ * Copyright (c) 2004-2011 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
- * Copyright (c) 2006      Cisco Systems, Inc.  All rights reserved.
- * Copyright (c) 2007      Los Alamos National Security, LLC.  All rights
- *                         reserved. 
+ * Copyright (c) 2006-2012 Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2007-2012 Los Alamos National Security, LLC.  All rights
+ *                         reserved.
+ * Copyright (c) 2013-2014 Intel, Inc. All rights reserved
+ * Copyright (c) 2015-2016 Research Organization for Information Science
+ *                         and Technology (RIST). All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -33,11 +36,10 @@
 
 #include "ompi_config.h"
 #include "ompi/types.h"
-#include "opal/class/opal_list.h"
-#include "opal/dss/dss_types.h"
-#include "opal/mca/paffinity/paffinity.h"
 
-#include "orte/types.h"
+#include "opal/util/proc.h"
+
+#include "ompi/mca/rte/rte.h"
 
 
 BEGIN_C_DECLS
@@ -47,29 +49,32 @@ BEGIN_C_DECLS
 
 /**
  * Remote Open MPI process structure
- * 
+ *
  * Remote Open MPI process structure.  Each process contains exactly
  * one ompi_proc_t structure for each remote process it knows about.
+ *
+ * Each proc entry has an array of endpoint data associated with it.
+ * The size of this array, and its entries, is unique to a particular
+ * build of Open MPI.  As the endpoint list (or index values) are
+ * local to a process, this does not negatively impact heterogeneous
+ * builds.  If a component or framework requires a tag index, it
+ * should call OMPI_REQUIRE_ENDPOINT_TAG(<name>).  Requests which
+ * share the same name will have the same value, allowing
+ * cross-component sharing of endpoint data.  The tag may be referenced
+ * by the pre-processor define OMPI_PROC_ENDPOINT_TAG_<name>.  Adding
+ * a tag increases the memory consumed by Open MPI, so should only be done
+ * if unavoidable.
  */
+
+#define OMPI_PROC_PADDING_SIZE 16
+
 struct ompi_proc_t {
-    /** allow proc to be placed on a list */
-    opal_list_item_t                super;
-    /** this process' name */
-    orte_process_name_t             proc_name;
-    /** PML specific proc data */
-    struct mca_pml_endpoint_t* proc_pml;
-    /** BML specific proc data */
-    struct mca_bml_base_endpoint_t* proc_bml;
-    /** architecture of this process */
-    uint32_t                        proc_arch;
-    /** flags for this proc */
-    uint8_t                         proc_flags;
-    /** Base convertor for the proc described by this process */
-    struct opal_convertor_t*        proc_convertor;
-    /** A pointer to the name of this host - data is
-     * actually stored in the RTE
-     */
-    char*                           proc_hostname;
+    opal_proc_t                     super;
+
+    /* endpoint data */
+    void *proc_endpoints[OMPI_PROC_ENDPOINT_TAG_MAX];
+
+    char padding[OMPI_PROC_PADDING_SIZE]; /* for future extensions (OSHMEM uses this area also)*/
 };
 typedef struct ompi_proc_t ompi_proc_t;
 OBJ_CLASS_DECLARATION(ompi_proc_t);
@@ -80,14 +85,12 @@ OBJ_CLASS_DECLARATION(ompi_proc_t);
  *
  * Pointer to the ompi_proc_t structure for the local process
  *
- * Pointer to the ompi_proc_t structure for the local process.
- *
  * @note This pointer is declared here to allow inline functions
  * within this header file to access the local process quickly.
  * Please use ompi_proc_local() instead.
  */
 OMPI_DECLSPEC extern ompi_proc_t* ompi_proc_local_proc;
-
+OMPI_DECLSPEC extern opal_list_t  ompi_proc_list;
 
 /* ******************************************************************** */
 
@@ -113,19 +116,26 @@ OMPI_DECLSPEC extern ompi_proc_t* ompi_proc_local_proc;
 OMPI_DECLSPEC int ompi_proc_init(void);
 
 /**
- * Set the arch of each proc in the ompi_proc_list
+ * Complete filling up the proc information (arch, name and locality) for all
+ * procs related to this job. This function is to be called only after
+ * the modex exchange has been completed.
  *
- * In some environments, MPI procs are required to exchange their
- * arch via a modex operation during mpi_init. In other environments,
- * the arch is determined by other mechanisms and provided to the
- * proc directly. To support both mechanisms, we provide a separate
- * function to set the arch of the procs -after- the modex operation
- * has completed in mpi_init.
- *
- * @retval OMPI_SUCCESS Archs successfully set
- * @retval OMPI_ERROR   Archs could not be initialized
+ * @retval OMPI_SUCCESS All information correctly set.
+ * @retval OMPI_ERROR   Some info could not be initialized.
  */
-OMPI_DECLSPEC int ompi_proc_set_arch(void);
+OMPI_DECLSPEC int ompi_proc_complete_init(void);
+
+/**
+ * Complete filling up the proc information (arch, name and locality) for
+ * a given proc. This function is to be called only after the modex exchange
+ * has been completed.
+ *
+ * @param[in] proc the proc whose information will be filled up
+ *
+ * @retval OMPI_SUCCESS All information correctly set.
+ * @retval OMPI_ERROR   Some info could not be initialized.
+ */
+OMPI_DECLSPEC int ompi_proc_complete_init_single(ompi_proc_t* proc);
 
 /**
  * Finalize the OMPI Process subsystem
@@ -145,7 +155,10 @@ OMPI_DECLSPEC int ompi_proc_finalize(void);
  * Returns the list of proc instances associated with this job.  Given
  * the current association between a job and an MPI_COMM_WORLD, this
  * function provides the process instances for the current
- * MPI_COMM_WORLD.
+ * MPI_COMM_WORLD. Use this function only if absolutely needed as it
+ * will cause ompi_proc_t objects to be allocated for every process in
+ * the job. If you only need the allocated ompi_proc_t objects call
+ * ompi_proc_get_allocated() instead.
  *
  * @note The reference count of each process in the array is
  * NOT incremented - the caller is responsible for ensuring the
@@ -159,6 +172,36 @@ OMPI_DECLSPEC int ompi_proc_finalize(void);
  */
 OMPI_DECLSPEC ompi_proc_t** ompi_proc_world(size_t* size);
 
+/**
+ * Returns the number of processes in the associated with this job.
+ *
+ * Returns the list of proc instances associated with this job.  Given
+ * the current association between a job and an MPI_COMM_WORLD, this
+ * function provides the number of processes for the current
+ * MPI_COMM_WORLD.
+ */
+
+OMPI_DECLSPEC int ompi_proc_world_size (void);
+
+/**
+ * Returns the list of proc instances associated with this job.
+ *
+ * Returns the list of proc instances associated with this job that have
+ * already been allocated.  Given the current association between a job
+ * and an MPI_COMM_WORLD, this function provides the allocated process
+ * instances for the current MPI_COMM_WORLD.
+ *
+ * @note The reference count of each process in the array is
+ * NOT incremented - the caller is responsible for ensuring the
+ * correctness of the reference count once they are done with
+ * the array.
+ *
+ * @param[in] size     Number of processes in the ompi_proc_t array
+ *
+ * @return Array of pointers to allocated proc instances in the current
+ * MPI_COMM_WORLD, or NULL if there is an internal failure.
+ */
+OMPI_DECLSPEC ompi_proc_t **ompi_proc_get_allocated (size_t *size);
 
 /**
  * Returns the list of all known proc instances.
@@ -209,14 +252,14 @@ OMPI_DECLSPEC ompi_proc_t** ompi_proc_self(size_t* size);
  *
  * @return Pointer to the local process structure
  */
-static inline ompi_proc_t* ompi_proc_local(void) 
-{   
+static inline ompi_proc_t* ompi_proc_local(void)
+{
     return ompi_proc_local_proc;
 }
 
 
 /**
- * Returns the proc instance for a given name 
+ * Returns the proc instance for a given name
  *
  * Returns the proc instance for the specified process name.  The
  * reference count for the proc instance is not incremented by this
@@ -226,7 +269,9 @@ static inline ompi_proc_t* ompi_proc_local(void)
  *
  * @return Pointer to the process instance for \c name
 */
-OMPI_DECLSPEC ompi_proc_t * ompi_proc_find ( const orte_process_name_t* name );
+OMPI_DECLSPEC ompi_proc_t * ompi_proc_find ( const ompi_process_name_t* name );
+
+OMPI_DECLSPEC ompi_proc_t * ompi_proc_find_and_add(const ompi_process_name_t * name, bool* isnew);
 
 /**
  * Pack proc list into portable buffer
@@ -236,18 +281,18 @@ OMPI_DECLSPEC ompi_proc_t * ompi_proc_find ( const orte_process_name_t* name );
  * needed to add the proc to a remote list.  This includes the ORTE
  * process name, the architecture, and the hostname.  Ordering is
  * maintained.  The buffer is packed to be sent to a remote node with
- * different architecture (endian or word size).  The buffer can be
- * dss unloaded to be sent using MPI or send using rml_send_packed().
- * 
+ * different architecture (endian or word size).
+ *
  * @param[in] proclist     List of process pointers
  * @param[in] proclistsize Length of the proclist array
- * @param[in,out] buf      An orte_buffer containing the packed names.  
+ * @param[in,out] buf      An opal_buffer containing the packed names.
  *                         The buffer must be constructed but empty when
  *                         passed to this function
  * @retval OMPI_SUCCESS    Success
  * @retval OMPI_ERROR      Unspecified error
  */
-OMPI_DECLSPEC int ompi_proc_pack(ompi_proc_t **proclist, int proclistsize,
+OMPI_DECLSPEC int ompi_proc_pack(ompi_proc_t **proclist,
+                                 int proclistsize,
                                  opal_buffer_t *buf);
 
 
@@ -276,7 +321,7 @@ OMPI_DECLSPEC int ompi_proc_pack(ompi_proc_t **proclist, int proclistsize,
  * provided for newproclist.  The user is responsible for freeing the
  * newproclist array.
  *
- * @param[in] buf          orte_buffer containing the packed names
+ * @param[in] buf          opal_buffer containing the packed names
  * @param[in] proclistsize number of expected proc-pointres
  * @param[out] proclist    list of process pointers
  * @param[out] newproclistsize Number of new procs added as a result
@@ -290,9 +335,11 @@ OMPI_DECLSPEC int ompi_proc_pack(ompi_proc_t **proclist, int proclistsize,
  *   OMPI_SUCCESS               on success
  *   OMPI_ERROR                 else
  */
-OMPI_DECLSPEC int ompi_proc_unpack(opal_buffer_t *buf, 
-                                   int proclistsize, ompi_proc_t ***proclist,
-                                   int *newproclistsize, ompi_proc_t ***newproclist);
+OMPI_DECLSPEC int ompi_proc_unpack(opal_buffer_t *buf,
+                                   int proclistsize,
+                                   ompi_proc_t ***proclist,
+                                   int *newproclistsize,
+                                   ompi_proc_t ***newproclist);
 
 /**
  * Refresh the OMPI process subsystem
@@ -308,6 +355,95 @@ OMPI_DECLSPEC int ompi_proc_unpack(opal_buffer_t *buf,
  * @retval OMPI_ERROR   Refresh failed due to unspecified error
  */
 OMPI_DECLSPEC int ompi_proc_refresh(void);
+
+/**
+ * Get the ompi_proc_t for a given process name
+ *
+ * @param[in] proc_name opal process name
+ *
+ * @returns cached or new ompi_proc_t for the given process name
+ *
+ * This function looks up the given process name in the hash of existing
+ * ompi_proc_t structures. If no ompi_proc_t structure exists matching the
+ * given name a new ompi_proc_t is allocated, initialized, and returned.
+ *
+ * @note The ompi_proc_t is added to the local list of processes but is not
+ * added to any communicator. ompi_comm_peer_lookup is responsible for caching
+ * the ompi_proc_t on a communicator.
+ */
+OMPI_DECLSPEC opal_proc_t *ompi_proc_for_name (const opal_process_name_t proc_name);
+
+
+OMPI_DECLSPEC opal_proc_t *ompi_proc_lookup (const opal_process_name_t proc_name);
+
+/**
+ * Check if an ompi_proc_t is a sentinel
+ */
+static inline bool ompi_proc_is_sentinel (ompi_proc_t *proc)
+{
+    return (intptr_t) proc & 0x1;
+}
+
+#if OPAL_SIZEOF_PROCESS_NAME_T == SIZEOF_VOID_P
+/*
+ * we assume an ompi_proc_t is at least aligned on two bytes,
+ * so if the LSB of a pointer to an ompi_proc_t is 1, we have to handle
+ * this pointer as a sentinel instead of a pointer.
+ * a sentinel can be seen as an uint64_t with the following format :
+ * - bit  0     : 1
+ * - bits 1-15  : local jobid
+ * - bits 16-31 : job family
+ * - bits 32-63 : vpid
+ */
+static inline uintptr_t ompi_proc_name_to_sentinel (opal_process_name_t name)
+{
+    uintptr_t tmp, sentinel = 0;
+    /* local jobid must fit in 15 bits */
+    assert(! (OMPI_LOCAL_JOBID(name.jobid) & 0x8000));
+    sentinel |= 0x1;
+    tmp = (uintptr_t)OMPI_LOCAL_JOBID(name.jobid);
+    sentinel |= ((tmp << 1) & 0xfffe);
+    tmp = (uintptr_t)OMPI_JOB_FAMILY(name.jobid);
+    sentinel |= ((tmp << 16) & 0xffff0000);
+    tmp = (uintptr_t)name.vpid;
+    sentinel |= ((tmp << 32) & 0xffffffff00000000);
+    return sentinel;
+}
+
+static inline opal_process_name_t ompi_proc_sentinel_to_name (uintptr_t sentinel)
+{
+  opal_process_name_t name;
+  uint32_t local, family;
+  uint32_t vpid;
+  assert(sentinel & 0x1);
+  local = (sentinel >> 1) & 0x7fff;
+  family = (sentinel >> 16) & 0xffff;
+  vpid = (sentinel >> 32) & 0xffffffff;
+  name.jobid = OMPI_CONSTRUCT_JOBID(family,local);
+  name.vpid = vpid;
+  return name;
+}
+#elif 4 == SIZEOF_VOID_P
+/*
+ * currently, a sentinel is only made from the current jobid aka OMPI_PROC_MY_NAME->jobid
+ * so we only store the first 31 bits of the vpid
+ */
+static inline uintptr_t ompi_proc_name_to_sentinel (opal_process_name_t name)
+{
+    assert(OMPI_PROC_MY_NAME->jobid == name.jobid);
+    return (uintptr_t)((name.vpid <<1) | 0x1);
+}
+
+static inline opal_process_name_t ompi_proc_sentinel_to_name (uintptr_t sentinel)
+{
+  opal_process_name_t name;
+  name.jobid = OMPI_PROC_MY_NAME->jobid;
+  name.vpid = sentinel >> 1;
+  return name;
+}
+#else
+#error unsupported pointer size
+#endif
 
 END_C_DECLS
 

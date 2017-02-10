@@ -5,14 +5,15 @@
 # Copyright (c) 2004-2005 The University of Tennessee and The University
 #                         of Tennessee Research Foundation.  All rights
 #                         reserved.
-# Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+# Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
 #                         University of Stuttgart.  All rights reserved.
 # Copyright (c) 2004-2005 The Regents of the University of California.
 #                         All rights reserved.
+# Copyright (c) 2010 Cisco Systems, Inc.  All rights reserved.
 # $COPYRIGHT$
-# 
+#
 # Additional copyrights may follow
-# 
+#
 # $HEADER$
 #
 
@@ -24,15 +25,19 @@ AM_CPPFLAGS = \
 
 noinst_LTLIBRARIES = libmca_base.la
 
-dist_pkgdata_DATA = help-mca-base.txt help-mca-param.txt
+dist_opaldata_DATA = help-mca-base.txt help-mca-var.txt
 
 # Source code files
 
 headers = \
         base.h \
         mca_base_component_repository.h \
-        mca_base_param.h \
-        mca_base_param_internal.h
+        mca_base_var.h \
+        mca_base_pvar.h \
+	mca_base_var_enum.h \
+        mca_base_var_group.h \
+        mca_base_vari.h \
+	mca_base_framework.h
 
 # Library
 
@@ -48,14 +53,17 @@ libmca_base_la_SOURCES = \
         mca_base_components_select.c \
         mca_base_list.c \
         mca_base_open.c \
-        mca_base_param.c \
-        mca_base_parse_paramfile.c
+        mca_base_var.c \
+        mca_base_pvar.c \
+	mca_base_var_enum.c \
+        mca_base_var_group.c \
+        mca_base_parse_paramfile.c \
+	mca_base_components_register.c \
+	mca_base_framework.c
 
 # Conditionally install the header files
 
 if WANT_INSTALL_HEADERS
-ompidir = $(includedir)/openmpi/opal/mca/base
-ompi_HEADERS = $(headers)
-else
-ompidir = $(includedir)
+opaldir = $(opalincludedir)/$(subdir)
+opal_HEADERS = $(headers)
 endif

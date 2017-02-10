@@ -5,14 +5,16 @@
  * Copyright (c) 2004-2005 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2008 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2008 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
+ * Copyright (c) 2015      Research Organization for Information Science
+ *                         and Technology (RIST). All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 #include "ompi_config.h"
@@ -26,18 +28,17 @@
 #include "ompi/memchecker.h"
 #include "ompi/request/request.h"
 
-#if OPAL_HAVE_WEAK_SYMBOLS && OMPI_PROFILING_DEFINES
+#if OMPI_BUILD_MPI_PROFILING
+#if OPAL_HAVE_WEAK_SYMBOLS
 #pragma weak MPI_Probe = PMPI_Probe
 #endif
-
-#if OMPI_PROFILING_DEFINES
-#include "ompi/mpi/c/profile/defines.h"
+#define MPI_Probe PMPI_Probe
 #endif
 
 static const char FUNC_NAME[] = "MPI_Probe";
 
 
-int MPI_Probe(int source, int tag, MPI_Comm comm, MPI_Status *status) 
+int MPI_Probe(int source, int tag, MPI_Comm comm, MPI_Status *status)
 {
     int rc;
 
@@ -52,7 +53,7 @@ int MPI_Probe(int source, int tag, MPI_Comm comm, MPI_Status *status)
             rc = MPI_ERR_TAG;
         } else if (ompi_comm_invalid(comm)) {
             rc = MPI_ERR_COMM;
-        } else if ((source != MPI_ANY_SOURCE) && 
+        } else if ((source != MPI_ANY_SOURCE) &&
                    (MPI_PROC_NULL != source) &&
                    ompi_comm_peer_invalid(comm, source)) {
             rc = MPI_ERR_RANK;
@@ -72,8 +73,6 @@ int MPI_Probe(int source, int tag, MPI_Comm comm, MPI_Status *status)
         }
         return MPI_SUCCESS;
     }
-
-    OPAL_CR_ENTER_LIBRARY();
 
     rc = MCA_PML_CALL(probe(source, tag, comm, status));
     /*

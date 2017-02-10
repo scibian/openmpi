@@ -1,9 +1,10 @@
 /* -*- Mode: C; c-basic-offset:4 ; -*- */
 /*
- * Copyright (c) 2004-2006 The University of Tennessee and The University
+ * Copyright (c) 2004-2014 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
  * Copyright (c) 2009      Oak Ridge National Labs.  All rights reserved.
+ * Copyright (c) 2013 Cisco Systems, Inc.  All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -15,10 +16,6 @@
 
 #include "opal_config.h"
 
-#include <stddef.h>
-
-#include "opal/constants.h"
-#include "opal/datatype/opal_datatype.h"
 #include "opal/datatype/opal_convertor.h"
 
 BEGIN_C_DECLS
@@ -49,6 +46,12 @@ opal_convertor_master_t* opal_convertor_find_or_create_master( uint32_t remote_a
  * shutdown the data-type engine, once all convertors have been destroyed.
  */
 void opal_convertor_destroy_masters( void );
+
+
+#if OPAL_ENABLE_DEBUG
+extern bool opal_pack_debug;
+extern bool opal_unpack_debug;
+#endif  /* OPAL_ENABLE_DEBUG */
 
 END_C_DECLS
 

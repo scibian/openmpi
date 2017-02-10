@@ -3,106 +3,19 @@ Description: Fix build problems on hurd-i386
  .
  Also, the memory:linux MCA component is disabled, since its use of POSIX API
  in malloc hooks called very early at startup causes troubles.
+ .
+ Also changes by Samuel Thibault <sthibault@debian.org>
+ See bugs.debian.org/846965
 Author: Pino Toscano <pino@debian.org>
 Forwarded: partially
-Last-Update: 2013-08-21
+Last-Update: 2016-12-12
 
---- a/ompi/runtime/ompi_mpi_abort.c
-+++ b/ompi/runtime/ompi_mpi_abort.c
-@@ -53,10 +53,11 @@
-                bool kill_remote_of_intercomm)
- {
-     int count = 0, i;
--    char *msg, *host, hostname[MAXHOSTNAMELEN];
-+    char *msg, *host = NULL;
-     pid_t pid = 0;
-     orte_process_name_t *abort_procs;
-     orte_std_cntr_t nabort_procs;
-+    bool free_host = false;
- 
-     /* Protection for recursive invocation */
-     if (have_been_invoked) {
-@@ -70,8 +71,12 @@
-     if (orte_initialized) {
-         host = orte_process_info.nodename;
-     } else {
--        gethostname(hostname, sizeof(hostname));
--        host = hostname;
-+        size_t host_length = 128;
-+        do {
-+            host_length *= 2;
-+            host = realloc(host, host_length);
-+        } while ((gethostname(host, host_length) == -1) && (errno == ENAMETOOLONG));
-+        free_host = true;
+Index: openmpi-2.0.2/opal/util/stacktrace.c
+===================================================================
+--- openmpi-2.0.2.orig/opal/util/stacktrace.c
++++ openmpi-2.0.2/opal/util/stacktrace.c
+@@ -445,8 +445,12 @@ int opal_util_register_stackhandlers (vo
      }
-     pid = getpid();
- 
---- a/ompi/runtime/ompi_mpi_finalize.c
-+++ b/ompi/runtime/ompi_mpi_finalize.c
-@@ -101,13 +101,18 @@
-         /* Note that if we're already finalized, we cannot raise an
-            MPI exception.  The best that we can do is write something
-            to stderr. */
--        char hostname[MAXHOSTNAMELEN];
-+        char *hostname = NULL;
-+        size_t hostname_length = 128;
-         pid_t pid = getpid();
--        gethostname(hostname, sizeof(hostname));
-+        do {
-+            hostname_length *= 2;
-+            hostname = realloc(hostname, hostname_length);
-+        } while ((gethostname(hostname, hostname_length) == -1) && (errno == ENAMETOOLONG));
- 
-         orte_show_help("help-mpi-runtime.txt",
-                        "mpi_finalize:invoked_multiple_times",
-                        true, hostname, pid);
-+        free(hostname);
-         return MPI_ERR_OTHER;
-     }
- 
---- a/opal/mca/base/mca_base_component_find.c
-+++ b/opal/mca/base/mca_base_component_find.c
-@@ -208,11 +208,16 @@
-         }
- 
-         if (opal_list_get_end(found_components) == item) {
--            char h[MAXHOSTNAMELEN];
--            gethostname(h, sizeof(h));
-+            char *h = NULL;
-+            size_t h_length = 128;
-+            do {
-+                h_length *= 2;
-+                h = realloc(h, h_length);
-+            } while ((gethostname(h, h_length) == -1) && (errno == ENAMETOOLONG));
-             opal_show_help("help-mca-base.txt", 
-                            "find-available:not-valid", true,
-                            h, type, requested_component_names[i]);
-+            free(h);
-             return OPAL_ERR_NOT_FOUND;
-         }
-     }
---- a/opal/mca/base/mca_base_param.c
-+++ b/opal/mca/base/mca_base_param.c
-@@ -186,8 +186,14 @@
-     home = (char*)opal_home_directory();
-     
-     if(NULL == cwd) {
-+#if !defined(MAXPATHLEN) && defined(__GLIBC__)
-+        cwd = get_current_dir_name();
-+        if( NULL == cwd)
-+#else
-         cwd = (char *) malloc(sizeof(char) * MAXPATHLEN);
--        if( NULL == (cwd = getcwd(cwd, MAXPATHLEN) )) {
-+        if( NULL == (cwd = getcwd(cwd, MAXPATHLEN) ))
-+#endif
-+        {
-             opal_output(0, "Error: Unable to get the current working directory\n");
-             cwd = strdup(".");
-         }
---- a/opal/util/stacktrace.c
-+++ b/opal/util/stacktrace.c
-@@ -437,8 +437,12 @@
-     mca_base_param_lookup_string (param, &string_value);
  
      memset(&act, 0, sizeof(act));
 +#ifdef SA_SIGINFO
@@ -114,23 +27,24 @@ Last-Update: 2013-08-21
  #ifdef SA_ONESHOT
      act.sa_flags |= SA_ONESHOT;
  #else
---- a/orte/mca/odls/base/odls_base_default_fns.c
-+++ b/orte/mca/odls/base/odls_base_default_fns.c
-@@ -1370,8 +1370,13 @@
-     orte_local_rank_t local_rank;
-     orte_node_rank_t node_rank;
-     char *pathenv = NULL, *mpiexec_pathenv = NULL;
+Index: openmpi-2.0.2/orte/mca/odls/base/odls_base_default_fns.c
+===================================================================
+--- openmpi-2.0.2.orig/orte/mca/odls/base/odls_base_default_fns.c
++++ openmpi-2.0.2/orte/mca/odls/base/odls_base_default_fns.c
+@@ -628,7 +628,12 @@ void orte_odls_base_default_launch_local
+     orte_proc_t *child=NULL;
+     int rc=ORTE_SUCCESS;
+     orte_std_cntr_t proc_rank;
++
 +#if !defined(MAXPATHLEN) && defined(__GLIBC__)
 +    char *basedir=NULL;
-+    char *dir=NULL;
 +#else
      char basedir[MAXPATHLEN];
-     char dir[MAXPATHLEN];
-+#endif
-     char **argvptr;
-     char *full_search;
++#endif  
      char **argvsav=NULL;
-@@ -1388,7 +1393,11 @@
+     int inm, j, idx;
+     int total_num_local_procs = 0;
+@@ -642,7 +647,11 @@ void orte_odls_base_default_launch_local
       * bouncing around as we execute various apps, but we will always return
       * to this place as our default directory
       */
@@ -141,152 +55,162 @@ Last-Update: 2013-08-21
 +#endif
  
      /* find the jobdat for this job */
-     jobdat = NULL;
-@@ -1621,7 +1630,11 @@
-          * again not match getcwd! This is beyond our control - we are only
-          * ensuring they start out matching.
-          */
+     if (NULL == (jobdat = orte_get_job_data_object(job))) {
+@@ -1651,8 +1660,13 @@ int orte_odls_base_default_restart_proc(
+     int rc;
+     orte_app_context_t *app;
+     orte_job_t *jobdat;
 +#if !defined(MAXPATHLEN) && defined(__GLIBC__)
-+        dir = get_current_dir_name();
++    char *basedir=NULL;
++    char *dir=NULL;
 +#else
-         getcwd(dir, sizeof(dir));
+     char basedir[MAXPATHLEN];
+-
 +#endif
-         opal_setenv("PWD", dir, true, &app->env);
-         
-         /* Search for the OMPI_exec_path and PATH settings in the environment. */
-@@ -2118,6 +2131,10 @@
-  GETOUT:
-     opal_condition_signal(&orte_odls_globals.cond);
-     OPAL_THREAD_UNLOCK(&orte_odls_globals.mutex);
++    
+     OPAL_OUTPUT_VERBOSE((5, orte_odls_base_framework.framework_output,
+                          "%s odls:restart_proc for proc %s",
+                          ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+@@ -1662,7 +1676,11 @@ int orte_odls_base_default_restart_proc(
+      * bouncing around as we execute this app, but we will always return
+      * to this place as our default directory
+      */
 +#if !defined(MAXPATHLEN) && defined(__GLIBC__)
-+    free(basedir);
-+    free(dir);
++    basedir = get_current_dir_name();
++#else
+     getcwd(basedir, sizeof(basedir));
 +#endif
-     return rc;
+ 
+     /* find this child's jobdat */
+     if (NULL == (jobdat = orte_get_job_data_object(child->name.jobid))) {
+Index: openmpi-2.0.2/ompi/include/ompi_config.h
+===================================================================
+--- openmpi-2.0.2.orig/ompi/include/ompi_config.h
++++ openmpi-2.0.2/ompi/include/ompi_config.h
+@@ -28,6 +28,10 @@
+ 
+ #include "opal_config.h"
+ 
++#ifndef PATH_MAX /* Hurd */
++#define PATH_MAX 65535
++#endif
++
+ #define OMPI_IDENT_STRING OPAL_IDENT_STRING
+ 
+ /***********************************************************************
+Index: openmpi-2.0.2/opal/mca/base/mca_base_var.c
+===================================================================
+--- openmpi-2.0.2.orig/opal/mca/base/mca_base_var.c
++++ openmpi-2.0.2/opal/mca/base/mca_base_var.c
+@@ -50,6 +50,14 @@
+ #include "opal/util/opal_environ.h"
+ #include "opal/runtime/opal.h"
+ 
++#ifndef MAXPATHLEN /* Hurd */
++#define MAXPATHLEN 65535
++#endif
++
++#ifndef PATH_MAX  /* Hurd */
++#define PATH_MAX 65535
++#endif
++
+ /*
+  * local variables
+  */
+Index: openmpi-2.0.2/test/util/opal_path_nfs.c
+===================================================================
+--- openmpi-2.0.2.orig/test/util/opal_path_nfs.c
++++ openmpi-2.0.2/test/util/opal_path_nfs.c
+@@ -31,8 +31,10 @@
+ #include <dirent.h>
+ 
+ #include <sys/param.h>
++#ifdef HAVE_SYS_MOUNT_H
+ #include <sys/mount.h>
+-#ifdef HAVE_SYS_STATFS_H
++#endif
++#if defined(__linux__) /* not present on Hurd */
+ #include <sys/statfs.h>
+ #endif
+ #ifdef HAVE_SYS_VFS_H
+Index: openmpi-2.0.2/opal/mca/memory/patcher/memory_patcher_component.c
+===================================================================
+--- openmpi-2.0.2.orig/opal/mca/memory/patcher/memory_patcher_component.c
++++ openmpi-2.0.2/opal/mca/memory/patcher/memory_patcher_component.c
+@@ -152,6 +152,7 @@ static void *intercept_mmap(void *start,
+ 
+ #endif
+ 
++#if defined (SYS_munmap)
+ static int (*original_munmap) (void *, size_t);
+ 
+ static int _intercept_munmap(void *start, size_t length)
+@@ -177,6 +178,7 @@ static int intercept_munmap(void *start,
+     OPAL_PATCHER_END;
+     return result;
  }
++#endif
  
---- a/orte/orted/orted_main.c
-+++ b/orte/orted/orted_main.c
-@@ -228,7 +228,8 @@
-     int ret = 0;
-     int fd;
-     opal_cmd_line_t *cmd_line = NULL;
--    char log_file[PATH_MAX];
-+    char *log_file = NULL;
-+    size_t log_file_len;
-     char *jobidstring;
-     char *rml_uri;
-     int i;
-@@ -482,13 +483,16 @@
-         }
+ #if defined (SYS_mremap)
  
-         /* define a log file name in the session directory */
--        snprintf(log_file, PATH_MAX, "output-orted-%s-%s.log",
-+        log_file_len = 13 + strlen(jobidstring) + 1 + strlen(orte_process_info.nodename) + 4 + 1;
-+        log_file = malloc(log_file_len);
-+        snprintf(log_file, log_file_len, "output-orted-%s-%s.log",
-                  jobidstring, orte_process_info.nodename);
-         log_path = opal_os_path(false,
-                                 orte_process_info.tmpdir_base,
-                                 orte_process_info.top_session_dir,
-                                 log_file,
-                                 NULL);
-+        free(log_file);
+@@ -484,10 +486,12 @@ static int patcher_open (void)
+     }
+ #endif
  
-         fd = open(log_path, O_RDWR|O_CREAT|O_TRUNC, 0640);
-         if (fd < 0) {
---- a/orte/util/context_fns.c
-+++ b/orte/util/context_fns.c
-@@ -55,10 +55,12 @@
++#if defined(SYS_munmap)
+     rc = opal_patcher->patch_symbol ("munmap", (uintptr_t)intercept_munmap, (uintptr_t *) &original_munmap);
+     if (OPAL_SUCCESS != rc) {
+         return rc;
+     }
++#endif
+ 
+ #if defined (SYS_mremap)
+     rc = opal_patcher->patch_symbol ("mremap",(uintptr_t)intercept_mremap, (uintptr_t *) &original_mremap);
+Index: openmpi-2.0.2/orte/include/orte_config.h
+===================================================================
+--- openmpi-2.0.2.orig/orte/include/orte_config.h
++++ openmpi-2.0.2/orte/include/orte_config.h
+@@ -26,6 +26,13 @@
+ 
+ #include "opal_config.h"
+ 
++#ifndef PATH_MAX /* Hurd */
++#define PATH_MAX 65535
++#endif
++#ifndef MAXPATHLEN
++#define MAXPATHLEN 65535
++#endif
++
+ #define ORTE_IDENT_STRING OPAL_IDENT_STRING
+ 
+ #  if OPAL_C_HAVE_VISIBILITY
+Index: openmpi-2.0.2/ompi/mca/fbtl/posix/fbtl_posix_preadv.c
+===================================================================
+--- openmpi-2.0.2.orig/ompi/mca/fbtl/posix/fbtl_posix_preadv.c
++++ openmpi-2.0.2/ompi/mca/fbtl/posix/fbtl_posix_preadv.c
+@@ -28,6 +28,10 @@
+ #include "ompi/constants.h"
+ #include "ompi/mca/fbtl/fbtl.h"
+ 
++#ifndef IOV_MAX
++#define IOV_MAX 1024
++#endif
++
+ ssize_t mca_fbtl_posix_preadv (mca_io_ompio_file_t *fh )
  {
-     bool good = true;
-     const char *tmp;
-+#if 0 /* 'hostname' looks unused... */
-     char hostname[MAXHOSTNAMELEN];
-     
-     /* Use hostname in a few messages below */
-     gethostname(hostname, sizeof(hostname));
-+#endif
-     
-     /* If we want to chdir and the chdir fails (for any reason -- such
-        as if the dir doesn't exist, it isn't a dir, we don't have
---- a/opal/mca/pstat/darwin/configure.m4
-+++ b/opal/mca/pstat/darwin/configure.m4
-@@ -23,9 +23,9 @@
- # -----------------------------------------------------------
- AC_DEFUN([MCA_pstat_darwin_CONFIG],[
-     OMPI_VAR_SCOPE_PUSH([paff_darwin_happy])
--    # check to see if we have <mach/mach_host.h>
-+    # check to see if we have <mach/clock.h>
-     # as this is a Darwin-specific thing
--    AC_CHECK_HEADER([mach/mach_host.h], [paff_darwin_happy=yes], [paff_darwin_happy=no])
-+    AC_CHECK_HEADER([mach/clock.h], [paff_darwin_happy=yes], [paff_darwin_happy=no])
+     /*int *fp = NULL;*/
+Index: openmpi-2.0.2/ompi/mca/fbtl/posix/fbtl_posix_pwritev.c
+===================================================================
+--- openmpi-2.0.2.orig/ompi/mca/fbtl/posix/fbtl_posix_pwritev.c
++++ openmpi-2.0.2/ompi/mca/fbtl/posix/fbtl_posix_pwritev.c
+@@ -30,6 +30,10 @@
+ #include "ompi/constants.h"
+ #include "ompi/mca/fbtl/fbtl.h"
  
-     AS_IF([test "$paff_darwin_happy" = "yes"], [$1], [$2])
-     OMPI_VAR_SCOPE_POP
---- a/opal/mca/sysinfo/darwin/configure.m4
-+++ b/opal/mca/sysinfo/darwin/configure.m4
-@@ -12,9 +12,9 @@
- # -----------------------------------------------------------
- AC_DEFUN([MCA_sysinfo_darwin_CONFIG],[
-     OMPI_VAR_SCOPE_PUSH([sysinfo_darwin_happy])
--    # check to see if we have <mach/mach_host.h>
-+    # check to see if we have <mach/clock.h>
-     # as this is a Darwin-specific thing
--    AC_CHECK_HEADER([mach/mach_host.h], [sysinfo_darwin_happy=yes], [sysinfo_darwin_happy=no])
-+    AC_CHECK_HEADER([mach/clock.h], [sysinfo_darwin_happy=yes], [sysinfo_darwin_happy=no])
- 
-     AS_IF([test "$sysinfo_darwin_happy" = "yes"], [$1], [$2])
-     OMPI_VAR_SCOPE_POP
---- a/opal/mca/shmem/mmap/shmem_mmap_module.c
-+++ b/opal/mca/shmem/mmap/shmem_mmap_module.c
-@@ -61,6 +61,10 @@
- 
- /* for tons of debug output: -mca shmem_base_verbose 70 */
- 
-+#ifndef MAXHOSTNAMELEN
-+# define MAXHOSTNAMELEN 256
++#ifndef IOV_MAX
++#define IOV_MAX 1024
 +#endif
 +
- /* ////////////////////////////////////////////////////////////////////////// */
- /*local functions */
- /* local functions */
---- a/opal/mca/shmem/posix/shmem_posix_common_utils.h
-+++ b/opal/mca/shmem/posix/shmem_posix_common_utils.h
-@@ -45,6 +45,10 @@
- OPAL_DECLSPEC extern int shmem_posix_shm_open(char *posix_file_name_buff,
-                                               size_t size);
- 
-+#ifndef MAXHOSTNAMELEN
-+# define MAXHOSTNAMELEN 256
-+#endif
-+
- END_C_DECLS
- 
- #endif /* OPAL_SHMEM_POSIX_COMMON_UTILS_H */
---- a/opal/mca/shmem/sysv/shmem_sysv_module.c
-+++ b/opal/mca/shmem/sysv/shmem_sysv_module.c
-@@ -65,6 +65,10 @@
- 
- /* for tons of debug output: -mca shmem_base_verbose 70 */
- 
-+#ifndef MAXHOSTNAMELEN
-+# define MAXHOSTNAMELEN 256
-+#endif
-+
- /* ////////////////////////////////////////////////////////////////////////// */
- /* local functions */
- static int
---- a/opal/mca/memory/linux/configure.m4
-+++ b/opal/mca/memory/linux/configure.m4
-@@ -58,6 +58,10 @@
-                  [memory_linux_ptmalloc2_happy=yes
-                   memory_linux_ummu_happy=no])])
- 
-+    AS_IF([echo "$host_os" | grep '^gnu' >/dev/null 2>/dev/null],
-+          [memory_linux_ptmalloc2_happy=no
-+           memory_linux_ummu_happy=no])
-+
-     ######################################################################
-     # ptmalloc2
-     ######################################################################
+ ssize_t  mca_fbtl_posix_pwritev(mca_io_ompio_file_t *fh )
+ {
+     /*int *fp = NULL;*/

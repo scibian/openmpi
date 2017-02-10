@@ -1,3 +1,4 @@
+/* -*- Mode: C; c-basic-offset:4 ; indent-tabs-mode:nil -*- */
 /*
  * Copyright (c) 2004-2007 The Trustees of Indiana University and Indiana
  *                         University Research and Technology
@@ -5,15 +6,19 @@
  * Copyright (c) 2004-2012 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2008 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2008 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
  * Copyright (c) 2006-2012 Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2012-2013 Los Alamos National Security, LLC.  All rights
+ *                         reserved.
+ * Copyright (c) 2015-2016 Research Organization for Information Science
+ *                         and Technology (RIST). All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 #include "ompi_config.h"
@@ -26,29 +31,26 @@
 #include "ompi/datatype/ompi_datatype.h"
 #include "ompi/memchecker.h"
 
-#if OPAL_HAVE_WEAK_SYMBOLS && OMPI_PROFILING_DEFINES
+#if OMPI_BUILD_MPI_PROFILING
+#if OPAL_HAVE_WEAK_SYMBOLS
 #pragma weak MPI_Gatherv = PMPI_Gatherv
 #endif
-
-#if OMPI_PROFILING_DEFINES
-#include "ompi/mpi/c/profile/defines.h"
+#define MPI_Gatherv PMPI_Gatherv
 #endif
 
 static const char FUNC_NAME[] = "MPI_Gatherv";
 
 
-int MPI_Gatherv(void *sendbuf, int sendcount, MPI_Datatype sendtype,
-                void *recvbuf, int *recvcounts, int *displs,
-                MPI_Datatype recvtype, int root, MPI_Comm comm) 
+int MPI_Gatherv(const void *sendbuf, int sendcount, MPI_Datatype sendtype,
+                void *recvbuf, const int recvcounts[], const int displs[],
+                MPI_Datatype recvtype, int root, MPI_Comm comm)
 {
     int i, size, err;
 
     MEMCHECKER(
-        int rank;
         ptrdiff_t ext;
 
         size = ompi_comm_remote_size(comm);
-        rank = ompi_comm_rank(comm);
         ompi_datatype_type_extent(recvtype, &ext);
 
         memchecker_comm(comm);
@@ -65,7 +67,7 @@ int MPI_Gatherv(void *sendbuf, int sendcount, MPI_Datatype sendtype,
                     memchecker_datatype(sendtype);
                     memchecker_call(&opal_memchecker_base_isdefined, sendbuf, sendcount, sendtype);
                 }
-                
+
                 memchecker_datatype(recvtype);
                 /* check whether root's receive buffer is addressable. */
                 for (i = 0; i < size; i++) {
@@ -88,7 +90,7 @@ int MPI_Gatherv(void *sendbuf, int sendcount, MPI_Datatype sendtype,
                                     recvcounts[i], recvtype);
                 }
             } else if (MPI_PROC_NULL != root) {
-                memchecker_datatype(sendtype);                
+                memchecker_datatype(sendtype);
                 /* check whether send buffer is defined. */
                 memchecker_call(&opal_memchecker_base_isdefined, sendbuf, sendcount, sendtype);
             }
@@ -99,7 +101,7 @@ int MPI_Gatherv(void *sendbuf, int sendcount, MPI_Datatype sendtype,
         err = MPI_SUCCESS;
         OMPI_ERR_INIT_FINALIZE(FUNC_NAME);
         if (ompi_comm_invalid(comm)) {
-            return OMPI_ERRHANDLER_INVOKE(MPI_COMM_WORLD, MPI_ERR_COMM, 
+            return OMPI_ERRHANDLER_INVOKE(MPI_COMM_WORLD, MPI_ERR_COMM,
                                           FUNC_NAME);
         } else if ((ompi_comm_rank(comm) != root && MPI_IN_PLACE == sendbuf) ||
                    (ompi_comm_rank(comm) == root && MPI_IN_PLACE == recvbuf)) {
@@ -178,17 +180,14 @@ int MPI_Gatherv(void *sendbuf, int sendcount, MPI_Datatype sendtype,
                     if (recvcounts[i] < 0) {
                         return OMPI_ERRHANDLER_INVOKE(comm, MPI_ERR_COUNT, FUNC_NAME);
                     } else if (MPI_DATATYPE_NULL == recvtype || NULL == recvtype) {
-                        return OMPI_ERRHANDLER_INVOKE(comm, MPI_ERR_TYPE, FUNC_NAME); 
+                        return OMPI_ERRHANDLER_INVOKE(comm, MPI_ERR_TYPE, FUNC_NAME);
                     }
                 }
             }
         }
     }
 
-    OPAL_CR_ENTER_LIBRARY();
-
     /* Invoke the coll component to perform the back-end operation */
-	
     err = comm->c_coll.coll_gatherv(sendbuf, sendcount, sendtype, recvbuf,
                                     recvcounts, displs,
                                     recvtype, root, comm,

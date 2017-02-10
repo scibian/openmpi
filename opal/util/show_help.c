@@ -5,15 +5,17 @@
  * Copyright (c) 2004-2006 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
  * Copyright (c) 2008      Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2015      Research Organization for Information Science
+ *                         and Technology (RIST). All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -45,9 +47,9 @@ static char **search_dirs = NULL;
 /*
  * Local functions
  */
-static int opal_show_vhelp_internal(const char *filename, const char *topic, 
+static int opal_show_vhelp_internal(const char *filename, const char *topic,
                                     bool want_error_header, va_list arglist);
-static int opal_show_help_internal(const char *filename, const char *topic, 
+static int opal_show_help_internal(const char *filename, const char *topic,
                                    bool want_error_header, ...);
 
 opal_show_help_fn_t opal_show_help = opal_show_help_internal;
@@ -57,13 +59,13 @@ opal_show_vhelp_fn_t opal_show_vhelp = opal_show_vhelp_internal;
 int opal_show_help_init(void)
 {
     opal_output_stream_t lds;
-    
+
     OBJ_CONSTRUCT(&lds, opal_output_stream_t);
     lds.lds_want_stderr = true;
     output_stream = opal_output_open(&lds);
-    
-    opal_argv_append_nosize(&search_dirs, opal_install_dirs.pkgdatadir);
-    
+
+    opal_argv_append_nosize(&search_dirs, opal_install_dirs.opaldatadir);
+
     return OPAL_SUCCESS;
 }
 
@@ -71,12 +73,13 @@ int opal_show_help_finalize(void)
 {
     opal_output_close(output_stream);
     output_stream = -1;
-    
+
     /* destruct the search list */
     if (NULL != search_dirs) {
         opal_argv_free(search_dirs);
+        search_dirs = NULL;
     };
-    
+
     return OPAL_SUCCESS;
 }
 
@@ -139,31 +142,36 @@ static int open_file(const char *base, const char *topic)
     char *err_msg = NULL;
     size_t base_len;
     int i;
-    
+
     /* If no filename was supplied, use the default */
 
     if (NULL == base) {
         base = default_filename;
     }
-    
-    /* Try to open the file.  If we can't find it, try it with a .txt
-     * extension.
+
+    /* if this is called prior to someone initializing the system,
+     * then don't try to look
      */
-    for (i=0; NULL != search_dirs[i]; i++) {
-        filename = opal_os_path( false, search_dirs[i], base, NULL );
-        opal_show_help_yyin = fopen(filename, "r");
-        if (NULL == opal_show_help_yyin) {
-            asprintf(&err_msg, "%s: %s", filename, strerror(errno));
-            base_len = strlen(base);
-            if (4 > base_len || 0 != strcmp(base + base_len - 4, ".txt")) {
-                free(filename);
-                asprintf(&filename, "%s%s%s.txt", search_dirs[i], OPAL_PATH_SEP, base);
-                opal_show_help_yyin = fopen(filename, "r");
+    if (NULL != search_dirs) {
+        /* Try to open the file.  If we can't find it, try it with a .txt
+         * extension.
+         */
+        for (i=0; NULL != search_dirs[i]; i++) {
+            filename = opal_os_path( false, search_dirs[i], base, NULL );
+            opal_show_help_yyin = fopen(filename, "r");
+            if (NULL == opal_show_help_yyin) {
+                asprintf(&err_msg, "%s: %s", filename, strerror(errno));
+                base_len = strlen(base);
+                if (4 > base_len || 0 != strcmp(base + base_len - 4, ".txt")) {
+                    free(filename);
+                    asprintf(&filename, "%s%s%s.txt", search_dirs[i], OPAL_PATH_SEP, base);
+                    opal_show_help_yyin = fopen(filename, "r");
+                }
             }
-        }
-        free(filename);
-        if (NULL != opal_show_help_yyin) {
-            break;
+            free(filename);
+            if (NULL != opal_show_help_yyin) {
+                break;
+            }
         }
     }
 
@@ -238,18 +246,17 @@ static int find_topic(const char *base, const char *topic)
  */
 static int read_topic(char ***array)
 {
-    char *tmp;
-    int token;
+    int token, rc;
 
     while (1) {
         token = opal_show_help_yylex();
         switch (token) {
         case OPAL_SHOW_HELP_PARSE_MESSAGE:
-            tmp = strdup(opal_show_help_yytext);
-            if (NULL == tmp) {
-                return OPAL_ERR_OUT_OF_RESOURCE;
+            /* opal_argv_append_nosize does strdup(opal_show_help_yytext) */
+            rc = opal_argv_append_nosize(array, opal_show_help_yytext);
+            if (rc != OPAL_SUCCESS) {
+                return rc;
             }
-            opal_argv_append_nosize(array, tmp);
             break;
 
         default:
@@ -269,23 +276,23 @@ static int load_array(char ***array, const char *filename, const char *topic)
     if (OPAL_SUCCESS != (ret = open_file(filename, topic))) {
         return ret;
     }
-    if (OPAL_SUCCESS != (ret = find_topic(filename, topic))) {
-        fclose(opal_show_help_yyin);
-        return ret;
+
+    ret = find_topic(filename, topic);
+    if (OPAL_SUCCESS == ret) {
+        ret = read_topic(array);
     }
 
-    ret = read_topic(array);
-    opal_show_help_finish_parsing();
     fclose(opal_show_help_yyin);
+    opal_show_help_yylex_destroy ();
+
     if (OPAL_SUCCESS != ret) {
         opal_argv_free(*array);
-        return ret;
     }
 
-    return OPAL_SUCCESS;
+    return ret;
 }
 
-char *opal_show_help_vstring(const char *filename, const char *topic, 
+char *opal_show_help_vstring(const char *filename, const char *topic,
                              bool want_error_header, va_list arglist)
 {
     int rc;
@@ -309,21 +316,21 @@ char *opal_show_help_vstring(const char *filename, const char *topic,
     return (OPAL_SUCCESS == rc) ? output : NULL;
 }
 
-char *opal_show_help_string(const char *filename, const char *topic, 
+char *opal_show_help_string(const char *filename, const char *topic,
                             bool want_error_handler, ...)
 {
     char *output;
     va_list arglist;
 
     va_start(arglist, want_error_handler);
-    output = opal_show_help_vstring(filename, topic, want_error_handler, 
+    output = opal_show_help_vstring(filename, topic, want_error_handler,
                                     arglist);
     va_end(arglist);
 
     return output;
 }
 
-static int opal_show_vhelp_internal(const char *filename, const char *topic, 
+static int opal_show_vhelp_internal(const char *filename, const char *topic,
                                     bool want_error_header, va_list arglist)
 {
     char *output;
@@ -341,7 +348,7 @@ static int opal_show_vhelp_internal(const char *filename, const char *topic,
     return (NULL == output) ? OPAL_ERROR : OPAL_SUCCESS;
 }
 
-static int opal_show_help_internal(const char *filename, const char *topic, 
+static int opal_show_help_internal(const char *filename, const char *topic,
                                    bool want_error_header, ...)
 {
     va_list arglist;

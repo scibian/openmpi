@@ -1,8 +1,17 @@
 /*
+ * Copyright (c)      2010 The Trustees of Indiana University and Indiana
+ *                         University Research and Technology
+ *                         Corporation.  All rights reserved.
+ * Copyright (c) 2004-2011 The University of Tennessee and The University
+ *                         of Tennessee Research Foundation.  All rights
+ *                         reserved.
+ * Copyright (c) 2012-2013 Los Alamos National Security, LLC. All rights
+ *                         reserved.
+ * Copyright (c) 2013      Intel, Inc.  All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -11,67 +20,58 @@
 #include "opal/util/argv.h"
 
 #include "orte/mca/errmgr/errmgr.h"
+#include "orte/mca/oob/base/base.h"
 #include "orte/mca/rml/base/rml_contact.h"
+#include "orte/mca/routed/routed.h"
 #include "orte/util/name_fns.h"
 #include "orte/runtime/orte_globals.h"
+#include "orte/runtime/orte_wait.h"
 
 #include "rml_oob.h"
 
-char* 
-orte_rml_oob_get_uri(void)
+char* orte_rml_oob_get_uri(void)
 {
-    char *proc_name = NULL;
-    char *proc_addr = NULL;
-    char *contact_info = NULL;
-    int rc;
+    char *ret;
 
-    proc_addr = orte_rml_oob_module.active_oob->oob_get_addr();
-    if (NULL == proc_addr) return NULL;
-
-    if (ORTE_SUCCESS != (rc = orte_util_convert_process_name_to_string(&proc_name,
-                                            ORTE_PROC_MY_NAME))) {
-        ORTE_ERROR_LOG(rc);
-        return NULL;
-    }
-    if (0 > asprintf(&contact_info, "%s;%s", proc_name, proc_addr)) {
-        ORTE_ERROR_LOG(ORTE_ERR_OUT_OF_RESOURCE);
-    }
-    free(proc_name);
-    free(proc_addr);
-    return contact_info;
+    ORTE_OOB_GET_URI(&ret);
+    return ret;
 }
 
 
-int
-orte_rml_oob_set_uri(const char* uri)
+void orte_rml_oob_set_uri(const char* uri)
 {
-    orte_process_name_t name;
-    char** uris;
-    char** ptr;
-    int rc = orte_rml_base_parse_uris(uri, &name, &uris);
-    if(rc != ORTE_SUCCESS) {
-        ORTE_ERROR_LOG(rc);
-        return rc;
-    }
-
-    for(ptr = uris; ptr != NULL && *ptr != NULL; ptr++) {
-        orte_rml_oob_module.active_oob->oob_set_addr(&name, *ptr);
-    }
-
-    if(uris != NULL) {
-        opal_argv_free(uris);
-    }
-    return ORTE_SUCCESS;
+    ORTE_OOB_SET_URI(uri);
 }
 
 
-int
-orte_rml_oob_get_new_name(orte_process_name_t *name)
+void orte_rml_oob_purge(orte_process_name_t *peer)
 {
-    if (NULL != ORTE_PROC_MY_NAME) {
-        return ORTE_ERR_NOT_SUPPORTED;
+#if 0
+    opal_list_item_t *item, *next;
+    orte_rml_oob_queued_msg_t *qmsg;
+    orte_rml_oob_msg_header_t *hdr;
+    orte_process_name_t step;
+    orte_ns_cmp_bitmask_t mask;
+
+    /* clear our message queue */
+    item = opal_list_get_first(&orte_rml_oob_module.queued_routing_messages);
+    while (item != opal_list_get_end(&orte_rml_oob_module.queued_routing_messages)) {
+        next = opal_list_get_next(item);
+        qmsg = (orte_rml_oob_queued_msg_t*)item;
+        hdr = (orte_rml_oob_msg_header_t*) qmsg->payload[0].iov_base;
+        step = orte_routed.get_route(&hdr->destination);
+
+        mask = ORTE_NS_CMP_ALL;
+
+        if (OPAL_EQUAL ==
+                orte_util_compare_name_fields(mask, peer, &hdr->destination)) {
+            opal_list_remove_item(&orte_rml_oob_module.queued_routing_messages, item);
+            OBJ_RELEASE(item);
+        } else if (OPAL_EQUAL == orte_util_compare_name_fields(mask, &step, &hdr->destination)) {
+            opal_list_remove_item(&orte_rml_oob_module.queued_routing_messages, item);
+            OBJ_RELEASE(item);
+        }
+        item = next;
     }
-
-    return orte_rml_oob_module.active_oob->oob_get_new_name(name);
-
+#endif
 }

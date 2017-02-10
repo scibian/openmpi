@@ -179,7 +179,20 @@ extern FILE *opal_util_keyval_yyin, *opal_util_keyval_yyout;
 #define EOB_ACT_END_OF_FILE 1
 #define EOB_ACT_LAST_MATCH 2
 
-    #define YY_LESS_LINENO(n)
+    /* Note: We specifically omit the test for yy_rule_can_match_eol because it requires
+     *       access to the local variable yy_act. Since yyless() is a macro, it would break
+     *       existing scanners that call yyless() from OUTSIDE opal_util_keyval_yylex. 
+     *       One obvious solution it to make yy_act a global. I tried that, and saw
+     *       a 5% performance hit in a non-opal_util_keyval_yylineno scanner, because yy_act is
+     *       normally declared as a register variable-- so it is not worth it.
+     */
+    #define  YY_LESS_LINENO(n) \
+            do { \
+                int yyl;\
+                for ( yyl = n; yyl < opal_util_keyval_yyleng; ++yyl )\
+                    if ( opal_util_keyval_yytext[yyl] == '\n' )\
+                        --opal_util_keyval_yylineno;\
+            }while(0)
     
 /* Return all but the first "n" matched characters back to the input stream. */
 #define yyless(n) \
@@ -378,8 +391,8 @@ static void yy_fatal_error (yyconst char msg[]  );
 	*yy_cp = '\0'; \
 	(yy_c_buf_p) = yy_cp;
 
-#define YY_NUM_RULES 15
-#define YY_END_OF_BUFFER 16
+#define YY_NUM_RULES 22
+#define YY_END_OF_BUFFER 23
 /* This struct is not used in this scanner,
    but its presence is necessary. */
 struct yy_trans_info
@@ -387,23 +400,32 @@ struct yy_trans_info
 	flex_int32_t yy_verify;
 	flex_int32_t yy_nxt;
 	};
-static yyconst flex_int16_t yy_acclist[55] =
+static yyconst flex_int16_t yy_acclist[93] =
     {   0,
-        5,    5,   16,   14,   15,   10,   14,   15,    1,   15,
-       14,   15,   11,   14,   15,   14,   15,    9,   14,   15,
-     8205,   15,16397,   15,   12,   15, 8205,   15,16397,    5,
-       15,    7,   15,    6,   15,   10,    1,    9,    2,   11,
-        4,    9, 8205,16397, 8205,   12, 8205,16397, 8205,    5,
-        6,    6,    8,    3
+        5,    5,   23,   21,   22,   10,   21,   22,    1,   22,
+       21,   22,   11,   21,   22,   11,   21,   22,   21,   22,
+        9,   21,   22, 8205,   22,16397,   22,   12,   22, 8205,
+       22,16397,    5,   22,    7,   22,    6,   22,   14,   22,
+       22,   17,   22,   14,   22,   14,   22,   14,   22,   10,
+        1,    9,    2,   11,   11,   11,   11,    4,    9, 8205,
+    16397, 8205,   12, 8205,16397, 8205,    5,    6,    6,    8,
+       14,   17,   14,   14,   14,   14,   14,   11,    3,   16,
+       14,   16,   15,   14,   15,   11,   20,   20,   20,   19,
+       19,   18
+
     } ;
 
-static yyconst flex_int16_t yy_accept[45] =
+static yyconst flex_int16_t yy_accept[85] =
     {   0,
-        1,    1,    1,    1,    1,    2,    3,    4,    6,    9,
-       11,   13,   16,   18,   21,   24,   25,   27,   30,   32,
-       34,   36,   37,   38,   39,   39,   40,   41,   42,   42,
-       43,   45,   46,   46,   47,   49,   50,   51,   52,   53,
-       54,   54,   55,   55
+        1,    1,    1,    1,    1,    2,    3,    3,    3,    4,
+        6,    9,   11,   13,   16,   19,   21,   24,   27,   28,
+       30,   33,   35,   37,   39,   41,   42,   44,   46,   48,
+       50,   51,   52,   53,   53,   54,   55,   56,   57,   58,
+       59,   59,   60,   62,   63,   63,   64,   66,   67,   68,
+       69,   70,   71,   72,   72,   73,   74,   75,   75,   76,
+       77,   77,   78,   79,   79,   79,   80,   80,   81,   83,
+       83,   84,   86,   87,   87,   87,   88,   89,   90,   91,
+       91,   92,   93,   93
     } ;
 
 static yyconst flex_int32_t yy_ec[256] =
@@ -411,17 +433,17 @@ static yyconst flex_int32_t yy_ec[256] =
         1,    1,    1,    1,    1,    1,    1,    1,    2,    3,
         4,    4,    1,    1,    1,    1,    1,    1,    1,    1,
         1,    1,    1,    1,    1,    1,    1,    1,    1,    1,
-        1,    2,    1,    1,    5,    1,    1,    1,    1,    1,
-        1,    6,    1,    1,    7,    7,    8,    7,    7,    7,
-        7,    7,    7,    7,    7,    7,    7,    1,    1,    1,
-        9,    1,    1,    1,    7,    7,    7,    7,    7,    7,
-        7,    7,    7,    7,    7,    7,    7,    7,    7,    7,
-        7,    7,    7,    7,    7,    7,    7,    7,    7,    7,
-        1,    1,    1,    1,    7,    1,    7,    7,    7,    7,
+        1,    2,    1,    5,    6,    1,    1,    1,    7,    1,
+        1,    8,    1,    1,    9,   10,   11,   10,   10,   10,
+       10,   10,   10,   10,   10,   10,   10,    1,    1,    1,
+       12,    1,    1,    1,   10,   10,   10,   10,   10,   10,
+       10,   10,   10,   10,   10,   10,   10,   10,   10,   10,
+       10,   10,   10,   10,   10,   10,   10,   10,   10,   10,
+        1,    1,    1,    1,   10,    1,   13,   10,   14,   10,
 
-        7,    7,    7,    7,    7,    7,    7,    7,    7,    7,
-        7,    7,    7,    7,    7,    7,    7,    7,    7,    7,
-        7,    7,    1,    1,    1,    1,    1,    1,    1,    1,
+       10,   10,   10,   10,   10,   10,   10,   10,   15,   10,
+       10,   10,   10,   10,   10,   10,   10,   10,   10,   16,
+       10,   10,    1,    1,    1,    1,    1,    1,    1,    1,
         1,    1,    1,    1,    1,    1,    1,    1,    1,    1,
         1,    1,    1,    1,    1,    1,    1,    1,    1,    1,
         1,    1,    1,    1,    1,    1,    1,    1,    1,    1,
@@ -438,56 +460,113 @@ static yyconst flex_int32_t yy_ec[256] =
         1,    1,    1,    1,    1
     } ;
 
-static yyconst flex_int32_t yy_meta[10] =
+static yyconst flex_int32_t yy_meta[17] =
     {   0,
-        1,    2,    3,    2,    1,    4,    1,    1,    1
+        1,    2,    3,    4,    1,    1,    1,    5,    6,    6,
+        1,    1,    6,    6,    6,    6
     } ;
 
-static yyconst flex_int16_t yy_base[52] =
+static yyconst flex_int16_t yy_base[100] =
     {   0,
-        0,    0,    8,   11,   13,   17,   67,   73,   22,   73,
-       58,   38,   26,    0,   40,   33,   73,   37,    0,   73,
-       32,    0,   73,    0,   30,   73,   23,   73,   26,    0,
-       26,   25,    0,   73,   20,   19,    0,   35,   38,   73,
-       15,   73,   73,   46,   50,   54,   15,   58,   62,   64,
-       68
+        0,    0,   15,   18,   20,   21,   28,   34,  143,  252,
+       40,  252,  121,   44,   52,   37,   23,  115,   67,  252,
+       70,    0,  252,   38,    0,  111,  252,   73,   45,   49,
+        0,  252,   60,  105,  252,   50,    0,   93,   76,  252,
+       98,   77,   98,   91,   80,  252,   83,   86,    0,   83,
+       84,  252,    0,   60,  252,   94,   97,   50,  101,  102,
+       33,  108,   21,  109,   23,  252,  114,    0,    0,  118,
+        0,    0,  119,  125,  140,  252,  136,    0,  151,  152,
+      155,  156,  252,  160,  166,  172,  178,  184,  190,  196,
+      202,  207,  211,  217,  223,  229,  235,  240,  245
+
     } ;
 
-static yyconst flex_int16_t yy_def[52] =
+static yyconst flex_int16_t yy_def[100] =
     {   0,
-       43,    1,   44,   44,   45,   45,   43,   43,   43,   43,
-       46,   43,   43,   47,   48,   48,   43,   16,   49,   43,
-       50,    9,   43,   47,   46,   43,   43,   43,   51,   47,
-       48,   48,   16,   43,   16,   16,   49,   50,   50,   43,
-       51,   43,    0,   43,   43,   43,   43,   43,   43,   43,
-       43
+       83,    1,   84,   84,   85,   85,   86,   86,   83,   83,
+       83,   83,   87,   83,   14,   83,   83,   88,   88,   83,
+       88,   89,   83,   90,   91,   92,   83,   91,   93,   94,
+       11,   83,   83,   87,   83,   15,   15,   15,   15,   83,
+       95,   83,   88,   88,   88,   83,   88,   88,   89,   90,
+       90,   83,   91,   92,   83,   91,   93,   96,   93,   94,
+       97,   94,   15,   98,   95,   83,   96,   67,   59,   97,
+       70,   62,   15,   83,   99,   83,   74,   74,   83,   99,
+       83,   83,    0,   83,   83,   83,   83,   83,   83,   83,
+       83,   83,   83,   83,   83,   83,   83,   83,   83
+
     } ;
 
-static yyconst flex_int16_t yy_nxt[83] =
+static yyconst flex_int16_t yy_nxt[269] =
     {   0,
-        8,    9,   10,    9,   11,    8,   12,   13,   14,   16,
-       17,   18,   16,   17,   18,   20,   30,   42,   21,   20,
-       36,   36,   21,   22,   23,   22,   32,   32,   42,   27,
-       24,   28,   26,   29,   33,   34,   35,   39,   36,   40,
-       43,   32,   43,   39,   27,   40,   15,   15,   15,   15,
-       19,   19,   19,   19,   25,   25,   25,   25,   31,   31,
-       26,   31,   37,   37,   38,   38,   43,   38,   41,   41,
-       41,   41,    7,   43,   43,   43,   43,   43,   43,   43,
-       43,   43
+       10,   11,   12,   11,   10,   13,   10,   10,   14,   15,
+       16,   17,   15,   15,   15,   15,   19,   20,   21,   19,
+       20,   21,   23,   23,   42,   66,   42,   24,   24,   26,
+       27,   28,   29,   73,   30,   26,   27,   28,   29,   70,
+       30,   31,   32,   31,   40,   51,   58,   41,   52,   59,
+       61,   33,   36,   37,   67,   62,   37,   37,   38,   39,
+       37,   42,   55,   42,   38,   39,   37,   37,   45,   46,
+       47,   48,   46,   47,   54,   55,   56,   64,   42,   64,
+       42,   45,   46,   47,   48,   46,   47,   48,   46,   47,
+       83,   51,   44,   83,   52,   54,   55,   56,   58,   44,
+
+       66,   59,   68,   61,   69,   59,   63,   35,   62,   71,
+       64,   72,   64,   55,   62,   68,   44,   68,   67,   71,
+       75,   71,   75,   35,   70,   76,   77,   76,   77,   76,
+       76,   76,   76,   78,   78,   76,   79,   78,   78,   78,
+       78,   75,   83,   75,   76,   76,   83,   83,   76,   76,
+       76,   76,   81,   82,   81,   82,   81,   82,   81,   82,
+       18,   18,   18,   18,   18,   18,   22,   22,   22,   22,
+       22,   22,   25,   25,   25,   25,   25,   25,   34,   34,
+       34,   34,   34,   34,   43,   43,   83,   43,   43,   43,
+       49,   49,   83,   49,   83,   49,   50,   50,   83,   50,
+
+       50,   50,   53,   83,   83,   53,   53,   53,   54,   54,
+       54,   57,   57,   83,   57,   57,   57,   60,   60,   83,
+       60,   60,   60,   65,   65,   65,   65,   65,   65,   58,
+       58,   83,   58,   58,   58,   61,   61,   83,   61,   61,
+       61,   74,   83,   74,   83,   74,   80,   83,   80,   83,
+       80,    9,   83,   83,   83,   83,   83,   83,   83,   83,
+       83,   83,   83,   83,   83,   83,   83,   83
     } ;
 
-static yyconst flex_int16_t yy_chk[83] =
+static yyconst flex_int16_t yy_chk[269] =
     {   0,
-        1,    1,    1,    1,    1,    1,    1,    1,    1,    3,
-        3,    3,    4,    4,    4,    5,   47,   41,    5,    6,
-       36,   35,    6,    9,    9,    9,   32,   31,   29,   27,
-        9,   13,   25,   13,   16,   16,   16,   21,   18,   21,
-       38,   15,   38,   39,   12,   39,   44,   44,   44,   44,
-       45,   45,   45,   45,   46,   46,   46,   46,   48,   48,
-       11,   48,   49,   49,   50,   50,    7,   50,   51,   51,
-       51,   51,   43,   43,   43,   43,   43,   43,   43,   43,
-       43,   43
+        1,    1,    1,    1,    1,    1,    1,    1,    1,    1,
+        1,    1,    1,    1,    1,    1,    3,    3,    3,    4,
+        4,    4,    5,    6,   17,   65,   17,    5,    6,    7,
+        7,    7,    7,   63,    7,    8,    8,    8,    8,   61,
+        8,   11,   11,   11,   16,   24,   29,   16,   24,   29,
+       30,   11,   14,   14,   58,   30,   14,   14,   14,   14,
+       15,   33,   54,   33,   36,   36,   15,   15,   19,   19,
+       19,   21,   21,   21,   28,   28,   28,   39,   42,   39,
+       42,   45,   45,   45,   47,   47,   47,   48,   48,   48,
+       50,   51,   44,   50,   51,   56,   56,   56,   57,   43,
+
+       41,   57,   59,   60,   59,   59,   38,   34,   60,   62,
+       64,   62,   64,   26,   62,   67,   18,   67,   67,   70,
+       73,   70,   73,   13,   70,   74,   74,   74,   74,   74,
+       74,   74,   74,   74,   74,   74,   74,   74,   74,   74,
+       74,   75,    9,   75,   77,   77,    0,    0,   77,   77,
+       77,   77,   79,   80,   79,   80,   81,   82,   81,   82,
+       84,   84,   84,   84,   84,   84,   85,   85,   85,   85,
+       85,   85,   86,   86,   86,   86,   86,   86,   87,   87,
+       87,   87,   87,   87,   88,   88,    0,   88,   88,   88,
+       89,   89,    0,   89,    0,   89,   90,   90,    0,   90,
+
+       90,   90,   91,    0,    0,   91,   91,   91,   92,   92,
+       92,   93,   93,    0,   93,   93,   93,   94,   94,    0,
+       94,   94,   94,   95,   95,   95,   95,   95,   95,   96,
+       96,    0,   96,   96,   96,   97,   97,    0,   97,   97,
+       97,   98,    0,   98,    0,   98,   99,    0,   99,    0,
+       99,   83,   83,   83,   83,   83,   83,   83,   83,   83,
+       83,   83,   83,   83,   83,   83,   83,   83
     } ;
+
+/* Table of booleans, true if rule could match eol. */
+static yyconst flex_int32_t yy_rule_can_match_eol[23] =
+    {   0,
+1, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 
+    1, 0, 0,     };
 
 extern int opal_util_keyval_yy_flex_debug;
 int opal_util_keyval_yy_flex_debug = 0;
@@ -516,7 +595,8 @@ goto find_rule; \
 #define YY_RESTORE_YY_MORE_OFFSET
 char *opal_util_keyval_yytext;
 #line 1 "keyval_lex.l"
-#line 2 "keyval_lex.l"
+#define YY_NO_INPUT 1
+#line 6 "keyval_lex.l"
 /*
  * Copyright (c) 2004-2005 The Trustees of Indiana University and Indiana
  *                         University Research and Technology
@@ -524,14 +604,16 @@ char *opal_util_keyval_yytext;
  * Copyright (c) 2004-2006 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
+ * Copyright (c) 2012      Los Alamos National Security, LLC. All rights
+ *                         reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -550,7 +632,6 @@ char *opal_util_keyval_yytext;
 
 BEGIN_C_DECLS
 
-static int finish_parsing(void);
 int opal_util_keyval_yywrap(void);
 
 END_C_DECLS
@@ -562,16 +643,15 @@ int opal_util_keyval_yynewlines = 1;
 bool opal_util_keyval_parse_done = false;
 char *opal_util_keyval_string = NULL;
 
-#define yyterminate() \
-  return finish_parsing()
 
 
 
-#line 571 "keyval_lex.c"
+#line 650 "keyval_lex.c"
 
 #define INITIAL 0
 #define VALUE 1
 #define comment 2
+#define MCA_VALUE 3
 
 #ifndef YY_NO_UNISTD_H
 /* Special case for "unistd.h", since it is non-ANSI. We include it way
@@ -628,8 +708,6 @@ extern int opal_util_keyval_yywrap (void );
 #endif
 #endif
 
-    static void yyunput (int c,char *buf_ptr  );
-    
 #ifndef yytext_ptr
 static void yy_flex_strncpy (char *,yyconst char *,int );
 #endif
@@ -751,10 +829,10 @@ YY_DECL
 	register char *yy_cp, *yy_bp;
 	register int yy_act;
     
-#line 58 "keyval_lex.l"
+#line 61 "keyval_lex.l"
 
 
-#line 758 "keyval_lex.c"
+#line 836 "keyval_lex.c"
 
 	if ( !(yy_init) )
 		{
@@ -812,14 +890,14 @@ yy_match:
 			while ( yy_chk[yy_base[yy_current_state] + yy_c] != yy_current_state )
 				{
 				yy_current_state = (int) yy_def[yy_current_state];
-				if ( yy_current_state >= 44 )
+				if ( yy_current_state >= 84 )
 					yy_c = yy_meta[(unsigned int) yy_c];
 				}
 			yy_current_state = yy_nxt[yy_base[yy_current_state] + (unsigned int) yy_c];
 			*(yy_state_ptr)++ = yy_current_state;
 			++yy_cp;
 			}
-		while ( yy_base[yy_current_state] != 73 );
+		while ( yy_base[yy_current_state] != 252 );
 
 yy_find_action:
 		yy_current_state = *--(yy_state_ptr);
@@ -862,6 +940,16 @@ find_rule: /* we branch to this label when backing up */
 
 		YY_DO_BEFORE_ACTION;
 
+		if ( yy_act != YY_END_OF_BUFFER && yy_rule_can_match_eol[yy_act] )
+			{
+			int yyl;
+			for ( yyl = 0; yyl < opal_util_keyval_yyleng; ++yyl )
+				if ( opal_util_keyval_yytext[yyl] == '\n' )
+					   
+    opal_util_keyval_yylineno++;
+;
+			}
+
 do_action:	/* This label is used only to access EOF actions. */
 
 		switch ( yy_act )
@@ -869,90 +957,131 @@ do_action:	/* This label is used only to access EOF actions. */
 case 1:
 /* rule 1 can match eol */
 YY_RULE_SETUP
-#line 60 "keyval_lex.l"
+#line 63 "keyval_lex.l"
 { opal_util_keyval_yynewlines++; return OPAL_UTIL_KEYVAL_PARSE_NEWLINE; }
 	YY_BREAK
 case 2:
 /* rule 2 can match eol */
 YY_RULE_SETUP
-#line 61 "keyval_lex.l"
+#line 64 "keyval_lex.l"
 { opal_util_keyval_yynewlines++; return OPAL_UTIL_KEYVAL_PARSE_NEWLINE; }
 	YY_BREAK
 case 3:
 /* rule 3 can match eol */
 YY_RULE_SETUP
-#line 62 "keyval_lex.l"
+#line 65 "keyval_lex.l"
 { opal_util_keyval_yynewlines++; return OPAL_UTIL_KEYVAL_PARSE_NEWLINE; }
 	YY_BREAK
 case 4:
 YY_RULE_SETUP
-#line 64 "keyval_lex.l"
+#line 67 "keyval_lex.l"
 { BEGIN(comment);
                       return OPAL_UTIL_KEYVAL_PARSE_NEWLINE; }
 	YY_BREAK
 case 5:
 YY_RULE_SETUP
-#line 66 "keyval_lex.l"
+#line 69 "keyval_lex.l"
 ; /* Eat up non '*'s */
 	YY_BREAK
 case 6:
 YY_RULE_SETUP
-#line 67 "keyval_lex.l"
+#line 70 "keyval_lex.l"
 ; /* Eat '*'s not followed by a '/' */
 	YY_BREAK
 case 7:
 /* rule 7 can match eol */
 YY_RULE_SETUP
-#line 68 "keyval_lex.l"
+#line 71 "keyval_lex.l"
 { opal_util_keyval_yynewlines++;
-                      return OPAL_UTIL_KEYVAL_PARSE_NEWLINE; } 
+                      return OPAL_UTIL_KEYVAL_PARSE_NEWLINE; }
 	YY_BREAK
 case 8:
 YY_RULE_SETUP
-#line 70 "keyval_lex.l"
+#line 73 "keyval_lex.l"
 { BEGIN(INITIAL); /* Done with Block Comment */
                       return OPAL_UTIL_KEYVAL_PARSE_NEWLINE; }
 	YY_BREAK
 case 9:
 YY_RULE_SETUP
-#line 73 "keyval_lex.l"
+#line 76 "keyval_lex.l"
 { BEGIN(VALUE); return OPAL_UTIL_KEYVAL_PARSE_EQUAL; }
 	YY_BREAK
 case 10:
 YY_RULE_SETUP
-#line 74 "keyval_lex.l"
+#line 77 "keyval_lex.l"
 ; /* whitespace */
 	YY_BREAK
 case 11:
 YY_RULE_SETUP
-#line 75 "keyval_lex.l"
+#line 78 "keyval_lex.l"
 { return OPAL_UTIL_KEYVAL_PARSE_SINGLE_WORD; }
 	YY_BREAK
 case 12:
 /* rule 12 can match eol */
 YY_RULE_SETUP
-#line 77 "keyval_lex.l"
+#line 80 "keyval_lex.l"
 { BEGIN(INITIAL); return OPAL_UTIL_KEYVAL_PARSE_NEWLINE; }
 	YY_BREAK
 case 13:
 YY_RULE_SETUP
-#line 78 "keyval_lex.l"
+#line 81 "keyval_lex.l"
 { return OPAL_UTIL_KEYVAL_PARSE_VALUE; }
 	YY_BREAK
 case 14:
 YY_RULE_SETUP
-#line 80 "keyval_lex.l"
-{ return OPAL_UTIL_KEYVAL_PARSE_ERROR; }
+#line 83 "keyval_lex.l"
+{ BEGIN(INITIAL); return OPAL_UTIL_KEYVAL_PARSE_VALUE; }
 	YY_BREAK
 case 15:
 YY_RULE_SETUP
-#line 82 "keyval_lex.l"
+#line 84 "keyval_lex.l"
+{ BEGIN(INITIAL); return OPAL_UTIL_KEYVAL_PARSE_VALUE; }
+	YY_BREAK
+case 16:
+YY_RULE_SETUP
+#line 85 "keyval_lex.l"
+{ BEGIN(INITIAL); return OPAL_UTIL_KEYVAL_PARSE_VALUE; }
+	YY_BREAK
+case 17:
+/* rule 17 can match eol */
+YY_RULE_SETUP
+#line 86 "keyval_lex.l"
+{ BEGIN(INITIAL); BEGIN(INITIAL); return OPAL_UTIL_KEYVAL_PARSE_NEWLINE; }
+	YY_BREAK
+case 18:
+YY_RULE_SETUP
+#line 88 "keyval_lex.l"
+{BEGIN(MCA_VALUE); return OPAL_UTIL_KEYVAL_PARSE_MCAVAR; }
+	YY_BREAK
+case 19:
+YY_RULE_SETUP
+#line 89 "keyval_lex.l"
+{BEGIN(MCA_VALUE); return OPAL_UTIL_KEYVAL_PARSE_ENVEQL; }
+	YY_BREAK
+case 20:
+/* rule 20 can match eol */
+*yy_cp = (yy_hold_char); /* undo effects of setting up opal_util_keyval_yytext */
+(yy_c_buf_p) = yy_cp -= 1;
+YY_DO_BEFORE_ACTION; /* set up opal_util_keyval_yytext again */
+YY_RULE_SETUP
+#line 90 "keyval_lex.l"
+{ return OPAL_UTIL_KEYVAL_PARSE_ENVVAR; }
+	YY_BREAK
+case 21:
+YY_RULE_SETUP
+#line 92 "keyval_lex.l"
+{ return OPAL_UTIL_KEYVAL_PARSE_ERROR; }
+	YY_BREAK
+case 22:
+YY_RULE_SETUP
+#line 94 "keyval_lex.l"
 ECHO;
 	YY_BREAK
-#line 953 "keyval_lex.c"
+#line 1081 "keyval_lex.c"
 			case YY_STATE_EOF(INITIAL):
 			case YY_STATE_EOF(VALUE):
 			case YY_STATE_EOF(comment):
+			case YY_STATE_EOF(MCA_VALUE):
 				yyterminate();
 
 	case YY_END_OF_BUFFER:
@@ -1212,7 +1341,7 @@ static int yy_get_next_buffer (void)
 		while ( yy_chk[yy_base[yy_current_state] + yy_c] != yy_current_state )
 			{
 			yy_current_state = (int) yy_def[yy_current_state];
-			if ( yy_current_state >= 44 )
+			if ( yy_current_state >= 84 )
 				yy_c = yy_meta[(unsigned int) yy_c];
 			}
 		yy_current_state = yy_nxt[yy_base[yy_current_state] + (unsigned int) yy_c];
@@ -1235,52 +1364,15 @@ static int yy_get_next_buffer (void)
 	while ( yy_chk[yy_base[yy_current_state] + yy_c] != yy_current_state )
 		{
 		yy_current_state = (int) yy_def[yy_current_state];
-		if ( yy_current_state >= 44 )
+		if ( yy_current_state >= 84 )
 			yy_c = yy_meta[(unsigned int) yy_c];
 		}
 	yy_current_state = yy_nxt[yy_base[yy_current_state] + (unsigned int) yy_c];
-	yy_is_jam = (yy_current_state == 43);
+	yy_is_jam = (yy_current_state == 83);
 	if ( ! yy_is_jam )
 		*(yy_state_ptr)++ = yy_current_state;
 
 	return yy_is_jam ? 0 : yy_current_state;
-}
-
-    static void yyunput (int c, register char * yy_bp )
-{
-	register char *yy_cp;
-    
-    yy_cp = (yy_c_buf_p);
-
-	/* undo effects of setting up opal_util_keyval_yytext */
-	*yy_cp = (yy_hold_char);
-
-	if ( yy_cp < YY_CURRENT_BUFFER_LVALUE->yy_ch_buf + 2 )
-		{ /* need to shift things up to make room */
-		/* +2 for EOB chars. */
-		register int number_to_move = (yy_n_chars) + 2;
-		register char *dest = &YY_CURRENT_BUFFER_LVALUE->yy_ch_buf[
-					YY_CURRENT_BUFFER_LVALUE->yy_buf_size + 2];
-		register char *source =
-				&YY_CURRENT_BUFFER_LVALUE->yy_ch_buf[number_to_move];
-
-		while ( source > YY_CURRENT_BUFFER_LVALUE->yy_ch_buf )
-			*--dest = *--source;
-
-		yy_cp += (int) (dest - source);
-		yy_bp += (int) (dest - source);
-		YY_CURRENT_BUFFER_LVALUE->yy_n_chars =
-			(yy_n_chars) = YY_CURRENT_BUFFER_LVALUE->yy_buf_size;
-
-		if ( yy_cp < YY_CURRENT_BUFFER_LVALUE->yy_ch_buf + 2 )
-			YY_FATAL_ERROR( "flex scanner push-back overflow" );
-		}
-
-	*--yy_cp = (char) c;
-
-	(yytext_ptr) = yy_bp;
-	(yy_hold_char) = *yy_cp;
-	(yy_c_buf_p) = yy_cp;
 }
 
 #ifndef YY_NO_INPUT
@@ -1352,6 +1444,11 @@ static int yy_get_next_buffer (void)
 	c = *(unsigned char *) (yy_c_buf_p);	/* cast for 8-bit char's */
 	*(yy_c_buf_p) = '\0';	/* preserve opal_util_keyval_yytext */
 	(yy_hold_char) = *++(yy_c_buf_p);
+
+	if ( c == '\n' )
+		   
+    opal_util_keyval_yylineno++;
+;
 
 	return c;
 }
@@ -1823,6 +1920,9 @@ static int yy_init_globals (void)
      * This function is called from opal_util_keyval_yylex_destroy(), so don't allocate here.
      */
 
+    /* We do not touch opal_util_keyval_yylineno unless the option is enabled. */
+    opal_util_keyval_yylineno =  1;
+    
     (yy_buffer_stack) = 0;
     (yy_buffer_stack_top) = 0;
     (yy_buffer_stack_max) = 0;
@@ -1923,19 +2023,20 @@ void opal_util_keyval_yyfree (void * ptr )
 
 #define YYTABLES_NAME "yytables"
 
-#line 82 "keyval_lex.l"
+#line 94 "keyval_lex.l"
 
 
 
+/* Old flex (2.5.4a? and older) does not define a destroy function */
+#if !defined(YY_FLEX_SUBMINOR_VERSION)
+#define YY_FLEX_SUBMINOR_VERSION 0
+#endif
 
-/*
- * This cleans up at the end of the parse (since, in this case, we
- * always parse the entire file) and prevents a memory leak.
- */
-static int finish_parsing(void) 
+#if (YY_FLEX_MAJOR_VERSION < 2) || (YY_FLEX_MAJOR_VERSION == 2 && (YY_FLEX_MINOR_VERSION < 5 || (YY_FLEX_MINOR_VERSION == 5 && YY_FLEX_SUBMINOR_VERSION < 5)))
+int opal_util_keyval_yylex_destroy(void)
 {
     if (NULL != YY_CURRENT_BUFFER) {
-        opal_util_keyval_yy_delete_buffer(YY_CURRENT_BUFFER); 
+        opal_util_keyval_yy_delete_buffer(YY_CURRENT_BUFFER);
 #if defined(YY_CURRENT_BUFFER_LVALUE)
         YY_CURRENT_BUFFER_LVALUE = NULL;
 #else
@@ -1944,6 +2045,7 @@ static int finish_parsing(void)
     }
     return YY_NULL;
 }
+#endif
 
 int opal_util_keyval_yywrap(void)
 {

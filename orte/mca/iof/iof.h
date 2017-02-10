@@ -1,3 +1,4 @@
+/* -*- Mode: C; c-basic-offset:4 ; indent-tabs-mode:nil -*- */
 /*
  * Copyright (c) 2004-2007 The Trustees of Indiana University and Indiana
  *                         University Research and Technology
@@ -5,15 +6,18 @@
  * Copyright (c) 2004-2005 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
  * Copyright (c) 2007-2008 Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2012-2015 Los Alamos National Security, LLC. All rights
+ *                         reserved.
+ * Copyright (c) 2014      Intel, Inc. All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 /**
@@ -114,17 +118,45 @@
 #include "orte_config.h"
 #include "orte/types.h"
 
-#include "opal/mca/mca.h"
+#include "orte/mca/mca.h"
 
-#include "opal/mca/crs/crs.h"
-#include "opal/mca/crs/base/base.h"
-
+#include "orte/runtime/orte_globals.h"
 
 #include "iof_types.h"
 
 BEGIN_C_DECLS
 
-/* Predefined tag values */
+/* define a macro for requesting a proxy PULL of IO on
+ * behalf of a tool that had the HNP spawn a job. First
+ * argument is the orte_job_t of the spawned job, second
+ * is a pointer to the name of the requesting tool */
+#define ORTE_IOF_PROXY_PULL(a, b)                               \
+    do {                                                        \
+        opal_buffer_t *buf;                                     \
+        orte_iof_tag_t tag;                                     \
+        orte_process_name_t nm;                                 \
+                                                                \
+        buf = OBJ_NEW(opal_buffer_t);                           \
+                                                                \
+        /* setup the tag to pull from HNP */                    \
+        tag = ORTE_IOF_STDOUTALL | ORTE_IOF_PULL;               \
+        opal_dss.pack(buf, &tag, 1, ORTE_IOF_TAG);              \
+        /* pack the name of the source we want to pull */       \
+        nm.jobid = (a)->jobid;                                  \
+        nm.vpid = ORTE_VPID_WILDCARD;                           \
+        opal_dss.pack(buf, &nm, 1, ORTE_NAME);                  \
+        /* pack the name of the tool */                         \
+        opal_dss.pack(buf, (b), 1, ORTE_NAME);                  \
+                                                                \
+        /* send the buffer to the HNP */                        \
+        orte_rml.send_buffer_nb(ORTE_PROC_MY_HNP, buf,          \
+                                ORTE_RML_TAG_IOF_HNP,           \
+                                orte_rml_send_callback, NULL);  \
+    } while(0);
+
+/* Initialize the selected module */
+typedef int (*orte_iof_base_init_fn_t)(void);
+
 /**
  * Explicitly push data from the specified input file descriptor to
  * the stdin of the indicated peer(s). The provided peer name can
@@ -155,6 +187,12 @@ typedef int (*orte_iof_base_pull_fn_t)(const orte_process_name_t* peer,
 typedef int (*orte_iof_base_close_fn_t)(const orte_process_name_t* peer,
                                         orte_iof_tag_t source_tag);
 
+/* Flag that a job is complete */
+typedef void (*orte_iof_base_complete_fn_t)(const orte_job_t *jdata);
+
+/* finalize the selected module */
+typedef int (*orte_iof_base_finalize_fn_t)(void);
+
 /**
  * FT Event Notification
  */
@@ -164,9 +202,12 @@ typedef int (*orte_iof_base_ft_event_fn_t)(int state);
  *  IOF module.
  */
 struct orte_iof_base_module_2_0_0_t {
+    orte_iof_base_init_fn_t     init;
     orte_iof_base_push_fn_t     push;
     orte_iof_base_pull_fn_t     pull;
     orte_iof_base_close_fn_t    close;
+    orte_iof_base_complete_fn_t complete;
+    orte_iof_base_finalize_fn_t finalize;
     orte_iof_base_ft_event_fn_t ft_event;
 };
 
@@ -187,7 +228,6 @@ END_C_DECLS
  * Macro for use in components that are of type iof
  */
 #define ORTE_IOF_BASE_VERSION_2_0_0 \
-  MCA_BASE_VERSION_2_0_0, \
-  "iof", 2, 0, 0
+    ORTE_MCA_BASE_VERSION_2_1_0("iof", 2, 0, 0)
 
 #endif /* ORTE_IOF_H */

@@ -4,7 +4,14 @@
 //                         Corporation.  All rights reserved.
 // Copyright (c) 2006      Cisco Systems, Inc.  All rights reserved.
 //
-// Simple ring test program
+// Simple ring test program in C++.
+//
+// NOTE: The MPI C++ bindings were deprecated in MPI-2.2 and removed
+// from the standard in MPI-3.  Open MPI still provides C++ MPI
+// bindings, but they are no longer built by default (and may be
+// removed in a future version of Open MPI).  You must
+// --enable-mpi-cxx when configuring Open MPI to enable the MPI C++
+// bindings.
 //
 
 #include "mpi.h"
@@ -19,7 +26,7 @@ int main(int argc, char *argv[])
     MPI::Init();
     rank = MPI::COMM_WORLD.Get_rank();
     size = MPI::COMM_WORLD.Get_size();
- 
+
     // Calculate the rank of the next process in the ring.  Use the
     // modulus operator so that the last process "wraps around" to
     // rank zero.
@@ -53,7 +60,7 @@ int main(int argc, char *argv[])
 
         if (0 == rank) {
             --message;
-            std::cout << "Process 0 decremented value: " << message 
+            std::cout << "Process 0 decremented value: " << message
                       << std::endl;
         }
 
@@ -70,7 +77,7 @@ int main(int argc, char *argv[])
     if (0 == rank) {
         MPI::COMM_WORLD.Recv(&message, 1, MPI::INT, prev, tag);
     }
-    
+
     // All done
 
     MPI::Finalize();

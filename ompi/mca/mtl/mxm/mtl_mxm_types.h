@@ -1,5 +1,8 @@
+/* -*- Mode: C; c-basic-offset:4 ; indent-tabs-mode:nil -*- */
 /*
  * Copyright (C) Mellanox Technologies Ltd. 2001-2011.  ALL RIGHTS RESERVED.
+ * Copyright (c) 2015      Los Alamos National Security, LLC.  All rights
+ *                         reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -16,12 +19,12 @@
 #include "ompi/mca/mtl/mtl.h"
 #include "ompi/mca/mtl/base/base.h"
 #include "ompi/communicator/communicator.h"
-#include "mtl_mxm_endpoint.h" 
+#include "mtl_mxm_endpoint.h"
 
 
 BEGIN_C_DECLS
 
-/** 
+/**
  * MTL Module Interface
  */
 typedef struct mca_mtl_mxm_module_t {
@@ -30,14 +33,17 @@ typedef struct mca_mtl_mxm_module_t {
     int                   mxm_np;
     mxm_h                 mxm_context;
     mxm_ep_h              ep;
-#if MXM_API < MXM_VERSION(1,5)
-    mxm_context_opts_t    mxm_opts;
-#else
-    mxm_context_opts_t   *mxm_opts;
-#endif
+    mxm_context_opts_t    *mxm_ctx_opts;
+    mxm_ep_opts_t         *mxm_ep_opts;
 #if MXM_API >= MXM_VERSION(2,0)
     int                   using_mem_hooks;
 #endif
+#if MXM_API >= MXM_VERSION(3,1)
+    int                   bulk_connect;    /* use bulk connect */
+    int                   bulk_disconnect; /* use bulk disconnect */
+#endif
+    char*                 runtime_version;
+    char*                 compiletime_version;
 } mca_mtl_mxm_module_t;
 
 
@@ -51,6 +57,7 @@ extern mca_mtl_mxm_module_t ompi_mtl_mxm;
 
 typedef struct mca_mtl_mxm_component_t {
     mca_mtl_base_component_2_0_0_t super; /**< base MTL component */
+    opal_free_list_t mxm_messages; /* will be used for MPI_Mprobe and MPI_Mrecv calls */
 } mca_mtl_mxm_component_t;
 
 
@@ -59,7 +66,16 @@ OMPI_DECLSPEC mca_mtl_mxm_component_t mca_mtl_mxm_component;
 
 static inline mxm_conn_h ompi_mtl_mxm_conn_lookup(struct ompi_communicator_t* comm, int rank) {
     ompi_proc_t* ompi_proc = ompi_comm_peer_lookup(comm, rank);
-    mca_mtl_mxm_endpoint_t *endpoint = (mca_mtl_mxm_endpoint_t*) ompi_proc->proc_pml;
+    mca_mtl_mxm_endpoint_t *endpoint = (mca_mtl_mxm_endpoint_t*) ompi_proc->proc_endpoints[OMPI_PROC_ENDPOINT_TAG_MTL];
+
+    if (endpoint != NULL) {
+        return  endpoint->mxm_conn;
+    }
+
+    MXM_VERBOSE(80, "First communication with [%s:%s]: set endpoint connection.",
+                ompi_proc->super.proc_hostname, OPAL_NAME_PRINT(ompi_proc->super.proc_name));
+    ompi_mtl_add_single_proc(ompi_mtl, ompi_proc);
+    endpoint = (mca_mtl_mxm_endpoint_t*) ompi_proc->proc_endpoints[OMPI_PROC_ENDPOINT_TAG_MTL];
 
     return endpoint->mxm_conn;
 }

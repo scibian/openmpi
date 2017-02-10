@@ -10,6 +10,8 @@
  * Copyright (c) 2004-2006 The Regents of the University of California.
  *                         All rights reserved.
  * Copyright (c) 2006      QLogic Corporation. All rights reserved.
+ * Copyright (c) 2011      Los Alamos National Security, LLC.
+ *                         All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -18,56 +20,58 @@
  */
 
 #ifndef MTL_PSM_TYPES_H_HAS_BEEN_INCLUDED
-#define MTL_PSM_TYPS_H_HAS_BEEN_INCLUDED
+#define MTL_PSM_TYPES_H_HAS_BEEN_INCLUDED
 
 #include "ompi_config.h"
 #include "mtl_psm.h"
 
 #include "ompi/mca/mtl/mtl.h"
 #include "ompi/mca/mtl/base/base.h"
-#include "mtl_psm_endpoint.h" 
+#include "mtl_psm_endpoint.h"
 
 #include "psm.h"
 
 
 BEGIN_C_DECLS
 
-/** 
+/**
  * MTL Module Interface
  */
-struct mca_mtl_psm_module_t { 
+struct mca_mtl_psm_module_t {
     mca_mtl_base_module_t super; /**< base MTL interface */
 
     int32_t      connect_timeout;
-  
-    uint32_t     debug_level;
+
+    int32_t      debug_level;
     int32_t      ib_unit;
     int32_t      ib_port;
     int32_t      ib_service_level;
     uint64_t     ib_pkey;
-  
+
 #if PSM_VERNO >= 0x010d
-    uint64_t     ib_service_id;
-    psm_path_res_t path_res_type;
+    unsigned long long ib_service_id;
+    /* use int instead of psm_path_res_t so we can register this with
+       the MCA variable system */
+    int          path_res_type;
 #endif
 
     psm_ep_t	 ep;
     psm_mq_t	 mq;
     psm_epid_t	 epid;
     psm_epaddr_t epaddr;
-}; 
+};
 
 typedef struct mca_mtl_psm_module_t mca_mtl_psm_module_t;
 
 extern mca_mtl_psm_module_t ompi_mtl_psm;
 
-struct mca_mtl_psm_component_t { 
-    mca_mtl_base_component_2_0_0_t          super;  /**< base MTL component */ 
+struct mca_mtl_psm_component_t {
+    mca_mtl_base_component_2_0_0_t          super;  /**< base MTL component */
 };
 typedef struct mca_mtl_psm_component_t mca_mtl_psm_component_t;
 
-OMPI_DECLSPEC mca_mtl_psm_component_t mca_mtl_psm_component;
-    
+OMPI_DECLSPEC extern mca_mtl_psm_component_t mca_mtl_psm_component;
+
 #define PSM_MAKE_MQTAG(ctxt,rank,utag)		    \
         ( (((ctxt)&0xffffULL)<<48)| (((rank)&0xffffULL)<<32)| \
 	  (((utag)&0xffffffffULL)) )

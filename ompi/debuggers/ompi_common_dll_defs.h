@@ -1,12 +1,18 @@
+/* -*- Mode: C; c-basic-offset:4 ; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2007-2008 Cisco Systems, Inc.  All rights reserved.
- * Copyright (c) 2004-2010 The University of Tennessee and The University
+ * Copyright (c) 2007-2014 Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2004-2013 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
+ * Copyright (c) 2012-2013 Inria.  All rights reserved.
+ * Copyright (c) 2015      Los Alamos National Security, LLC.  All rights
+ *                         reserved.
+ * Copyright (c) 2016      Research Organization for Information Science
+ *                         and Technology (RIST). All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -41,7 +47,7 @@
  * Information associated with a specific executable image.  Common
  * across all DLLs.
  */
-typedef struct 
+typedef struct
 {
     /* Functions needed here */
     const struct mqs_image_callbacks * image_callbacks;
@@ -64,7 +70,7 @@ typedef struct
     struct {
         mqs_type *type;
         int size;
-    } ompi_free_list_item_t;
+    } opal_free_list_item_t;
     struct {
         mqs_type *type;
         int size;
@@ -78,7 +84,7 @@ typedef struct
             int fl_num_per_alloc;      /* size_t */
             int fl_num_allocated;      /* size_t */
         } offset;
-    } ompi_free_list_t;
+    } opal_free_list_t;
     struct {
         mqs_type *type;
         int size;
@@ -197,7 +203,7 @@ typedef struct
             int c_remote_group;
             int c_flags;
             int c_f_to_c_index;
-            int c_topo_comm;
+            int c_topo;
             int c_keyhash;
         } offset;
     } ompi_communicator_t;
@@ -206,12 +212,30 @@ typedef struct
         mqs_type *type;
         int size;
         struct {
-            int mtc_ndims_or_nnodes;
-            int mtc_dims_or_index;
-            int mtc_periods_or_edges;
-            int mtc_reorder;
+            int mtc;
+            struct {
+                int ndims;
+                int dims;
+                int periods;
+                int coords;
+            } mtc_cart;
+            struct {
+                int nnodes;
+                int index;
+                int edges;
+            } mtc_graph;
+            struct {
+                int in;
+                int inw;
+                int out;
+                int outw;
+                int indegree;
+                int outdegree;
+                int weighted;
+            } mtc_dist_graph;
+            int reorder;
         } offset;
-    } ompi_mca_topo_base_comm_1_0_0_t;
+    } mca_topo_base_module_t;
     /* MPI_Status */
     struct {
         mqs_type *type;
@@ -221,7 +245,7 @@ typedef struct
             int MPI_TAG;
             int MPI_ERROR;
             int _cancelled;
-            int _ucount;  /* size_t */
+            size_t _ucount;
         } offset;
     } ompi_status_public_t;
     /* datatype structure */
@@ -236,12 +260,12 @@ typedef struct
 
     /* For the caller to hang their own stuff */
     void *extra;
-} mpi_image_info; 
+} mpi_image_info;
 
 /***********************************************************************/
 /* Information for a single process.  Common across all DLLs.
  */
-typedef struct 
+typedef struct
 {
     const struct mqs_process_callbacks * process_callbacks; /* Functions needed here */
 
@@ -285,27 +309,29 @@ extern const mqs_basic_callbacks *mqs_basic_entrypoints;
 int ompi_fill_in_type_info(mqs_image *image, char **message);
 
 /* Fetch a pointer from the process */
-mqs_taddr_t ompi_fetch_pointer(mqs_process *proc, mqs_taddr_t addr, 
+mqs_taddr_t ompi_fetch_pointer(mqs_process *proc, mqs_taddr_t addr,
                                mpi_process_info *p_info);
 
 /* Fetch an int from the process */
-mqs_tword_t ompi_fetch_int(mqs_process *proc, mqs_taddr_t addr, 
+mqs_tword_t ompi_fetch_int(mqs_process *proc, mqs_taddr_t addr,
                            mpi_process_info *p_info);
 
 /* Fetch a bool from the process */
-mqs_tword_t ompi_fetch_bool(mqs_process *proc, mqs_taddr_t addr, 
+mqs_tword_t ompi_fetch_bool(mqs_process *proc, mqs_taddr_t addr,
                             mpi_process_info *p_info);
 
 /* Fetch a size_t from the process */
-mqs_taddr_t ompi_fetch_size_t(mqs_process *proc, mqs_taddr_t addr, 
+mqs_taddr_t ompi_fetch_size_t(mqs_process *proc, mqs_taddr_t addr,
                               mpi_process_info *p_info);
 
 /* Helpers to fetch stuff from an opal_pointer_array_t */
-int ompi_fetch_opal_pointer_array_info(mqs_process *proc, mqs_taddr_t addr, 
+int ompi_fetch_opal_pointer_array_info(mqs_process *proc, mqs_taddr_t addr,
                                        mpi_process_info *p_info,
-                                       int *size, int *lowest_free, 
+                                       int *size, int *lowest_free,
                                        int *number_free);
-int ompi_fetch_opal_pointer_array_item(mqs_process *proc, mqs_taddr_t addr, 
+int ompi_fetch_opal_pointer_array_item(mqs_process *proc, mqs_taddr_t addr,
                                        mpi_process_info *p_info, int index,
                                        mqs_taddr_t *item);
+#define OMPI_MAX_VER_SIZE 256
+int ompi_get_lib_version(char *buf, int size);
 #endif

@@ -5,25 +5,32 @@
  * Copyright (c) 2004-2005 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
+ * Copyright (c) 2015-2017 Research Organization for Information Science
+ *                         and Technology (RIST). All rights reserved.
+ * Copyright (c) 2016-2017 Intel, Inc. All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
 
 #include "opal_config.h"
 
+#include <errno.h>
 #include <string.h>
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
 #endif  /* HAVE_UNISTD_H */
 #include <stdlib.h>
+#if HAVE_SYS_STAT_H
+#include <sys/stat.h>
+#endif /* HAVE_SYS_STAT_H */
 #ifdef HAVE_SYS_TYPES_H
 #include <sys/types.h>
 #endif  /* HAVE_SYS_TYPES_H */
@@ -33,6 +40,7 @@
 
 #include "opal/util/output.h"
 #include "opal/util/os_dirpath.h"
+#include "opal/util/show_help.h"
 #include "opal/util/argv.h"
 #include "opal/util/os_path.h"
 #include "opal/constants.h"
@@ -57,11 +65,9 @@ int opal_os_dirpath_create(const char *path, const mode_t mode)
         if (0 == (ret = chmod(path, (buf.st_mode | mode)))) { /* successfully change mode */
             return(OPAL_SUCCESS);
         }
-        opal_output(0,
-                    "opal_os_dirpath_create: "
-                    "Error: Unable to create directory (%s), unable to set the correct mode [%d]\n",
-                    path, ret);
-        return(OPAL_ERROR); /* can't set correct mode */
+        opal_show_help("help-opal-util.txt", "dir-mode", true,
+                    path, mode, strerror(errno));
+        return(OPAL_ERR_PERM); /* can't set correct mode */
     }
 
     /* quick -- try to make directory */
@@ -84,44 +90,9 @@ int opal_os_dirpath_create(const char *path, const mode_t mode)
        building up a directory name.  Check to see if that dirname
        exists.  If it doesn't, create it. */
 
-    /* Notes about stat(): Windows has funny definitions of what will
-       return 0 from stat().  "C:" will return failure, while "C:\"
-       will return success.  Similarly, "C:\foo" will return success,
-       while "C:\foo\" will return failure (assuming that a folder
-       named "foo" exists under C:\).
-
-       POSIX implementations of stat() are generally a bit more
-       forgiving; most will return true for "/foo" and "/foo/"
-       (assuming /foo exists).  But we might as well abide by the same
-       rules as Windows and generally disallow checking for names
-       ending with path_sep (the only possible allowable one is
-       checking for "/", which is the root directory, and is
-       guaranteed to exist on valid POSIX filesystems, and is
-       therefore not worth checking for). */
-
     len = opal_argv_count(parts);
     for (i = 0; i < len; ++i) {
         if (i == 0) {
-
-#ifdef __WINDOWS__
-            /* In the Windows case, check for "<drive>:" case (i.e.,
-               an absolute pathname).  If this is the case, ensure
-               that it ends in a path_sep. */
-
-            if (2 == strlen(parts[0]) && isalpha(parts[0][0]) &&
-                ':' == parts[0][1]) {
-                strcat(tmp, parts[i]);
-                strcat(tmp, path_sep);
-            }
-            
-            /* Otherwise, it's a relative path.  Per the comment
-               above, we don't want a '\' at the end, so just append
-               this part. */
-
-            else {
-                strcat(tmp, parts[i]);
-            }
-#else
             /* If in POSIX-land, ensure that we never end a directory
                name with path_sep */
 
@@ -129,7 +100,6 @@ int opal_os_dirpath_create(const char *path, const mode_t mode)
                 strcat(tmp, path_sep);
             }
             strcat(tmp, parts[i]);
-#endif
         }
 
         /* If it's not the first part, ensure that there's a
@@ -142,18 +112,21 @@ int opal_os_dirpath_create(const char *path, const mode_t mode)
             strcat(tmp, parts[i]);
         }
 
-        /* Now that we finally have the name to check, check it.
-           Create it if it doesn't exist. */
-        if (0 != (ret = stat(tmp, &buf)) ) {
-            if (0 != (ret = mkdir(tmp, mode) && 0 != stat(tmp, &buf))) { 
-                opal_output(0,
-                            "opal_os_dirpath_create: "
-                            "Error: Unable to create the sub-directory (%s) of (%s), mkdir failed [%d]\n",
-                            tmp, path, ret);
-                opal_argv_free(parts);
-                free(tmp);
-                return OPAL_ERROR;
-            }
+        /* Now that we have the name, try to create it */
+        mkdir(tmp, mode);
+        ret = errno;  // save the errno for an error msg, if needed
+        if (0 != stat(tmp, &buf)) {
+            opal_show_help("help-opal-util.txt", "mkdir-failed", true,
+                        tmp, strerror(ret));
+            opal_argv_free(parts);
+            free(tmp);
+            return OPAL_ERROR;
+        } else if (i == (len-1) && (mode != (mode & buf.st_mode)) && (0 > chmod(tmp, (buf.st_mode | mode)))) {
+            opal_show_help("help-opal-util.txt", "dir-mode", true,
+                           tmp, mode, strerror(errno));
+            opal_argv_free(parts);
+            free(tmp);
+            return(OPAL_ERR_PERM); /* can't set correct mode */
         }
     }
 
@@ -164,7 +137,7 @@ int opal_os_dirpath_create(const char *path, const mode_t mode)
     return OPAL_SUCCESS;
 }
 
-/** 
+/**
  * This function attempts to remove a directory along with all the
  * files in it.  If the recursive variable is non-zero, then it will
  * try to recursively remove all directories.  If provided, the
@@ -178,6 +151,12 @@ int opal_os_dirpath_destroy(const char *path,
 {
     int rc, exit_status = OPAL_SUCCESS;
     bool is_dir = false;
+    DIR *dp;
+    struct dirent *ep;
+    char *filenm;
+#ifndef HAVE_STRUCT_DIRENT_D_TYPE
+    struct stat buf;
+#endif
 
     if (NULL == path) {  /* protect against error */
         return OPAL_ERROR;
@@ -191,167 +170,88 @@ int opal_os_dirpath_destroy(const char *path,
         goto cleanup;
     }
 
-#ifndef __WINDOWS__
-    {
-        DIR *dp;
-        struct dirent *ep;
-        char *filenm;
-#ifndef HAVE_STRUCT_DIRENT_D_TYPE 
-        struct stat buf;
-#endif
+    /* Open up the directory */
+    dp = opendir(path);
+    if (NULL == dp) {
+        return OPAL_ERROR;
+    }
 
-        /* Open up the directory */
-        dp = opendir(path);
-        if (NULL == dp) {
-            return OPAL_ERROR;
+    while (NULL != (ep = readdir(dp)) ) {
+        /* skip:
+         *  - . and ..
+         */
+        if ((0 == strcmp(ep->d_name, ".")) ||
+            (0 == strcmp(ep->d_name, "..")) ) {
+            continue;
         }
 
-        while (NULL != (ep = readdir(dp)) ) {
-            /* skip:
-            *  - . and ..
-            */
-            if ((0 == strcmp(ep->d_name, ".")) ||
-                (0 == strcmp(ep->d_name, "..")) ) {
-                    continue;
-            }
-        
-            /* Check to see if it is a directory */
-            is_dir = false;
+        /* Check to see if it is a directory */
+        is_dir = false;
 
-            /* Create a pathname.  This is not always needed, but it makes
-             * for cleaner code just to create it here.  Note that we are
-             * allocating memory here, so we need to free it later on. 
-             */
-            filenm = opal_os_path(false, path, ep->d_name, NULL);
+        /* Create a pathname.  This is not always needed, but it makes
+         * for cleaner code just to create it here.  Note that we are
+         * allocating memory here, so we need to free it later on.
+         */
+        filenm = opal_os_path(false, path, ep->d_name, NULL);
 #ifdef HAVE_STRUCT_DIRENT_D_TYPE
-            if (DT_DIR == ep->d_type) {
-                is_dir = true;
-            }
+        if (DT_DIR == ep->d_type) {
+            is_dir = true;
+        }
 #else /* have dirent.d_type */
-            rc = stat(filenm, &buf);
-            if (rc < 0 || S_ISDIR(buf.st_mode)) {
-                is_dir = true;
-            }
-#endif /* have dirent.d_type */        
+        rc = stat(filenm, &buf);
+        if (rc < 0 || S_ISDIR(buf.st_mode)) {
+            is_dir = true;
+        }
+#endif /* have dirent.d_type */
 
+        /*
+         * If not recursively decending, then if we find a directory then fail
+         * since we were not told to remove it.
+         */
+        if( is_dir && !recursive) {
+            /* Set the error indicating that we found a directory,
+             * but continue removing files
+             */
+            exit_status = OPAL_ERROR;
+            free(filenm);
+            continue;
+        }
+
+        /* Will the caller allow us to remove this file/directory? */
+        if(NULL != cbfunc) {
             /*
-              * If not recursively decending, then if we find a directory then fail
-              * since we were not told to remove it.
-              */
-            if( is_dir && !recursive) {
-                /* Set the error indicating that we found a directory,
-                 * but continue removing files
-                 */
-                exit_status = OPAL_ERROR;
+             * Caller does not wish to remove this file/directory,
+             * continue with the rest of the entries
+             */
+            if( ! (cbfunc(path, ep->d_name)) ) {
                 free(filenm);
                 continue;
-            }
-
-            /* Will the caller allow us to remove this file/directory? */
-            if(NULL != cbfunc) {
-                /*
-                 * Caller does not wish to remove this file/directory,
-                 * continue with the rest of the entries
-                 */
-                if( ! (cbfunc(path, ep->d_name)) ) {
-                    free(filenm);
-                    continue;
-                }
-            }
-            /* Directories are recursively destroyed */
-            if(is_dir) {
-                rc = opal_os_dirpath_destroy(filenm, recursive, cbfunc);
-                free(filenm);
-                if (OPAL_SUCCESS != rc) {
-                    exit_status = rc;
-                    closedir(dp);
-                    goto cleanup;
-                }
-            }
-            /* Files are removed right here */
-            else {
-                if( 0 != (rc = unlink(filenm) ) ) {
-                    exit_status = OPAL_ERROR;
-                }
-                free(filenm);
             }
         }
-    
-        /* Done with this directory */
-        closedir(dp);
-    }
-#else
-    {
-        char search_path[MAX_PATH];
-        HANDLE file;
-        WIN32_FIND_DATA file_data;
-        TCHAR *file_name;
-    
-        strncpy(search_path, path, strlen(path)+1);
-        strncat (search_path, OPAL_PATH_SEP"*", 3);
-        file = FindFirstFile(search_path, &file_data);
-    
-        if (INVALID_HANDLE_VALUE == file) {
-            FindClose(file);
-            return OPAL_ERROR;
-        } 
-    
-        do {
-            /* Skip . and .. */
-            if ((0 == strcmp(file_data.cFileName, ".")) ||
-                (0 == strcmp(file_data.cFileName, "..")) ) {
-                    continue;
+        /* Directories are recursively destroyed */
+        if(is_dir) {
+            rc = opal_os_dirpath_destroy(filenm, recursive, cbfunc);
+            free(filenm);
+            if (OPAL_SUCCESS != rc) {
+                exit_status = rc;
+                closedir(dp);
+                goto cleanup;
             }
-        
-            is_dir = false;
-            if(file_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
-                is_dir = true;
-            } 
-            /*
-             * If not recursively decending, then if we find a directory then fail
-             * since we were not told to remove it.
-             */
-            if( is_dir && !recursive) {
-                /* Set the error indicating that we found a directory,
-                 * but continue removing files
-                 */
+        }
+        /* Files are removed right here */
+        else {
+            if( 0 != (rc = unlink(filenm) ) ) {
                 exit_status = OPAL_ERROR;
-                continue;
             }
-        
-            /* Will the caller allow us to remove this file/directory */
-            if( NULL != cbfunc) {
-                /*
-                 * Caller does not wish to remove this file/directory,
-                 * continue with the rest of the entries
-                 */
-                if( !cbfunc(path, file_data.cFileName) ) {
-                    continue;
-                }
-            }
-
-            file_name = opal_os_path(false, path, file_data.cFileName, NULL);
-            if( is_dir ) {
-                if( OPAL_SUCCESS != (rc = opal_os_dirpath_destroy(file_name,
-                                                                  recursive,
-                                                                  cbfunc) ) ) {
-                    exit_status = rc;
-                    free(file_name);
-                    FindClose(file);
-                    goto cleanup;
-                }
-            } else {
-                DeleteFile(file_name);
-            }
-            free(file_name);
-        } while( 0 != FindNextFile(file, &file_data) );
-    
-        FindClose(file);
+            free(filenm);
+        }
     }
-#endif
-    
+
+    /* Done with this directory */
+    closedir(dp);
+
  cleanup:
-    
+
     /*
      * If the directory is empty, them remove it
      */
@@ -363,65 +263,30 @@ int opal_os_dirpath_destroy(const char *path,
 }
 
 bool opal_os_dirpath_is_empty(const char *path ) {
-#ifndef __WINDOWS__
     DIR *dp;
     struct dirent *ep;
-    
+
     if (NULL != path) {  /* protect against error */
-    	dp = opendir(path);
-    	if (NULL != dp) {
-    	    while ((ep = readdir(dp))) {
-        		if ((0 != strcmp(ep->d_name, ".")) &&
-        		    (0 != strcmp(ep->d_name, ".."))) {
+        dp = opendir(path);
+        if (NULL != dp) {
+            while ((ep = readdir(dp))) {
+                        if ((0 != strcmp(ep->d_name, ".")) &&
+                            (0 != strcmp(ep->d_name, ".."))) {
                             closedir(dp);
-        		    return false;
-        		}
-    	    }
-    	    closedir(dp);
-    	    return true;
-    	}
-    	return false;
+                            return false;
+                        }
+            }
+            closedir(dp);
+            return true;
+        }
+        return false;
     }
 
     return true;
-#else 
-    char search_path[MAX_PATH];
-    HANDLE file;
-    WIN32_FIND_DATA file_data;
-    bool found = false;
-
-    if (NULL != path) {
-        strncpy(search_path, path, strlen(path)+1);
-        strncat (search_path, "\\*", 3);
-
-        file = FindFirstFile(search_path, &file_data);
-        if (INVALID_HANDLE_VALUE == file) {
-            goto cleanup;
-        }
-
-        do {
-            if (0 != strcmp(file_data.cFileName, ".") || 0 != strcmp(file_data.cFileName, "..")) {
-                found = true;
-                goto cleanup;
-            }
-        } while (0 != FindNextFile(file, &file_data));
-    }
-  cleanup:
-    FindClose(file);
-    return found;
-#endif /* ifndef __WINDOWS__ */
 }
 
 int opal_os_dirpath_access(const char *path, const mode_t in_mode ) {
-#ifndef __WINDOWS__
     struct stat buf;
-#else
-#  ifndef _MSC_VER
-    struct stat buf;
-#  else
-    struct __stat64 buf;
-#  endif
-#endif
     mode_t loc_mode = S_IRWXU;  /* looking for full rights */
 
     /*
@@ -431,11 +296,7 @@ int opal_os_dirpath_access(const char *path, const mode_t in_mode ) {
         loc_mode = in_mode;
     }
 
-#ifndef __WINDOWS__
     if (0 == stat(path, &buf)) { /* exists - check access */
-#else
-    if (0 == _stat64(path, &buf)) { /* exist -- check */
-#endif
         if ((buf.st_mode & loc_mode) == loc_mode) { /* okay, I can work here */
             return(OPAL_SUCCESS);
         }
@@ -449,4 +310,3 @@ int opal_os_dirpath_access(const char *path, const mode_t in_mode ) {
         return( OPAL_ERR_NOT_FOUND );
     }
 }
-

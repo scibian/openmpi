@@ -3,19 +3,19 @@
  * Copyright (c) 2004-2006 The Trustees of Indiana University and Indiana
  *                         University Research and Technology
  *                         Corporation.  All rights reserved.
- * Copyright (c) 2004-2009 The University of Tennessee and The University
+ * Copyright (c) 2004-2014 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2006 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2006 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2006 The Regents of the University of California.
  *                         All rights reserved.
  * Copyright (c) 2006      Sun Microsystems Inc. All rights reserved.
  * Copyright (c) 2009      Oak Ridge National Labs.  All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -36,8 +36,8 @@
 
 #define DUMP_DATA_AFTER_COMMIT 0x00000001
 #define CHECK_PACK_UNPACK      0x00000002
-
-uint32_t outputFlags = CHECK_PACK_UNPACK;
+#define VALIDATE_DATA          0x00000004
+uint32_t outputFlags = CHECK_PACK_UNPACK | VALIDATE_DATA;
 
 /**
  * Cache cleanup.
@@ -56,7 +56,7 @@ void cache_trash( void )
 /**
  * Data-type functions.
  */
-ompi_datatype_t* create_inversed_vector( ompi_datatype_t* type, int length )
+ompi_datatype_t* create_inversed_vector( const ompi_datatype_t* type, int length )
 {
    ompi_datatype_t* type1;
 
@@ -209,7 +209,7 @@ int mpich_typeub2( void )
 
 int mpich_typeub3( void )
 {
-   int blocklen[2], err = 0, idisp[3];
+   int blocklen[3], err = 0, idisp[3];
    size_t sz;
    MPI_Aint disp[3], lb, ub, ex;
    ompi_datatype_t *types[3], *dt1, *dt2, *dt3, *dt4, *dt5;
@@ -219,13 +219,13 @@ int mpich_typeub3( void )
    blocklen[1] = 1;
    blocklen[2] = 1;
    disp[0] = -3;
-   disp[1] = 0; 
+   disp[1] = 0;
    disp[2] = 6;
    types[0] = &ompi_mpi_lb.dt;  /* ompi_datatype_basicDatatypes[DT_LB]; */
    types[1] = &ompi_mpi_int.dt;  /* ompi_datatype_basicDatatypes[DT_INT]; */
    types[2] = &ompi_mpi_ub.dt;  /* ompi_datatype_basicDatatypes[DT_UB]; */
-   
-   /* Generate samples for contiguous, hindexed, hvector, indexed, and vector (struct and contiguous tested in typeub2) */                                                                                                                         
+
+   /* Generate samples for contiguous, hindexed, hvector, indexed, and vector (struct and contiguous tested in typeub2) */
    ompi_datatype_create_struct(3,blocklen,disp, types,&dt1);
    ompi_datatype_commit(&dt1);
 
@@ -327,7 +327,7 @@ int init_random_upper_matrix( unsigned int N, double* mat )
             mat++;
         }
     }
-    return OMPI_SUCCESS;  
+    return OMPI_SUCCESS;
 }
 
 int check_diag_matrix( unsigned int N, double* mat1, double* mat2 )
@@ -401,7 +401,7 @@ ompi_datatype_t* test_matrix_borders( unsigned int size, unsigned int width )
    ompi_datatype_t *pdt, *pdt_line;
    int disp[2];
    int blocklen[2];
-   
+
    disp[0] = 0;
    blocklen[0] = width;
    disp[1] = (size - width) * sizeof(double);
@@ -480,7 +480,7 @@ ompi_datatype_t* test_create_twice_two_doubles( void )
 /*
   Datatype 0x832cf28 size 0 align 1 id 0 length 4 used 0
   true_lb 0 true_ub 0 (true_extent 0) lb 0 ub 0 (extent 0)
-  nbElems 0 loops 0 flags 6 (commited contiguous )-cC--------[---][---]
+  nbElems 0 loops 0 flags 6 (committed contiguous )-cC--------[---][---]
   contain 13 disp 0x420 (1056) extent 4
   --C-----D*-[ C ][INT]        MPI_INT count 13 disp 0x478 (1144) extent 4
   --C-----D*-[ C ][INT]        MPI_INT count 13 disp 0x4d0 (1232) extent 4
@@ -517,7 +517,7 @@ ompi_datatype_t* test_create_blacs_type( void )
     return pdt;
 }
 
-ompi_datatype_t* test_create_blacs_type1( ompi_datatype_t* base_type )
+ompi_datatype_t* test_create_blacs_type1( const ompi_datatype_t* base_type )
 {
     ompi_datatype_t *pdt;
 
@@ -529,7 +529,7 @@ ompi_datatype_t* test_create_blacs_type1( ompi_datatype_t* base_type )
     return pdt;
 }
 
-ompi_datatype_t* test_create_blacs_type2( ompi_datatype_t* base_type )
+ompi_datatype_t* test_create_blacs_type2( const ompi_datatype_t* base_type )
 {
     ompi_datatype_t *pdt;
 
@@ -544,12 +544,12 @@ ompi_datatype_t* test_create_blacs_type2( ompi_datatype_t* base_type )
 ompi_datatype_t* test_struct( void )
 {
     ompi_datatype_t* types[] = { &ompi_mpi_float.dt  /* ompi_datatype_basicDatatypes[DT_FLOAT] */,
-                                 NULL, 
+                                 NULL,
                                  &ompi_mpi_char.dt  /* ompi_datatype_basicDatatypes[DT_CHAR] */ };
     int lengths[] = { 2, 1, 3 };
     MPI_Aint disp[] = { 0, 16, 26 };
     ompi_datatype_t* pdt, *pdt1;
-   
+
     printf( "test struct\n" );
     ompi_datatype_create_contiguous(0, &ompi_mpi_datatype_null.dt, &pdt1);
     ompi_datatype_add( pdt1, &ompi_mpi_double.dt, 1, 0, -1 );
@@ -566,6 +566,38 @@ ompi_datatype_t* test_struct( void )
         ompi_datatype_dump( pdt );
     }
     return pdt;
+}
+
+/* Create a non-contiguous resized datatype */
+struct structure {
+    double not_transfered;
+    double transfered_1;
+    double transfered_2;
+};
+
+ompi_datatype_t* create_struct_constant_gap_resized_ddt( ompi_datatype_t* type )
+{
+    struct structure data[1];
+    ompi_datatype_t *struct_type, *temp_type;
+    ompi_datatype_t *types[2] = {type, type};
+    int blocklens[2] = {1, 1};
+    MPI_Aint disps[3];
+
+    MPI_Get_address(&data[0].transfered_1, &disps[0]);
+    MPI_Get_address(&data[0].transfered_2, &disps[1]);
+    MPI_Get_address(&data[0], &disps[2]);
+    disps[1] -= disps[2]; /*  8 */
+    disps[0] -= disps[2]; /* 16 */
+
+    ompi_datatype_create_struct(2, blocklens, disps, types, &temp_type);
+    ompi_datatype_create_resized(temp_type, 0, sizeof(data[0]), &struct_type);
+    ompi_datatype_commit(&struct_type);
+    OBJ_RELEASE(temp_type); assert( temp_type == NULL );
+    if( outputFlags & DUMP_DATA_AFTER_COMMIT ) {
+        ompi_datatype_dump( struct_type );
+    }
+
+    return struct_type;
 }
 
 typedef struct {

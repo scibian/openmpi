@@ -9,7 +9,7 @@
 
 AM_CPPFLAGS = $(mtl_mxm_CPPFLAGS)
 
-dist_pkgdata_DATA = help-mtl-mxm.txt
+dist_ompidata_DATA = help-mtl-mxm.txt
 
 mtl_mxm_sources = \
 	       mtl_mxm.c \
@@ -29,7 +29,7 @@ mtl_mxm_sources = \
 # mca_<type>_<name>.la (for DSO builds) or libmca_<type>_<name>.la
 # (for static builds).
 
-if OMPI_BUILD_mtl_mxm_DSO
+if MCA_BUILD_ompi_mtl_mxm_DSO
 component_noinst =
 component_install = mca_mtl_mxm.la
 else
@@ -37,7 +37,7 @@ component_noinst = libmca_mtl_mxm.la
 component_install =
 endif
 
-mcacomponentdir = $(pkglibdir)
+mcacomponentdir = $(ompilibdir)
 mcacomponent_LTLIBRARIES = $(component_install)
 mca_mtl_mxm_la_SOURCES = $(mtl_mxm_sources)
 mca_mtl_mxm_la_LIBADD = $(mtl_mxm_LIBS)

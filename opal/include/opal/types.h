@@ -5,14 +5,15 @@
  * Copyright (c) 2004-2005 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
+ * Copyright (c) 2014      Intel, Inc. All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -21,9 +22,7 @@
 
 #include "opal_config.h"
 
-#ifdef HAVE_STDINT_H
 #include <stdint.h>
-#endif
 #ifdef HAVE_SYS_TYPES_H
 #include <sys/types.h>
 #endif
@@ -44,7 +43,6 @@
 #include "opal/util/output.h"
 #endif
 
-
 /*
  * portable assignment of pointer to int
  */
@@ -57,16 +55,18 @@ typedef union {
        uint32_t uval;
        uint32_t lval;
    } sval;
-} ompi_ptr_t;
+} opal_ptr_t;
 
 /*
  * handle differences in iovec
  */
 
 #if defined(__APPLE__) || defined(__WINDOWS__)
-typedef char* ompi_iov_base_ptr_t;
+typedef char* opal_iov_base_ptr_t;
+#define OPAL_IOVBASE char
 #else
-typedef void* ompi_iov_base_ptr_t;
+#define OPAL_IOVBASE void
+typedef void* opal_iov_base_ptr_t;
 #endif
 
 /*
@@ -131,18 +131,18 @@ static inline uint64_t ntoh64(uint64_t val)
 /**
  * Convert between a local representation of pointer and a 64 bits value.
  */
-static inline uint64_t ompi_ptr_ptol( void* ptr ) __opal_attribute_const__;
-static inline uint64_t ompi_ptr_ptol( void* ptr )
+static inline uint64_t opal_ptr_ptol( void* ptr ) __opal_attribute_const__;
+static inline uint64_t opal_ptr_ptol( void* ptr )
 {
     return (uint64_t)(uintptr_t) ptr;
 }
 
-static inline void* ompi_ptr_ltop( uint64_t value ) __opal_attribute_const__;
-static inline void* ompi_ptr_ltop( uint64_t value )
+static inline void* opal_ptr_ltop( uint64_t value ) __opal_attribute_const__;
+static inline void* opal_ptr_ltop( uint64_t value )
 {
 #if SIZEOF_VOID_P == 4 && OPAL_ENABLE_DEBUG
     if (value > ((1ULL << 32) - 1ULL)) {
-        opal_output(0, "Warning: truncating value in ompi_ptr_ltop");
+        opal_output(0, "Warning: truncating value in opal_ptr_ltop");
     }
 #endif
     return (void*)(uintptr_t) value;
@@ -150,7 +150,7 @@ static inline void* ompi_ptr_ltop( uint64_t value )
 
 #if defined(WORDS_BIGENDIAN) || !defined(HAVE_UNIX_BYTESWAP)
 static inline uint16_t opal_swap_bytes2(uint16_t val) __opal_attribute_const__;
-static inline uint16_t opal_swap_bytes2(uint16_t val) 
+static inline uint16_t opal_swap_bytes2(uint16_t val)
 {
     union { uint16_t bigval;
             uint8_t  arrayval[2];
@@ -195,7 +195,7 @@ static inline uint64_t opal_swap_bytes8(uint64_t val)
     r.arrayval[5] = w.arrayval[2];
     r.arrayval[6] = w.arrayval[1];
     r.arrayval[7] = w.arrayval[0];
-    
+
     return r.bigval;
 }
 

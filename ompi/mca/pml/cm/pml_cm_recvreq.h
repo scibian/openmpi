@@ -1,14 +1,18 @@
+/* -*- Mode: C; c-basic-offset:4 ; indent-tabs-mode:nil -*- */
 /*
  * Copyright (c) 2004-2005 The Trustees of Indiana University and Indiana
  *                         University Research and Technology
  *                         Corporation.  All rights reserved.
- * Copyright (c) 2004-2007 The University of Tennessee and The University
+ * Copyright (c) 2004-2013 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2006 The Regents of the University of California.
  *                         All rights reserved.
+ * Copyright (c) 2012      Sandia National Laboratories.  All rights reserved.
+ * Copyright (c) 2015      Los Alamos National Security, LLC. All rights
+ *                         reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -40,7 +44,7 @@ struct mca_pml_cm_hvy_recv_request_t {
     size_t req_bytes_packed;              /**< packed size of a message given the datatype and count */
     bool req_blocking;
     mca_mtl_request_t req_mtl;            /**< the mtl specific memory. This field should be the last in the struct */
-}; 
+};
 typedef struct mca_pml_cm_hvy_recv_request_t mca_pml_cm_hvy_recv_request_t;
 
 OBJ_CLASS_DECLARATION(mca_pml_cm_hvy_recv_request_t);
@@ -51,21 +55,19 @@ OBJ_CLASS_DECLARATION(mca_pml_cm_hvy_recv_request_t);
  *  @param rc (OUT)  OMPI_SUCCESS or error status on failure.
  *  @return          Receive request.
  */
-#define MCA_PML_CM_THIN_RECV_REQUEST_ALLOC(recvreq, rc)                        \
-    do {                                                                       \
-    ompi_free_list_item_t*item;                                                \
-    OMPI_FREE_LIST_GET(&mca_pml_base_recv_requests, item, rc);                 \
-    recvreq = (mca_pml_cm_thin_recv_request_t*) item;                          \
+#define MCA_PML_CM_THIN_RECV_REQUEST_ALLOC(recvreq)                            \
+do {                                                                           \
+    recvreq = (mca_pml_cm_thin_recv_request_t*)                                \
+      opal_free_list_get (&mca_pml_base_recv_requests);                        \
     recvreq->req_base.req_pml_type = MCA_PML_CM_REQUEST_RECV_THIN;             \
     recvreq->req_mtl.ompi_req = (ompi_request_t*) recvreq;                     \
     recvreq->req_mtl.completion_callback = mca_pml_cm_recv_request_completion; \
  } while (0)
 
-#define MCA_PML_CM_HVY_RECV_REQUEST_ALLOC(recvreq, rc)                         \
+#define MCA_PML_CM_HVY_RECV_REQUEST_ALLOC(recvreq)                             \
 do {                                                                           \
-    ompi_free_list_item_t*item;                                                \
-    OMPI_FREE_LIST_GET(&mca_pml_base_recv_requests, item, rc);                 \
-    recvreq = (mca_pml_cm_hvy_recv_request_t*) item;                           \
+    recvreq = (mca_pml_cm_hvy_recv_request_t*)                                 \
+      opal_free_list_get (&mca_pml_base_recv_requests);                        \
     recvreq->req_base.req_pml_type = MCA_PML_CM_REQUEST_RECV_HEAVY;            \
     recvreq->req_mtl.ompi_req = (ompi_request_t*) recvreq;                     \
     recvreq->req_mtl.completion_callback = mca_pml_cm_recv_request_completion; \
@@ -80,14 +82,13 @@ do {                                                                           \
  * @param count (IN)         Number of elements of indicated datatype.
  * @param datatype (IN)      User defined datatype.
  * @param src (IN)           Source rank w/in the communicator.
- * @param tag (IN)           User defined tag.
  * @param comm (IN)          Communicator.
  * @param persistent (IN)    Is this a ersistent request.
  */
+#if OPAL_ENABLE_HETEROGENEOUS_SUPPORT
 #define MCA_PML_CM_THIN_RECV_REQUEST_INIT( request,                     \
                                            ompi_proc,                   \
                                            comm,                        \
-                                           tag,                         \
                                            src,                         \
                                            datatype,                    \
                                            addr,                        \
@@ -108,14 +109,42 @@ do {                                                                    \
         ompi_proc = ompi_comm_peer_lookup( comm, src );                 \
     }                                                                   \
     opal_convertor_copy_and_prepare_for_recv(                           \
-                                  ompi_proc->proc_convertor,            \
+                                  ompi_proc->super.proc_convertor,      \
                                   &(datatype->super),                   \
                                   count,                                \
                                   addr,                                 \
                                   0,                                    \
                                   &(request)->req_base.req_convertor ); \
 } while(0)
+#else
+#define MCA_PML_CM_THIN_RECV_REQUEST_INIT( request,                     \
+                                           ompi_proc,                   \
+                                           comm,                        \
+                                           src,                         \
+                                           datatype,                    \
+                                           addr,                        \
+                                           count )                      \
+do {                                                                    \
+    OMPI_REQUEST_INIT(&(request)->req_base.req_ompi, false);            \
+    (request)->req_base.req_ompi.req_mpi_object.comm = comm;            \
+    (request)->req_base.req_pml_complete = false;                       \
+    (request)->req_base.req_free_called = false;                        \
+    request->req_base.req_comm = comm;                                  \
+    request->req_base.req_datatype = datatype;                          \
+    OBJ_RETAIN(comm);                                                   \
+    OBJ_RETAIN(datatype);                                               \
+                                                                        \
+    opal_convertor_copy_and_prepare_for_recv(                           \
+        ompi_mpi_local_convertor,                                       \
+        &(datatype->super),                                             \
+        count,                                                          \
+        addr,                                                           \
+        0,                                                              \
+        &(request)->req_base.req_convertor );                           \
+} while(0)
+#endif
 
+#if OPAL_ENABLE_HETEROGENEOUS_SUPPORT
 #define MCA_PML_CM_HVY_RECV_REQUEST_INIT( request,                      \
                                           ompi_proc,                    \
                                           comm,                         \
@@ -145,14 +174,46 @@ do {                                                                    \
         ompi_proc = ompi_comm_peer_lookup( comm, src );                 \
     }                                                                   \
     opal_convertor_copy_and_prepare_for_recv(                           \
-                                  ompi_proc->proc_convertor,            \
+                                  ompi_proc->super.proc_convertor,      \
                                   &(datatype->super),                   \
                                   count,                                \
                                   addr,                                 \
                                   0,                                    \
                                   &(request)->req_base.req_convertor ); \
  } while(0)
-
+#else
+#define MCA_PML_CM_HVY_RECV_REQUEST_INIT( request,                      \
+                                          ompi_proc,                    \
+                                          comm,                         \
+                                          tag,                          \
+                                          src,                          \
+                                          datatype,                     \
+                                          addr,                         \
+                                          count,                        \
+                                          persistent)                   \
+do {                                                                    \
+    OMPI_REQUEST_INIT(&(request)->req_base.req_ompi, persistent);       \
+    (request)->req_base.req_ompi.req_mpi_object.comm = comm;            \
+    (request)->req_base.req_pml_complete = OPAL_INT_TO_BOOL(persistent); \
+    (request)->req_base.req_free_called = false;                        \
+    request->req_base.req_comm = comm;                                  \
+    request->req_base.req_datatype = datatype;                          \
+    request->req_tag = tag;                                             \
+    request->req_peer = src;                                            \
+    request->req_addr = addr;                                           \
+    request->req_count = count;                                         \
+    OBJ_RETAIN(comm);                                                   \
+    OBJ_RETAIN(datatype);                                               \
+                                                                        \
+    opal_convertor_copy_and_prepare_for_recv(                           \
+        ompi_mpi_local_convertor,                                       \
+        &(datatype->super),                                             \
+        count,                                                          \
+        addr,                                                           \
+        0,                                                              \
+        &(request)->req_base.req_convertor );                           \
+ } while(0)
+#endif
 
 /**
  * Start an initialized request.
@@ -180,6 +241,26 @@ do {                                                                    \
                               tag,                                      \
                               &recvreq->req_base.req_convertor,         \
                               &recvreq->req_mtl));                      \
+} while (0)
+
+#define MCA_PML_CM_THIN_RECV_REQUEST_MATCHED_START(request, message, ret) \
+do {                                                                    \
+    /* init/re-init the request */                                      \
+    request->req_base.req_pml_complete = false;                         \
+    request->req_base.req_ompi.req_complete = false;                    \
+    request->req_base.req_ompi.req_state = OMPI_REQUEST_ACTIVE;         \
+                                                                        \
+    /* always set the req_status.MPI_TAG to ANY_TAG before starting the \
+     * request. This field is used if cancelled to find out if the request \
+     * has been matched or not.                                         \
+     */                                                                 \
+    request->req_base.req_ompi.req_status.MPI_TAG = OMPI_ANY_TAG;       \
+    request->req_base.req_ompi.req_status.MPI_ERROR = OMPI_SUCCESS;     \
+    request->req_base.req_ompi.req_status._cancelled = 0;               \
+    ret = OMPI_MTL_CALL(imrecv(ompi_mtl,                                \
+                               &recvreq->req_base.req_convertor,        \
+                               message,                                 \
+                               &recvreq->req_mtl));                     \
 } while (0)
 
 
@@ -216,7 +297,7 @@ do {                                                                    \
 do {                                                                    \
     ompi_request_complete(  &(recvreq->req_base.req_ompi), true );      \
  } while (0)
-    
+
 
 /**
  *  Return a recv request to the modules free list.
@@ -227,15 +308,12 @@ do {                                                                    \
 do {                                                                    \
     assert( false == recvreq->req_base.req_pml_complete );              \
                                                                         \
-    OPAL_THREAD_LOCK(&ompi_request_lock);                               \
-                                                                        \
     if( true == recvreq->req_base.req_free_called ) {                   \
         MCA_PML_CM_THIN_RECV_REQUEST_RETURN( recvreq );                 \
     } else {                                                            \
         recvreq->req_base.req_pml_complete = true;                      \
         ompi_request_complete( &(recvreq->req_base.req_ompi), true );   \
     }                                                                   \
-    OPAL_THREAD_UNLOCK(&ompi_request_lock);                             \
  } while(0)
 
 
@@ -250,8 +328,6 @@ do {                                                                    \
 do {                                                                    \
     assert( false == recvreq->req_base.req_pml_complete );              \
                                                                         \
-    OPAL_THREAD_LOCK(&ompi_request_lock);                               \
-                                                                        \
     if( true == recvreq->req_base.req_free_called ) {                   \
         MCA_PML_CM_HVY_RECV_REQUEST_RETURN( recvreq );                  \
     } else {                                                            \
@@ -264,7 +340,6 @@ do {                                                                    \
         recvreq->req_base.req_pml_complete = true;                      \
         ompi_request_complete(  &(recvreq->req_base.req_ompi), true );  \
     }                                                                   \
-    OPAL_THREAD_UNLOCK(&ompi_request_lock);                             \
  } while(0)
 
 
@@ -277,8 +352,8 @@ do {                                                                    \
     OBJ_RELEASE((recvreq)->req_base.req_datatype);                      \
     OMPI_REQUEST_FINI(&(recvreq)->req_base.req_ompi);                   \
     opal_convertor_cleanup( &((recvreq)->req_base.req_convertor) );     \
-    OMPI_FREE_LIST_RETURN( &mca_pml_base_recv_requests,                 \
-                           (ompi_free_list_item_t*)(recvreq));          \
+    opal_free_list_return ( &mca_pml_base_recv_requests,                \
+                           (opal_free_list_item_t*)(recvreq));          \
 }
 
 /**
@@ -290,8 +365,8 @@ do {                                                                    \
     OBJ_RELEASE((recvreq)->req_base.req_datatype);                      \
     OMPI_REQUEST_FINI(&(recvreq)->req_base.req_ompi);                   \
     opal_convertor_cleanup( &((recvreq)->req_base.req_convertor) );     \
-    OMPI_FREE_LIST_RETURN( &mca_pml_base_recv_requests,                 \
-                           (ompi_free_list_item_t*)(recvreq));          \
+    opal_free_list_return ( &mca_pml_base_recv_requests,                \
+                           (opal_free_list_item_t*)(recvreq));          \
 }
 
 extern void mca_pml_cm_recv_request_completion(struct mca_mtl_request_t *mtl_request);

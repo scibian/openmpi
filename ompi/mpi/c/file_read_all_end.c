@@ -5,15 +5,17 @@
  * Copyright (c) 2004-2005 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
  * Copyright (c) 2008      Sun Microsystems, Inc.  All rights reserved.
+ * Copyright (c) 2015      Research Organization for Information Science
+ *                         and Technology (RIST). All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -24,12 +26,11 @@
 #include "ompi/errhandler/errhandler.h"
 #include "ompi/file/file.h"
 
-#if OPAL_HAVE_WEAK_SYMBOLS && OMPI_PROFILING_DEFINES
+#if OMPI_BUILD_MPI_PROFILING
+#if OPAL_HAVE_WEAK_SYMBOLS
 #pragma weak MPI_File_read_all_end = PMPI_File_read_all_end
 #endif
-
-#if OMPI_PROFILING_DEFINES
-#include "ompi/mpi/c/profile/defines.h"
+#define MPI_File_read_all_end PMPI_File_read_all_end
 #endif
 
 static const char FUNC_NAME[] = "MPI_File_read_all_end";
@@ -49,7 +50,6 @@ int MPI_File_read_all_end(MPI_File fh, void *buf, MPI_Status *status)
         OMPI_ERRHANDLER_CHECK(rc, fh, rc, FUNC_NAME);
     }
 
-    OPAL_CR_ENTER_LIBRARY();
 
     /* Call the back-end io component function */
 
@@ -65,6 +65,6 @@ int MPI_File_read_all_end(MPI_File fh, void *buf, MPI_Status *status)
     }
 
     /* All done */
-    
+
     OMPI_ERRHANDLER_RETURN(rc, fh, rc, FUNC_NAME);
 }

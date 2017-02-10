@@ -2,18 +2,20 @@
  * Copyright (c) 2004-2005 The Trustees of Indiana University and Indiana
  *                         University Research and Technology
  *                         Corporation.  All rights reserved.
- * Copyright (c) 2004-2007 The University of Tennessee and The University
+ * Copyright (c) 2004-2016 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
  * Copyright (c) 2006      Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2015      Research Organization for Information Science
+ *                         and Technology (RIST). All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 /**
@@ -31,11 +33,11 @@
 BEGIN_C_DECLS
 
 /**
- * Base type for send requests 
+ * Base type for send requests
  */
 struct mca_pml_base_send_request_t {
     mca_pml_base_request_t req_base;         /**< base request type - common data structure for use by wait/test */
-    void *req_addr;                          /**< pointer to send buffer - may not be application buffer */
+    const void *req_addr;                    /**< pointer to send buffer - may not be application buffer */
     size_t req_bytes_packed;                 /**< packed size of a message given the datatype and count */
     mca_pml_base_send_mode_t req_send_mode;  /**< type of send */
 };
@@ -79,14 +81,14 @@ OMPI_DECLSPEC OBJ_CLASS_DECLARATION( mca_pml_base_send_request_t );
       (request)->req_base.req_ompi.req_mpi_object.comm = comm;            \
       (request)->req_addr = addr;                                         \
       (request)->req_send_mode = mode;                                    \
-      (request)->req_base.req_addr = addr;                                \
+      (request)->req_base.req_addr = (void *)addr;                        \
       (request)->req_base.req_count = count;                              \
       (request)->req_base.req_datatype = datatype;                        \
       (request)->req_base.req_peer = (int32_t)peer;                       \
       (request)->req_base.req_tag = (int32_t)tag;                         \
       (request)->req_base.req_comm = comm;                                \
       /* (request)->req_base.req_proc is set on request allocation */     \
-      (request)->req_base.req_pml_complete = OPAL_INT_TO_BOOL(persistent); \
+      (request)->req_base.req_pml_complete = false;                       \
       (request)->req_base.req_free_called = false;                        \
       (request)->req_base.req_ompi.req_status._cancelled = 0;             \
       (request)->req_bytes_packed = 0;                                    \
@@ -97,7 +99,7 @@ OMPI_DECLSPEC OBJ_CLASS_DECLARATION( mca_pml_base_send_request_t );
          /* We will create a convertor specialized for the        */      \
          /* remote architecture and prepared with the datatype.   */      \
          opal_convertor_copy_and_prepare_for_send(                        \
-                            (request)->req_base.req_proc->proc_convertor, \
+                            (request)->req_base.req_proc->super.proc_convertor, \
                             &((request)->req_base.req_datatype->super),   \
                             (request)->req_base.req_count,                \
                             (request)->req_base.req_addr,                 \
@@ -117,7 +119,7 @@ OMPI_DECLSPEC OBJ_CLASS_DECLARATION( mca_pml_base_send_request_t );
 #define MCA_PML_BASE_SEND_START( request )                    \
     do {                                                      \
         (request)->req_pml_complete = false;                  \
-        (request)->req_ompi.req_complete = false;             \
+        (request)->req_ompi.req_complete = REQUEST_PENDING;   \
         (request)->req_ompi.req_state = OMPI_REQUEST_ACTIVE;  \
         (request)->req_ompi.req_status._cancelled = 0;        \
     } while (0)

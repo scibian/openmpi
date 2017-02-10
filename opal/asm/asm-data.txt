@@ -5,14 +5,15 @@
 # Copyright (c) 2004-2005 The University of Tennessee and The University
 #                         of Tennessee Research Foundation.  All rights
 #                         reserved.
-# Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+# Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
 #                         University of Stuttgart.  All rights reserved.
 # Copyright (c) 2004-2005 The Regents of the University of California.
 #                         All rights reserved.
+# Copyright (c) 2014      Intel, Inc. All rights reserved.
 # $COPYRIGHT$
-# 
+#
 # Additional copyrights may follow
-# 
+#
 # $HEADER$
 #
 
@@ -26,15 +27,6 @@
 #
 # Assembly Format field:
 #   config_file-text-global-label_suffix-gsym-lsym-type-size-align_log-ppc_r_reg-64_bit-gnu_stack
-
-######################################################################
-#
-# Alpha
-#
-######################################################################
-
-ALPHA	default-.text-.globl-:--$-@-1-1-1-1-1	alpha-linux
-
 
 ######################################################################
 #
@@ -80,7 +72,7 @@ IA64	default-.text-.globl-:--.L-@-1-0-1-1-0	ia64-linux-nongas
 
 ######################################################################
 #
-# PowerPC / POWER 
+# PowerPC / POWER
 #
 ######################################################################
 
@@ -110,9 +102,6 @@ POWERPC64	aix-.csect .text[PR]-.globl-:-.-L--0-1-0-1-0	powerpc64-aix
 #
 ######################################################################
 
-# default compile mode on Solaris.  Evil.  equiv to about Sparc v8
-SPARC	default-.text-.globl-:--.L-#-1-0-1-0-0	sparc-solaris
-
 # Usually compiled with -xarch=v8plus.  Basically Sparc V9, but with
 # sizeof(void*) == 4 instead of 8.  Different from V9_64 because still
 # uses 2 registers to pass in a 64bit integer
@@ -136,3 +125,7 @@ SPARCV9_64	default-.text-.globl-:--.L-#-1-0-1-1-0	sparcv9-64-solaris
 
 MIPS	default-.text-.globl-:--L--1-1-1-1-0	mips-irix
 MIPS	default-.text-.globl-:--L--1-1-1-1-0	mips64el
+MIPS	default-.text-.globl-:--L-@-1-1-1-1-1	mips64-linux
+
+# However, this doesn't hold true for 32-bit MIPS as used on Linux.
+MIPS	default-.text-.globl-:--L-@-1-1-1-0-1	mips-linux

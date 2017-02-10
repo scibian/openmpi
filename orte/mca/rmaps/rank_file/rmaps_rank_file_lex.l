@@ -1,3 +1,6 @@
+%option nounput
+%option noinput
+
 %{ /* -*- C -*- */
 /*
  * Copyright (c) 2004-2005 The Trustees of Indiana University and Indiana
@@ -6,16 +9,20 @@
  * Copyright (c) 2004-2006 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
  * Copyright (c) 2008      Voltaire. All rights reserved
- *  
+ * Copyright (c) 2013      Los Alamos National Security, LLC.
+ *                         All rights reserved.
+ * Copyright (c) 2015      Research Organization for Information Science
+ *                         and Technology (RIST). All rights reserved.
+ *
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 #include "orte_config.h"
@@ -30,19 +37,15 @@
 
 BEGIN_C_DECLS
 
-static int finish_parsing(void);
 int orte_rmaps_rank_file_yywrap(void);
 
 END_C_DECLS
-
-#define yyterminate() \
-  return finish_parsing()
 
 /*
  * global variables
  */
 int orte_rmaps_rank_file_line=1;
-orte_rmaps_rank_file_value_t orte_rmaps_rank_file_value;
+orte_rmaps_rank_file_value_t orte_rmaps_rank_file_value = {0};
 bool orte_rmaps_rank_file_done = false;
 
 %}
@@ -53,11 +56,11 @@ WHITE       [\f\t\v ]
 
 %%
 
-{WHITE}*\n         { orte_rmaps_rank_file_line++; 
+{WHITE}*\n         { orte_rmaps_rank_file_line++;
                      return ORTE_RANKFILE_NEWLINE; }
-#.*\n              { orte_rmaps_rank_file_line++; 
+#.*\n              { orte_rmaps_rank_file_line++;
                      return ORTE_RANKFILE_NEWLINE; }
-"//".*\n           { orte_rmaps_rank_file_line++; 
+"//".*\n           { orte_rmaps_rank_file_line++;
                      return ORTE_RANKFILE_NEWLINE; }
 
 "/*"               { BEGIN(comment);
@@ -65,22 +68,22 @@ WHITE       [\f\t\v ]
 <comment>[^*\n]*       ; /* Eat up non '*'s */
 <comment>"*"+[^*/\n]*  ; /* Eat '*'s not followed by a '/' */
 <comment>\n        { orte_rmaps_rank_file_line++;
-                     return ORTE_RANKFILE_NEWLINE; } 
+                     return ORTE_RANKFILE_NEWLINE; }
 <comment>"*"+"/"   { BEGIN(INITIAL); /* Done with Block Comment */
                      return ORTE_RANKFILE_NEWLINE; }
 
-\"[^\"]*\"         { orte_rmaps_rank_file_value.sval = yytext; 
+\"[^\"]*\"         { orte_rmaps_rank_file_value.sval = yytext;
                      return ORTE_RANKFILE_QUOTED_STRING; }
 
-{WHITE}+           ;			
+{WHITE}+           ;
 
 "="                { return ORTE_RANKFILE_EQUAL; }
 
-rank                { orte_rmaps_rank_file_value.sval = yytext; 
+rank                { orte_rmaps_rank_file_value.sval = yytext;
                      return ORTE_RANKFILE_RANK; }
-slot               { orte_rmaps_rank_file_value.sval = yytext; 
+slot               { orte_rmaps_rank_file_value.sval = yytext;
                      return ORTE_RANKFILE_SLOT; }
-slots              { orte_rmaps_rank_file_value.sval = yytext;  
+slots              { orte_rmaps_rank_file_value.sval = yytext;
                      return ORTE_RANKFILE_SLOT; }
 
 username           { orte_rmaps_rank_file_value.sval = yytext;
@@ -90,7 +93,7 @@ username           { orte_rmaps_rank_file_value.sval = yytext;
 "user_name"        { orte_rmaps_rank_file_value.sval = yytext;
                      return ORTE_RANKFILE_USERNAME; }
 
-[0-9]+             { orte_rmaps_rank_file_value.ival = atol(yytext); 
+[0-9]+             { orte_rmaps_rank_file_value.ival = atol(yytext);
                      return ORTE_RANKFILE_INT; }
 %{ /* First detect hosts as standard Strings (but without ".")
     * then username@IPv4 or IPV4, then username@IPv6 or IPv6,
@@ -98,8 +101,8 @@ username           { orte_rmaps_rank_file_value.sval = yytext;
     */
 %}
 
-[A-za-z0-9_\-,:*@]*  { orte_rmaps_rank_file_value.sval = yytext;
-                     return ORTE_RANKFILE_STRING; }
+[A-Za-z0-9_\-,\;:*@]*  { orte_rmaps_rank_file_value.sval = yytext;
+                         return ORTE_RANKFILE_STRING; }
 
 ([A-Za-z0-9][A-Za-z0-9_\-]*"@")?([0-9]{1,3}"."){3}[0-9]{1,3} {
                       orte_rmaps_rank_file_value.sval = yytext;
@@ -110,25 +113,27 @@ username           { orte_rmaps_rank_file_value.sval = yytext;
                       return ORTE_RANKFILE_IPV6; }
 
 ([A-Za-z0-9][A-Za-z0-9_\-]*"@")?[A-Za-z][A-Za-z0-9_\-\.]*  {
-                     orte_rmaps_rank_file_value.sval = yytext; 
+                     orte_rmaps_rank_file_value.sval = yytext;
                      return ORTE_RANKFILE_HOSTNAME; }
 
 \+n[0-9]+           { orte_rmaps_rank_file_value.sval = yytext;
 					 return ORTE_RANKFILE_RELATIVE; }
 
-.                  { orte_rmaps_rank_file_value.sval = yytext; 
+.                  { orte_rmaps_rank_file_value.sval = yytext;
                      return ORTE_RANKFILE_ERROR; }
 
 %%
 
-/*
- * This cleans up at the end of the parse (since, in this case, we
- * always parse the entire file) and prevents a memory leak.
- */
-static int finish_parsing(void) 
+/* Old flex (2.5.4a? and older) does not define a destroy function */
+#if !defined(YY_FLEX_SUBMINOR_VERSION)
+#define YY_FLEX_SUBMINOR_VERSION 0
+#endif
+
+#if (YY_FLEX_MAJOR_VERSION < 2) || (YY_FLEX_MAJOR_VERSION == 2 && (YY_FLEX_MINOR_VERSION < 5 || (YY_FLEX_MINOR_VERSION == 5 && YY_FLEX_SUBMINOR_VERSION < 5)))
+int orte_rmaps_rank_file_lex_destroy (void)
 {
     if (NULL != YY_CURRENT_BUFFER) {
-        yy_delete_buffer(YY_CURRENT_BUFFER); 
+        yy_delete_buffer(YY_CURRENT_BUFFER);
 #if defined(YY_CURRENT_BUFFER_LVALUE)
         YY_CURRENT_BUFFER_LVALUE = NULL;
 #else
@@ -137,6 +142,7 @@ static int finish_parsing(void)
     }
     return YY_NULL;
 }
+#endif
 
 int orte_rmaps_rank_file_wrap(void)
 {

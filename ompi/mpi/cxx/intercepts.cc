@@ -1,32 +1,32 @@
 // -*- c++ -*-
-// 
+//
 // Copyright (c) 2004-2005 The Trustees of Indiana University and Indiana
 //                         University Research and Technology
 //                         Corporation.  All rights reserved.
 // Copyright (c) 2004-2005 The University of Tennessee and The University
 //                         of Tennessee Research Foundation.  All rights
 //                         reserved.
-// Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+// Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
 //                         University of Stuttgart.  All rights reserved.
 // Copyright (c) 2004-2005 The Regents of the University of California.
 //                         All rights reserved.
 // Copyright (c) 2006-2009 Cisco Systems, Inc.  All rights reserved.
 // Copyright (c) 2009      Sun Microsystems, Inc.  All rights reserved.
+// Copyright (c) 2016      Los Alamos National Security, LLC. All rights
+//                         reserved.
 // $COPYRIGHT$
-// 
+//
 // Additional copyrights may follow
-// 
+//
 // $HEADER$
 //
 
 
 #include "mpicxx.h"
-#include <stdio.h>
+#include <cstdio>
 
 #include "ompi_config.h"
-#include "ompi/errhandler/errhandler.h"
-#include "ompi/communicator/communicator.h"
-#include "ompi/datatype/ompi_datatype.h"
+#include "cxx_glue.h"
 
 extern "C"
 void ompi_mpi_cxx_throw_exception(int *errcode)
@@ -38,12 +38,12 @@ void ompi_mpi_cxx_throw_exception(int *errcode)
   // and -lmpi++ (which can legally happen in the LAM MPI implementation,
   // and probably in MPICH and others who include -lmpi++ by default in their
   // wrapper compilers)
-  fprintf(stderr, "MPI 2 C++ exception throwing is disabled, MPI::mpi_errno has the error code\n"); 
+  fprintf(stderr, "MPI 2 C++ exception throwing is disabled, MPI::mpi_errno has the error code\n");
   MPI::mpi_errno = *errcode;
-#endif  
+#endif
 }
 
-extern "C" 
+extern "C"
 void ompi_mpi_cxx_comm_throw_excptn_fctn(MPI_Comm *, int *errcode, ...)
 {
     /* Portland compiler raises a warning if va_start is not used in a
@@ -55,7 +55,7 @@ void ompi_mpi_cxx_comm_throw_excptn_fctn(MPI_Comm *, int *errcode, ...)
 }
 
 #if OMPI_PROVIDE_MPI_FILE_INTERFACE
-extern "C" 
+extern "C"
 void ompi_mpi_cxx_file_throw_excptn_fctn(MPI_File *, int *errcode, ...)
 {
     va_list ap;
@@ -65,7 +65,7 @@ void ompi_mpi_cxx_file_throw_excptn_fctn(MPI_File *, int *errcode, ...)
 }
 #endif
 
-extern "C" 
+extern "C"
 void ompi_mpi_cxx_win_throw_excptn_fctn(MPI_Win *, int *errcode, ...)
 {
     va_list ap;
@@ -78,14 +78,14 @@ void ompi_mpi_cxx_win_throw_excptn_fctn(MPI_Win *, int *errcode, ...)
 void
 MPI::InitializeIntercepts()
 {
-    ompi_mpi_errors_throw_exceptions.eh.eh_comm_fn = 
-        ompi_mpi_cxx_comm_throw_excptn_fctn;
+    ompi_cxx_errhandler_set_callbacks ((struct ompi_errhandler_t *) &ompi_mpi_errors_throw_exceptions,
+                                       ompi_mpi_cxx_comm_throw_excptn_fctn,
 #if OMPI_PROVIDE_MPI_FILE_INTERFACE
-    ompi_mpi_errors_throw_exceptions.eh.eh_file_fn = 
-        ompi_mpi_cxx_file_throw_excptn_fctn;
+                                       ompi_mpi_cxx_file_throw_excptn_fctn,
+#else
+                                       NULL,
 #endif
-    ompi_mpi_errors_throw_exceptions.eh.eh_win_fn = 
-        ompi_mpi_cxx_win_throw_excptn_fctn;
+                                       ompi_mpi_cxx_win_throw_excptn_fctn);
 }
 
 
@@ -93,16 +93,15 @@ MPI::InitializeIntercepts()
 // the express purpose of having a C++ entity call back the C++
 // function (so that types can be converted, etc.).
 extern "C"
-void ompi_mpi_cxx_comm_errhandler_invoke(ompi_errhandler_t *c_errhandler,
-                                         MPI_Comm *c_comm, int *err, 
-                                         const char *message)
+void ompi_mpi_cxx_comm_errhandler_invoke(MPI_Comm *c_comm, int *err,
+                                         const char *message, void *comm_fn)
 {
     // MPI::Comm is an abstract base class; can't instantiate one of
     // those.  So fake it by instantiating an MPI::Intracomm and then
     // casting it down to an (MPI::Comm&) when invoking the callback.
     MPI::Intracomm cxx_comm(*c_comm);
-    MPI::Comm::Errhandler_function *cxx_fn = 
-        (MPI::Comm::Errhandler_function*) c_errhandler->eh_comm_fn;
+    MPI::Comm::Errhandler_function *cxx_fn =
+        (MPI::Comm::Errhandler_function*) comm_fn;
 
     cxx_fn((MPI::Comm&) cxx_comm, err, message);
 }
@@ -112,13 +111,12 @@ void ompi_mpi_cxx_comm_errhandler_invoke(ompi_errhandler_t *c_errhandler,
 // the express purpose of having a C++ entity call back the C++
 // function (so that types can be converted, etc.).
 extern "C"
-void ompi_mpi_cxx_file_errhandler_invoke(ompi_errhandler_t *c_errhandler,
-                                         MPI_File *c_file, int *err, 
-                                         const char *message)
+void ompi_mpi_cxx_file_errhandler_invoke(MPI_File *c_file, int *err,
+                                         const char *message, void *file_fn)
 {
     MPI::File cxx_file(*c_file);
-    MPI::File::Errhandler_function *cxx_fn = 
-        (MPI::File::Errhandler_function*) c_errhandler->eh_file_fn;
+    MPI::File::Errhandler_function *cxx_fn =
+        (MPI::File::Errhandler_function*) file_fn;
 
     cxx_fn(cxx_file, err, message);
 }
@@ -128,13 +126,12 @@ void ompi_mpi_cxx_file_errhandler_invoke(ompi_errhandler_t *c_errhandler,
 // the express purpose of having a C++ entity call back the C++
 // function (so that types can be converted, etc.).
 extern "C"
-void ompi_mpi_cxx_win_errhandler_invoke(ompi_errhandler_t *c_errhandler,
-                                        MPI_Win *c_win, int *err, 
-                                        const char *message)
+void ompi_mpi_cxx_win_errhandler_invoke(MPI_Win *c_win, int *err,
+                                        const char *message, void *win_fn)
 {
     MPI::Win cxx_win(*c_win);
-    MPI::Win::Errhandler_function *cxx_fn = 
-        (MPI::Win::Errhandler_function*) c_errhandler->eh_win_fn;
+    MPI::Win::Errhandler_function *cxx_fn =
+        (MPI::Win::Errhandler_function*) win_fn;
 
     cxx_fn(cxx_win, err, message);
 }
@@ -209,10 +206,10 @@ void ompi_mpi_cxx_win_errhandler_invoke(ompi_errhandler_t *c_errhandler,
 // bindings, in fact), and pass it the ompi_mpi_cxx_op_intercept()
 // function (casting it to (MPI_User_function*) -- it's a function
 // pointer, so its size is guaranteed to be the same, even if the
-// signature of the real function is different).  
+// signature of the real function is different).
 //
 // 3. The function pointer to ompi_mpi_cxx_op_intercept() will be
-// cached in the MPI_Op in op->o_func[0].cxx_intercept_fn.  
+// cached in the MPI_Op in op->o_func[0].cxx_intercept_fn.
 //
 // Recall that MPI_Op is implemented to have an array of function
 // pointers so that optimized versions of reduction operations can be
@@ -228,7 +225,7 @@ void ompi_mpi_cxx_win_errhandler_invoke(ompi_errhandler_t *c_errhandler,
 // multiple different function pointer types -- it doesn't matter
 // which type the user's callback function pointer is stored in; since
 // all the types in the union are function pointers, it's guaranteed
-// to be large enough to hold what we need.  
+// to be large enough to hold what we need.
 //
 // Note that we don't have a member of the union for the C++ callback
 // function because its signature includes a (MPI::Datatype&), which
@@ -250,7 +247,7 @@ void ompi_mpi_cxx_win_errhandler_invoke(ompi_errhandler_t *c_errhandler,
 // Wasn't that simple?
 //
 extern "C" void
-ompi_mpi_cxx_op_intercept(void *invec, void *outvec, int *len, 
+ompi_mpi_cxx_op_intercept(void *invec, void *outvec, int *len,
                           MPI_Datatype *datatype, MPI_User_function *c_fn)
 {
     MPI::Datatype cxx_datatype = *datatype;
@@ -262,14 +259,14 @@ ompi_mpi_cxx_op_intercept(void *invec, void *outvec, int *len,
 // Attribute copy functions -- comm, type, and win
 //
 extern "C" int
-ompi_mpi_cxx_comm_copy_attr_intercept(MPI_Comm comm, int keyval, 
-                                      void *extra_state, 
-                                      void *attribute_val_in, 
+ompi_mpi_cxx_comm_copy_attr_intercept(MPI_Comm comm, int keyval,
+                                      void *extra_state,
+                                      void *attribute_val_in,
                                       void *attribute_val_out, int *flag,
                                       MPI_Comm newcomm)
 {
   int ret = 0;
-  MPI::Comm::keyval_intercept_data_t *kid = 
+  MPI::Comm::keyval_intercept_data_t *kid =
       (MPI::Comm::keyval_intercept_data_t*) extra_state;
 
   // The callback may be in C or C++.  If it's in C, it's easy - just
@@ -286,31 +283,38 @@ ompi_mpi_cxx_comm_copy_attr_intercept(MPI_Comm comm, int keyval,
   MPI::Intercomm intercomm;
   MPI::Graphcomm graphcomm;
   MPI::Cartcomm cartcomm;
-  
-  bool bflag = OPAL_INT_TO_BOOL(*flag); 
+
+  bool bflag = OPAL_INT_TO_BOOL(*flag);
 
   if (NULL != kid->cxx_copy_fn) {
-      if (OMPI_COMM_IS_GRAPH(comm)) {
+      ompi_cxx_communicator_type_t comm_type =
+          ompi_cxx_comm_get_type (comm);
+      switch (comm_type) {
+      case OMPI_CXX_COMM_TYPE_GRAPH:
           graphcomm = MPI::Graphcomm(comm);
           ret = kid->cxx_copy_fn(graphcomm, keyval, kid->extra_state,
-                                 attribute_val_in, attribute_val_out, 
+                                 attribute_val_in, attribute_val_out,
                                  bflag);
-      } else if (OMPI_COMM_IS_CART(comm)) {
+          break;
+      case OMPI_CXX_COMM_TYPE_CART:
           cartcomm = MPI::Cartcomm(comm);
           ret = kid->cxx_copy_fn(cartcomm, keyval, kid->extra_state,
-                                 attribute_val_in, attribute_val_out, 
+                                 attribute_val_in, attribute_val_out,
                                  bflag);
-      } else if (OMPI_COMM_IS_INTRA(comm)) {
+          break;
+      case OMPI_CXX_COMM_TYPE_INTRACOMM:
           intracomm = MPI::Intracomm(comm);
           ret = kid->cxx_copy_fn(intracomm, keyval, kid->extra_state,
-                                 attribute_val_in, attribute_val_out, 
+                                 attribute_val_in, attribute_val_out,
                                  bflag);
-      } else if (OMPI_COMM_IS_INTER(comm)) {
+          break;
+      case OMPI_CXX_COMM_TYPE_INTERCOMM:
           intercomm = MPI::Intercomm(comm);
           ret = kid->cxx_copy_fn(intercomm, keyval, kid->extra_state,
-                                 attribute_val_in, attribute_val_out, 
+                                 attribute_val_in, attribute_val_out,
                                  bflag);
-      } else {
+          break;
+      default:
           ret = MPI::ERR_COMM;
       }
   } else {
@@ -322,11 +326,11 @@ ompi_mpi_cxx_comm_copy_attr_intercept(MPI_Comm comm, int keyval,
 }
 
 extern "C" int
-ompi_mpi_cxx_comm_delete_attr_intercept(MPI_Comm comm, int keyval, 
+ompi_mpi_cxx_comm_delete_attr_intercept(MPI_Comm comm, int keyval,
                                         void *attribute_val, void *extra_state)
 {
   int ret = 0;
-  MPI::Comm::keyval_intercept_data_t *kid = 
+  MPI::Comm::keyval_intercept_data_t *kid =
       (MPI::Comm::keyval_intercept_data_t*) extra_state;
 
   // The callback may be in C or C++.  If it's in C, it's easy - just
@@ -342,54 +346,61 @@ ompi_mpi_cxx_comm_delete_attr_intercept(MPI_Comm comm, int keyval,
   MPI::Intercomm intercomm;
   MPI::Graphcomm graphcomm;
   MPI::Cartcomm cartcomm;
-  
+
   if (NULL != kid->cxx_delete_fn) {
-      if (OMPI_COMM_IS_GRAPH(comm)) {
+      ompi_cxx_communicator_type_t comm_type =
+          ompi_cxx_comm_get_type (comm);
+      switch (comm_type) {
+      case OMPI_CXX_COMM_TYPE_GRAPH:
           graphcomm = MPI::Graphcomm(comm);
-          ret = kid->cxx_delete_fn(graphcomm, keyval, attribute_val, 
+          ret = kid->cxx_delete_fn(graphcomm, keyval, attribute_val,
                                    kid->extra_state);
-      } else if (OMPI_COMM_IS_CART(comm)) {
+          break;
+      case OMPI_CXX_COMM_TYPE_CART:
           cartcomm = MPI::Cartcomm(comm);
-          ret = kid->cxx_delete_fn(cartcomm, keyval, attribute_val, 
+          ret = kid->cxx_delete_fn(cartcomm, keyval, attribute_val,
                                    kid->extra_state);
-      } else if (OMPI_COMM_IS_INTRA(comm)) {
+          break;
+      case OMPI_CXX_COMM_TYPE_INTRACOMM:
           intracomm = MPI::Intracomm(comm);
-          ret = kid->cxx_delete_fn(intracomm, keyval, attribute_val, 
+          ret = kid->cxx_delete_fn(intracomm, keyval, attribute_val,
                                    kid->extra_state);
-      } else if (OMPI_COMM_IS_INTER(comm)) {
+          break;
+      case OMPI_CXX_COMM_TYPE_INTERCOMM:
           intercomm = MPI::Intercomm(comm);
-          ret = kid->cxx_delete_fn(intercomm, keyval, attribute_val, 
+          ret = kid->cxx_delete_fn(intercomm, keyval, attribute_val,
                                    kid->extra_state);
-      } else {
+          break;
+      default:
           ret = MPI::ERR_COMM;
       }
   } else {
       ret = MPI::ERR_OTHER;
   }
 
-  return ret; 
+  return ret;
 }
 
 extern "C" int
-ompi_mpi_cxx_type_copy_attr_intercept(MPI_Datatype oldtype, int keyval, 
-                                      void *extra_state, void *attribute_val_in, 
+ompi_mpi_cxx_type_copy_attr_intercept(MPI_Datatype oldtype, int keyval,
+                                      void *extra_state, void *attribute_val_in,
                                       void *attribute_val_out, int *flag)
 {
   int ret = 0;
-  MPI::Datatype::keyval_intercept_data_t *kid = 
+  MPI::Datatype::keyval_intercept_data_t *kid =
       (MPI::Datatype::keyval_intercept_data_t*) extra_state;
 
 
   if (NULL != kid->c_copy_fn) {
       // The callback may be in C or C++.  If it's in C, it's easy - just
       // call it with no extra C++ machinery.
-      ret = kid->c_copy_fn(oldtype, keyval, kid->extra_state, attribute_val_in, 
+      ret = kid->c_copy_fn(oldtype, keyval, kid->extra_state, attribute_val_in,
                            attribute_val_out, flag);
   } else if (NULL != kid->cxx_copy_fn) {
       // If the callback was C++, we have to do a little more work
-      bool bflag = OPAL_INT_TO_BOOL(*flag); 
+      bool bflag = OPAL_INT_TO_BOOL(*flag);
       MPI::Datatype cxx_datatype(oldtype);
-      ret = kid->cxx_copy_fn(cxx_datatype, keyval, kid->extra_state, 
+      ret = kid->cxx_copy_fn(cxx_datatype, keyval, kid->extra_state,
                              attribute_val_in, attribute_val_out, bflag);
       *flag = (int)bflag;
   } else {
@@ -400,18 +411,18 @@ ompi_mpi_cxx_type_copy_attr_intercept(MPI_Datatype oldtype, int keyval,
 }
 
 extern "C" int
-ompi_mpi_cxx_type_delete_attr_intercept(MPI_Datatype type, int keyval, 
+ompi_mpi_cxx_type_delete_attr_intercept(MPI_Datatype type, int keyval,
                                         void *attribute_val, void *extra_state)
 {
   int ret = 0;
-  MPI::Datatype::keyval_intercept_data_t *kid = 
+  MPI::Datatype::keyval_intercept_data_t *kid =
       (MPI::Datatype::keyval_intercept_data_t*) extra_state;
 
   if (NULL != kid->c_delete_fn) {
       return kid->c_delete_fn(type, keyval, attribute_val, kid->extra_state);
   } else if (NULL != kid->cxx_delete_fn) {
       MPI::Datatype cxx_datatype(type);
-      return kid->cxx_delete_fn(cxx_datatype, keyval, attribute_val, 
+      return kid->cxx_delete_fn(cxx_datatype, keyval, attribute_val,
                                 kid->extra_state);
   } else {
     ret = MPI::ERR_TYPE;
@@ -421,7 +432,7 @@ ompi_mpi_cxx_type_delete_attr_intercept(MPI_Datatype type, int keyval,
 }
 
 extern "C" int
-ompi_mpi_cxx_win_copy_attr_intercept(MPI_Win oldwin, int keyval, 
+ompi_mpi_cxx_win_copy_attr_intercept(MPI_Win oldwin, int keyval,
                                       void *extra_state, void *attribute_val_in,
                                       void *attribute_val_out, int *flag)
 {
@@ -432,13 +443,13 @@ ompi_mpi_cxx_win_copy_attr_intercept(MPI_Win oldwin, int keyval,
   if (NULL != kid->c_copy_fn) {
       // The callback may be in C or C++.  If it's in C, it's easy - just
       // call it with no extra C++ machinery.
-      ret = kid->c_copy_fn(oldwin, keyval, kid->extra_state, attribute_val_in, 
+      ret = kid->c_copy_fn(oldwin, keyval, kid->extra_state, attribute_val_in,
                            attribute_val_out, flag);
   } else if (NULL != kid->cxx_copy_fn) {
       // If the callback was C++, we have to do a little more work
-      bool bflag = OPAL_INT_TO_BOOL(*flag); 
+      bool bflag = OPAL_INT_TO_BOOL(*flag);
       MPI::Win cxx_win(oldwin);
-      ret = kid->cxx_copy_fn(cxx_win, keyval, kid->extra_state, 
+      ret = kid->cxx_copy_fn(cxx_win, keyval, kid->extra_state,
                              attribute_val_in, attribute_val_out, bflag);
       *flag = (int)bflag;
   } else {
@@ -449,18 +460,18 @@ ompi_mpi_cxx_win_copy_attr_intercept(MPI_Win oldwin, int keyval,
 }
 
 extern "C" int
-ompi_mpi_cxx_win_delete_attr_intercept(MPI_Win win, int keyval, 
+ompi_mpi_cxx_win_delete_attr_intercept(MPI_Win win, int keyval,
                                         void *attribute_val, void *extra_state)
 {
   int ret = 0;
-  MPI::Win::keyval_intercept_data_t *kid = 
+  MPI::Win::keyval_intercept_data_t *kid =
       (MPI::Win::keyval_intercept_data_t*) extra_state;
 
   if (NULL != kid->c_delete_fn) {
       return kid->c_delete_fn(win, keyval, attribute_val, kid->extra_state);
   } else if (NULL != kid->cxx_delete_fn) {
       MPI::Win cxx_win(win);
-      return kid->cxx_delete_fn(cxx_win, keyval, attribute_val, 
+      return kid->cxx_delete_fn(cxx_win, keyval, attribute_val,
                                 kid->extra_state);
   } else {
       ret = MPI::ERR_WIN;
@@ -476,7 +487,7 @@ ompi_mpi_cxx_win_delete_attr_intercept(MPI_Win win, int keyval,
 extern "C" int
 ompi_mpi_cxx_grequest_query_fn_intercept(void *state, MPI_Status *status)
 {
-    MPI::Grequest::Intercept_data_t *data = 
+    MPI::Grequest::Intercept_data_t *data =
         (MPI::Grequest::Intercept_data_t *) state;
 
     MPI::Status s(*status);
@@ -488,7 +499,7 @@ ompi_mpi_cxx_grequest_query_fn_intercept(void *state, MPI_Status *status)
 extern "C" int
 ompi_mpi_cxx_grequest_free_fn_intercept(void *state)
 {
-    MPI::Grequest::Intercept_data_t *data = 
+    MPI::Grequest::Intercept_data_t *data =
         (MPI::Grequest::Intercept_data_t *) state;
     int ret = data->id_cxx_free_fn(data->id_extra);
     // Delete the struct that was "new"ed in MPI::Grequest::Start()
@@ -499,8 +510,8 @@ ompi_mpi_cxx_grequest_free_fn_intercept(void *state)
 extern "C" int
 ompi_mpi_cxx_grequest_cancel_fn_intercept(void *state, int cancelled)
 {
-    MPI::Grequest::Intercept_data_t *data = 
+    MPI::Grequest::Intercept_data_t *data =
         (MPI::Grequest::Intercept_data_t *) state;
-    return data->id_cxx_cancel_fn(data->id_extra, 
+    return data->id_cxx_cancel_fn(data->id_extra,
                                   (0 != cancelled ? true : false));
 }

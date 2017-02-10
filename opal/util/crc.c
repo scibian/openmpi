@@ -9,6 +9,7 @@
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
+ * Copyright (c) 2014      Intel, Inc. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -21,15 +22,11 @@
 #ifdef HAVE_STDIO_H
 #include <stdio.h>
 #endif /* HAVE_STDIO_H */
-#ifdef HAVE_STDLIB_H
 #include <stdlib.h>
-#endif  /* HAVE_STDLIB_H */
 #ifdef HAVE_STRINGS_H
 #include <strings.h>
 #endif  /* HAVE_STRINGS_H */
-#ifdef HAVE_STRING_H
 #include <string.h>
-#endif  /* HAVE_STRING_H */
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
 #endif  /* HAVE_UNISTD_H */
@@ -37,16 +34,16 @@
 
 
 #if (OPAL_ALIGNMENT_LONG == 8)
-#define _WORD_MASK_ 0x7
+#define OPAL_CRC_WORD_MASK_ 0x7
 #elif (OPAL_ALIGNMENT_LONG == 4)
-#define _WORD_MASK_ 0x3
+#define OPAL_CRC_WORD_MASK_ 0x3
 #else
-#define _WORD_MASK 0xFFFF
+#define OPAL_CRC_WORD_MASK_ 0xFFFF
 #endif
 
 
 #define WORDALIGNED(v) \
-    (((intptr_t)v & _WORD_MASK_) ? false : true)
+    (((intptr_t)v & OPAL_CRC_WORD_MASK_) ? false : true)
 
 
 #define INTALIGNED(v) \
@@ -312,7 +309,7 @@ opal_bcopy_csum_partial (
 		memcpy(((char *)&temp + *lastPartialLength), src,
 		       (sizeof(unsigned long) - *lastPartialLength));
 		/* avoid unsigned arithmetic overflow by subtracting the old partial
-		 * word from the new one before adding to the checksum... 
+		 * word from the new one before adding to the checksum...
         */
 		csum += (temp - *lastPartialLong);
 		copylen -= sizeof(unsigned long) - *lastPartialLength;
@@ -1097,10 +1094,10 @@ void opal_initialize_crc_table(void)
 }
 
 unsigned int opal_bcopy_uicrc_partial(
-    const void *  source, 
+    const void *  source,
     void *  destination,
-    size_t copylen, 
-    size_t crclen, 
+    size_t copylen,
+    size_t crclen,
     unsigned int partial_crc)
 {
     size_t crclenresidue = (crclen > copylen) ? (crclen - copylen) : 0;
@@ -1162,7 +1159,7 @@ unsigned int opal_bcopy_uicrc_partial(
 
 
 unsigned int opal_uicrc_partial(
-    const void *  source, size_t crclen, unsigned int partial_crc) 
+    const void *  source, size_t crclen, unsigned int partial_crc)
 {
     register int i, j;
     register unsigned char * t;
@@ -1171,7 +1168,7 @@ unsigned int opal_uicrc_partial(
     if (!_opal_crc_table_initialized) {
         opal_initialize_crc_table();
     }
-    
+
     if (INTALIGNED(source)) {
         register unsigned int *  src = (unsigned int *)source;
         while (crclen >= sizeof(unsigned int)) {
@@ -1196,7 +1193,7 @@ unsigned int opal_uicrc_partial(
             partial_crc = (partial_crc << 8) ^ _opal_crc_table[i];
         }
     }
-    
+
     return partial_crc;
 }
 

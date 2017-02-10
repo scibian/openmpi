@@ -5,14 +5,14 @@
  * Copyright (c) 2004-2005 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -48,11 +48,11 @@
 
 BEGIN_C_DECLS
 
-/** 
+/**
  * @param relative A boolean that specifies if the path name is to be constructed
  * relative to the current directory or as an absolute path. If no path
  * elements are included in the function call, then the function returns
- * "." for a relative path name and "<path separator char>" - 
+ * "." for a relative path name and "<path separator char>" -
  * the top of the directory tree - for an absolute path name.
  * @param elem1,elem2,... A variable number of (char *)path_elements
  * can be provided to the function, terminated by a NULL value. These
@@ -67,35 +67,9 @@ OPAL_DECLSPEC char *opal_os_path(bool relative, ...) __opal_attribute_malloc__ _
 
 /**
  * Convert the path to be OS friendly. On UNIX this function will
- * be empty, when on Windows it will convert all '/' to '\\' and
- * eventually remove the '/cygdrive/' from the beginning of the
- * path (if the configure was runned under Cygwin).
+ * be empty.
  */
-#if defined(__WINDOWS__)
-static inline char* opal_make_filename_os_friendly( char* filename )
-{
-    char* p = filename;
-    size_t length;
-    
-    if( NULL == filename )
-        return NULL;
-    
-    length = strlen(filename);
-    if( strncmp( filename, "/cygdrive/", 10 ) == 0 ) {
-        memmove( filename + 1, filename + 10, length - 10 );
-        filename[0] = filename[1];
-        filename[1] = ':';
-        filename[length - 10 + 1] = '\0';
-    }
-    for( ; *p != '\0'; p++ ) {
-        if( *p == '/' )
-            *p = '\\';
-    }
-    return filename;
-}
-#else
 #define opal_make_filename_os_friendly(PATH)   (PATH)
-#endif  /* defined(__WINDOWS__) */
 
 END_C_DECLS
 

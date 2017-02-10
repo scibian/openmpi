@@ -5,15 +5,15 @@
  * Copyright (c) 2004-2006 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
  * Copyright (c) 2008-2009 Cisco Systems, Inc.  All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -26,6 +26,7 @@
 
 #include "opal/class/opal_object.h"
 #include "opal/mca/mca.h"
+#include "opal/util/output.h"
 
 #include "ompi/constants.h"
 #include "ompi/mca/coll/coll.h"
@@ -54,13 +55,13 @@ int mca_coll_sync_bcast(void *buff, int count,
                         struct ompi_communicator_t *comm,
                         mca_coll_base_module_t *module);
 
-int mca_coll_sync_exscan(void *sbuf, void *rbuf, int count,
+int mca_coll_sync_exscan(const void *sbuf, void *rbuf, int count,
                          struct ompi_datatype_t *dtype,
                          struct ompi_op_t *op,
                          struct ompi_communicator_t *comm,
                          mca_coll_base_module_t *module);
 
-int mca_coll_sync_gather(void *sbuf, int scount,
+int mca_coll_sync_gather(const void *sbuf, int scount,
                          struct ompi_datatype_t *sdtype,
                          void *rbuf, int rcount,
                          struct ompi_datatype_t *rdtype,
@@ -68,7 +69,7 @@ int mca_coll_sync_gather(void *sbuf, int scount,
                          struct ompi_communicator_t *comm,
                          mca_coll_base_module_t *module);
 
-int mca_coll_sync_gatherv(void *sbuf, int scount,
+int mca_coll_sync_gatherv(const void *sbuf, int scount,
                           struct ompi_datatype_t *sdtype,
                           void *rbuf, int *rcounts, int *disps,
                           struct ompi_datatype_t *rdtype,
@@ -76,27 +77,27 @@ int mca_coll_sync_gatherv(void *sbuf, int scount,
                           struct ompi_communicator_t *comm,
                           mca_coll_base_module_t *module);
 
-int mca_coll_sync_reduce(void *sbuf, void *rbuf, int count,
+int mca_coll_sync_reduce(const void *sbuf, void *rbuf, int count,
                          struct ompi_datatype_t *dtype,
                          struct ompi_op_t *op,
                          int root,
                          struct ompi_communicator_t *comm,
                          mca_coll_base_module_t *module);
 
-int mca_coll_sync_reduce_scatter(void *sbuf, void *rbuf,
+int mca_coll_sync_reduce_scatter(const void *sbuf, void *rbuf,
                                  int *rcounts,
                                  struct ompi_datatype_t *dtype,
                                  struct ompi_op_t *op,
                                  struct ompi_communicator_t *comm,
                                  mca_coll_base_module_t *module);
 
-int mca_coll_sync_scan(void *sbuf, void *rbuf, int count,
+int mca_coll_sync_scan(const void *sbuf, void *rbuf, int count,
                        struct ompi_datatype_t *dtype,
                        struct ompi_op_t *op,
                        struct ompi_communicator_t *comm,
                        mca_coll_base_module_t *module);
 
-int mca_coll_sync_scatter(void *sbuf, int scount,
+int mca_coll_sync_scatter(const void *sbuf, int scount,
                           struct ompi_datatype_t *sdtype,
                           void *rbuf, int rcount,
                           struct ompi_datatype_t *rdtype,
@@ -104,7 +105,7 @@ int mca_coll_sync_scatter(void *sbuf, int scount,
                           struct ompi_communicator_t *comm,
                           mca_coll_base_module_t *module);
 
-int mca_coll_sync_scatterv(void *sbuf, int *scounts, int *disps,
+int mca_coll_sync_scatterv(const void *sbuf, int *scounts, int *disps,
                            struct ompi_datatype_t *sdtype,
                            void *rbuf, int rcount,
                            struct ompi_datatype_t *rdtype,
@@ -112,7 +113,6 @@ int mca_coll_sync_scatterv(void *sbuf, int *scounts, int *disps,
                            struct ompi_communicator_t *comm,
                            mca_coll_base_module_t *module);
 
-int mca_coll_sync_ft_event(int status);
 
 /* Types */
 /* Module */
@@ -156,26 +156,26 @@ OMPI_MODULE_DECLSPEC extern mca_coll_sync_component_t mca_coll_sync_component;
 
 /* Macro used in most of the collectives */
 
-#define COLL_SYNC(module, op) \
+#define COLL_SYNC(m, op) \
 do { \
     int err = MPI_SUCCESS; \
-    s->in_operation = true; \
-    if (OPAL_UNLIKELY(++s->before_num_operations == \
-                      mca_coll_sync_component.barrier_before_nops)) { \
-        s->before_num_operations = 0; \
-        err = s->c_coll.coll_barrier(comm, s->c_coll.coll_barrier_module); \
-    } \
-    if (OPAL_LIKELY(MPI_SUCCESS == err)) { \
-        err = op; \
-    } \
-    if (OPAL_UNLIKELY(++s->after_num_operations == \
-                      mca_coll_sync_component.barrier_after_nops) && \
-        OPAL_LIKELY(MPI_SUCCESS == err)) { \
-        s->after_num_operations = 0; \
-        err = s->c_coll.coll_barrier(comm, s->c_coll.coll_barrier_module); \
-    } \
-    s->in_operation = false; \
-    return err; \
+    (m)->in_operation = true; \
+    if (OPAL_UNLIKELY(++((m)->before_num_operations) ==                         \
+                      mca_coll_sync_component.barrier_before_nops)) {           \
+        (m)->before_num_operations = 0;                                         \
+        err = (m)->c_coll.coll_barrier(comm, (m)->c_coll.coll_barrier_module);  \
+    }                                                                           \
+    if (OPAL_LIKELY(MPI_SUCCESS == err)) {                                      \
+        err = op;                                                               \
+    }                                                                           \
+    if (OPAL_UNLIKELY(++((m)->after_num_operations) ==                          \
+                      mca_coll_sync_component.barrier_after_nops) &&            \
+        OPAL_LIKELY(MPI_SUCCESS == err)) {                                      \
+        (m)->after_num_operations = 0;                                          \
+        err = (m)->c_coll.coll_barrier(comm, (m)->c_coll.coll_barrier_module);  \
+    }                                                                           \
+    (m)->in_operation = false;                                                  \
+    return err;                                                                 \
 } while(0)
 
 END_C_DECLS

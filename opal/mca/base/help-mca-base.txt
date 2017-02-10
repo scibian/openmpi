@@ -6,30 +6,18 @@
 # Copyright (c) 2004-2005 The University of Tennessee and The University
 #                         of Tennessee Research Foundation.  All rights
 #                         reserved.
-# Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+# Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
 #                         University of Stuttgart.  All rights reserved.
 # Copyright (c) 2004-2005 The Regents of the University of California.
 #                         All rights reserved.
-# Copyright (c) 2008      Cisco Systems, Inc.  All rights reserved.
+# Copyright (c) 2008-2014 Cisco Systems, Inc.  All rights reserved.
 # $COPYRIGHT$
-# 
+#
 # Additional copyrights may follow
-# 
+#
 # $HEADER$
 #
 # This is the US/English help file for Open MPI MCA error messages.
-#
-[find-available:none-found]
-No available %s components were found!
-
-This means that there are no components of this type installed on your
-system or all the components reported that they could not be used.
-
-This is a fatal error; your MPI process is likely to abort.  Check the
-output of the "ompi_info" command and ensure that components of this
-type are available on your system.  You may also wish to check the
-value of the "component_path" MCA parameter and ensure that it has at
-least one directory that contains valid MCA components.
 #
 [find-available:not-valid]
 A requested component was not found, or was unable to be opened.  This
@@ -41,6 +29,17 @@ Open MPI stopped checking at the first component that it did not find.
 Host:      %s
 Framework: %s
 Component: %s
+#
+[find-available:none found]
+No components were able to be opened in the %s framework.
+
+This typically means that either no components of this type were
+installed, or none of the installed componnets can be loaded.
+Sometimes this means that shared libraries required by these
+components are unable to be found/loaded.
+
+  Host:      %s
+  Framework: %s
 #
 [framework-param:too-many-negates]
 MCA framework parameters can only take a single negation operator

@@ -5,16 +5,16 @@
  * Copyright (c) 2004-2005 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
  * Copyright (c) 2007      Los Alamos National Security, LLC.  All rights
- *                         reserved. 
+ *                         reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -94,7 +94,7 @@ OPAL_DECLSPEC bool opal_net_islocalhost(const struct sockaddr *addr);
  *
  * @param addr1             struct sockaddr of address
  * @param addr2             struct sockaddr of address
- * @param prefixlen         netmask (either CIDR oder IPv6 prefixlen)
+ * @param prefixlen         netmask (either CIDR or IPv6 prefixlen)
  * @return                  true if \c addr1 and \c addr2 are on the
  *                          same net, false otherwise.
  */
@@ -136,6 +136,13 @@ OPAL_DECLSPEC char* opal_net_get_hostname(const struct sockaddr *addr);
  * @return                 port number from \addr
  */
 OPAL_DECLSPEC int opal_net_get_port(const struct sockaddr *addr);
+
+/**
+ * Test if a string is actually an IP address
+ *
+ * Returns true if the string is of IPv4 or IPv6 address form
+ */
+OPAL_DECLSPEC bool opal_net_isaddr(const char *name);
 
 END_C_DECLS
 

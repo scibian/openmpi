@@ -1,4 +1,4 @@
-/* -*- Mode: C; c-basic-offset:4 ; -*- */
+/* -*- Mode: C; c-basic-offset:4 ; indent-tabs-mode:nil -*- */
 /*
  * Copyright (c) 2004-2005 The Trustees of Indiana University and Indiana
  *                         University Research and Technology
@@ -6,42 +6,55 @@
  * Copyright (c) 2004-2007 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
- * Copyright (c) 2007      Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2007-2015 Cisco Systems, Inc.  All rights reserved.
  * Copyright (c) 2009      Sun Microsystems, Inc.  All rights reserved.
+ * Copyright (c) 2012-2015 Los Alamos National Security, LLC. All rights
+ *                         reserved.
+ * Copyright (c) 2015      Research Organization for Information Science
+ *                         and Technology (RIST). All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
 #include "ompi_config.h"
+#include "ompi/constants.h"
 
-#ifdef HAVE_STRING_H
 #include <string.h>
-#endif
 #include <errno.h>
-#ifdef HAVE_STDLIB_H
 #include <stdlib.h>
+#ifdef HAVE_UNISTD_H
+#include <unistd.h>
 #endif
 #include <limits.h>
 #include <ctype.h>
+#ifdef HAVE_SYS_UTSNAME_H
+#include <sys/utsname.h>
+#endif
+#include <assert.h>
 
+#include "opal/util/argv.h"
+#include "opal/util/opal_getcwd.h"
 #include "opal/util/output.h"
 #include "opal/util/strncpy.h"
-#include "ompi/constants.h"
+
 #include "ompi/info/info.h"
+#include "ompi/runtime/mpiruntime.h"
 #include "ompi/runtime/params.h"
 
 
 /*
  * Global variables
  */
-ompi_predefined_info_t ompi_mpi_info_null;
+ompi_predefined_info_t ompi_mpi_info_null = {{{{0}}}};
+ompi_predefined_info_t *ompi_mpi_info_null_addr = &ompi_mpi_info_null;
+ompi_predefined_info_t ompi_mpi_info_env = {{{{0}}}};
 
 
 /*
@@ -51,7 +64,7 @@ static void info_constructor(ompi_info_t *info);
 static void info_destructor(ompi_info_t *info);
 static void info_entry_constructor(ompi_info_entry_t *entry);
 static void info_entry_destructor(ompi_info_entry_t *entry);
-static ompi_info_entry_t *info_find_key (ompi_info_t *info, char *key);
+static ompi_info_entry_t *info_find_key (ompi_info_t *info, const char *key);
 
 
 /*
@@ -73,14 +86,18 @@ OBJ_CLASS_INSTANCE(ompi_info_entry_t,
 /*
  * The global fortran <-> C translation table
  */
-opal_pointer_array_t ompi_info_f_to_c_table;
+opal_pointer_array_t ompi_info_f_to_c_table = {{0}};
 
 /*
  * This function is called during ompi_init and initializes the
- * fortran to C translation table.
- */ 
-int ompi_info_init(void) 
+ * fortran to C translation table. It also fills in the values
+ * for the MPI_INFO_GET_ENV object
+ */
+int ompi_info_init(void)
 {
+    char val[OPAL_MAXHOSTNAMELEN];
+    char *cptr;
+
     /* initialize table */
 
     OBJ_CONSTRUCT(&ompi_info_f_to_c_table, opal_pointer_array_t);
@@ -90,9 +107,101 @@ int ompi_info_init(void)
     }
 
     /* Create MPI_INFO_NULL */
-
     OBJ_CONSTRUCT(&ompi_mpi_info_null.info, ompi_info_t);
-    ompi_mpi_info_null.info.i_f_to_c_index = 0;
+    assert(ompi_mpi_info_null.info.i_f_to_c_index == 0);
+
+    /* Create MPI_INFO_ENV */
+    OBJ_CONSTRUCT(&ompi_mpi_info_env.info, ompi_info_t);
+    assert(ompi_mpi_info_env.info.i_f_to_c_index == 1);
+
+    /* fill the env info object */
+
+    /* command for this app_context */
+    if (NULL != (cptr = getenv("OMPI_COMMAND"))) {
+        ompi_info_set(&ompi_mpi_info_env.info, "command", cptr);
+    }
+
+    /* space-separated list of argv for this command */
+    if (NULL != (cptr = getenv("OMPI_ARGV"))) {
+        ompi_info_set(&ompi_mpi_info_env.info, "argv", cptr);
+    }
+
+    /* max procs for the entire job */
+    if (NULL != (cptr = getenv("OMPI_MCA_orte_ess_num_procs"))) {
+        ompi_info_set(&ompi_mpi_info_env.info, "maxprocs", cptr);
+        /* Open MPI does not support the "soft" option, so set it to maxprocs */
+        ompi_info_set(&ompi_mpi_info_env.info, "soft", cptr);
+    }
+
+    /* local host name */
+    gethostname(val, sizeof(val));
+    ompi_info_set(&ompi_mpi_info_env.info, "host", val);
+
+    /* architecture name */
+    if (NULL != (cptr = getenv("OMPI_MCA_orte_cpu_type"))) {
+        ompi_info_set(&ompi_mpi_info_env.info, "arch", cptr);
+    }
+#ifdef HAVE_SYS_UTSNAME_H
+    else {
+        struct utsname sysname;
+        uname(&sysname);
+        cptr = sysname.machine;
+        ompi_info_set(&ompi_mpi_info_env.info, "arch", cptr);
+    }
+#endif
+
+    /* initial working dir of this process - only set when
+     * run by mpiexec as we otherwise have no reliable way
+     * of determining the value
+     */
+    if (NULL != (cptr = getenv("OMPI_MCA_initial_wdir"))) {
+        ompi_info_set(&ompi_mpi_info_env.info, "wdir", cptr);
+    }
+
+    /* provide the REQUESTED thread level - may be different
+     * than the ACTUAL thread level you get.
+     * ugly, but have to do a switch to find the string representation */
+    switch (ompi_mpi_thread_requested) {
+    case MPI_THREAD_SINGLE:
+        ompi_info_set(&ompi_mpi_info_env.info, "thread_level", "MPI_THREAD_SINGLE");
+        break;
+    case MPI_THREAD_FUNNELED:
+        ompi_info_set(&ompi_mpi_info_env.info, "thread_level", "MPI_THREAD_FUNNELED");
+        break;
+    case MPI_THREAD_SERIALIZED:
+        ompi_info_set(&ompi_mpi_info_env.info, "thread_level", "MPI_THREAD_SERIALIZED");
+        break;
+    case MPI_THREAD_MULTIPLE:
+        ompi_info_set(&ompi_mpi_info_env.info, "thread_level", "MPI_THREAD_MULTIPLE");
+        break;
+    default:
+        /* do nothing - don't know the value */
+        break;
+    }
+
+    /**** now some OMPI-specific values that other MPIs may not provide ****/
+
+    /* the number of app_contexts in this job */
+    if (NULL != (cptr = getenv("OMPI_NUM_APP_CTX"))) {
+        ompi_info_set(&ompi_mpi_info_env.info, "ompi_num_apps", cptr);
+    }
+
+    /* space-separated list of first MPI rank of each app_context */
+    if (NULL != (cptr = getenv("OMPI_FIRST_RANKS"))) {
+        ompi_info_set(&ompi_mpi_info_env.info, "ompi_first_rank", cptr);
+    }
+
+    /* space-separated list of num procs for each app_context */
+    if (NULL != (cptr = getenv("OMPI_APP_CTX_NUM_PROCS"))) {
+        ompi_info_set(&ompi_mpi_info_env.info, "ompi_np", cptr);
+    }
+
+    /* location of the directory containing any prepositioned files
+     * the user may have requested
+     */
+    if (NULL != (cptr = getenv("OMPI_FILE_LOCATION"))) {
+        ompi_info_set(&ompi_mpi_info_env.info, "ompi_positioned_file_dir", cptr);
+    }
 
     /* All done */
 
@@ -103,7 +212,7 @@ int ompi_info_init(void)
 /*
  * Duplicate an info
  */
-int ompi_info_dup (ompi_info_t *info, ompi_info_t **newinfo) 
+int ompi_info_dup (ompi_info_t *info, ompi_info_t **newinfo)
 {
     int err;
     opal_list_item_t *item;
@@ -128,7 +237,7 @@ int ompi_info_dup (ompi_info_t *info, ompi_info_t **newinfo)
 /*
  * Set a value on the info
  */
-int ompi_info_set (ompi_info_t *info, char *key, char *value) 
+int ompi_info_set (ompi_info_t *info, const char *key, const char *value)
 {
     char *new_value;
     ompi_info_entry_t *new_info;
@@ -150,6 +259,7 @@ int ompi_info_set (ompi_info_t *info, char *key, char *value)
     } else {
         new_info = OBJ_NEW(ompi_info_entry_t);
         if (NULL == new_info) {
+            free(new_value);
             OPAL_THREAD_UNLOCK(info->i_lock);
             return MPI_ERR_NO_MEM;
         }
@@ -162,10 +272,26 @@ int ompi_info_set (ompi_info_t *info, char *key, char *value)
 }
 
 
+int ompi_info_set_value_enum (ompi_info_t *info, const char *key, int value,
+                              mca_base_var_enum_t *var_enum)
+{
+    const char *string_value;
+    int ret;
+
+    ret = var_enum->string_from_value (var_enum, value, &string_value);
+    if (OPAL_SUCCESS != ret) {
+        return ret;
+    }
+
+    return ompi_info_set (info, key, string_value);
+}
+
+
+
 /*
  * Free an info handle and all of its keys and values.
  */
-int ompi_info_free (ompi_info_t **info) 
+int ompi_info_free (ompi_info_t **info)
 {
     (*info)->i_freed = true;
     OBJ_RELEASE(*info);
@@ -177,8 +303,8 @@ int ompi_info_free (ompi_info_t **info)
 /*
  * Get a value from an info
  */
-int ompi_info_get (ompi_info_t *info, char *key, int valuelen,
-                   char *value, int *flag) 
+int ompi_info_get (ompi_info_t *info, const char *key, int valuelen,
+                   char *value, int *flag)
 {
     ompi_info_entry_t *search;
     int value_length;
@@ -203,11 +329,42 @@ int ompi_info_get (ompi_info_t *info, char *key, int valuelen,
                strcpy(value, search->ie_value);
           } else {
                opal_strncpy(value, search->ie_value, valuelen);
-               value[valuelen] = 0;
+               if (MPI_MAX_INFO_VAL == valuelen) {
+                   value[valuelen-1] = 0;
+               } else {
+                   value[valuelen] = 0;
+               }
           }
     }
     OPAL_THREAD_UNLOCK(info->i_lock);
     return MPI_SUCCESS;
+}
+
+int ompi_info_get_value_enum (ompi_info_t *info, const char *key, int *value,
+                              int default_value, mca_base_var_enum_t *var_enum,
+                              int *flag)
+{
+    ompi_info_entry_t *search;
+    int ret;
+
+    *value = default_value;
+
+    OPAL_THREAD_LOCK(info->i_lock);
+    search = info_find_key (info, key);
+    if (NULL == search){
+        OPAL_THREAD_UNLOCK(info->i_lock);
+        *flag = 0;
+        return MPI_SUCCESS;
+    }
+
+    /* we found a mathing key. pass the string value to the enumerator and
+     * return */
+    *flag = 1;
+
+    ret = var_enum->value_from_string (var_enum, search->ie_value, value);
+    OPAL_THREAD_UNLOCK(info->i_lock);
+
+    return ret;
 }
 
 
@@ -232,14 +389,14 @@ int ompi_info_get_bool(ompi_info_t *info, char *key, bool *value, int *flag)
             --ptr;
         }
         ptr = str;
-        while (ptr < str + sizeof(str) - 1 && *ptr != '\0' && 
+        while (ptr < str + sizeof(str) - 1 && *ptr != '\0' &&
                isspace(*ptr)) {
             ++ptr;
         }
         if ('\0' != *ptr) {
             if (isdigit(*ptr)) {
                 *value = (bool) atoi(ptr);
-            } else if (0 == strcasecmp(ptr, "yes") || 
+            } else if (0 == strcasecmp(ptr, "yes") ||
                        0 == strcasecmp(ptr, "true")) {
                 *value = true;
             } else if (0 != strcasecmp(ptr, "no") &&
@@ -254,7 +411,7 @@ int ompi_info_get_bool(ompi_info_t *info, char *key, bool *value, int *flag)
 /*
  * Delete a key from an info
  */
-int ompi_info_delete (ompi_info_t *info, char *key) 
+int ompi_info_delete (ompi_info_t *info, const char *key)
 {
     ompi_info_entry_t *search;
 
@@ -281,8 +438,8 @@ int ompi_info_delete (ompi_info_t *info, char *key)
 /*
  * Return the length of a value
  */
-int ompi_info_get_valuelen (ompi_info_t *info, char *key, int *valuelen,
-                            int *flag) 
+int ompi_info_get_valuelen (ompi_info_t *info, const char *key, int *valuelen,
+                            int *flag)
 {
     ompi_info_entry_t *search;
 
@@ -318,7 +475,7 @@ int ompi_info_get_nthkey (ompi_info_t *info, int n, char *key)
          n > 0;
          --n) {
          iterator = (ompi_info_entry_t *)opal_list_get_next(iterator);
-         if (opal_list_get_end(&(info->super)) == 
+         if (opal_list_get_end(&(info->super)) ==
              (opal_list_item_t *) iterator) {
              OPAL_THREAD_UNLOCK(info->i_lock);
              return MPI_ERR_ARG;
@@ -338,46 +495,50 @@ int ompi_info_get_nthkey (ompi_info_t *info, int n, char *key)
 /*
  * Shut down MPI_Info handling
  */
-int ompi_info_finalize(void) 
+int ompi_info_finalize(void)
 {
     size_t i, max;
     ompi_info_t *info;
     opal_list_item_t *item;
     ompi_info_entry_t *entry;
     bool found = false;
-    
+
     /* Release MPI_INFO_NULL.  Do this so that we don't get a bogus
        leak report on it.  Plus, it's statically allocated, so we
        don't want to call OBJ_RELEASE on it. */
-    
+
     OBJ_DESTRUCT(&ompi_mpi_info_null.info);
     opal_pointer_array_set_item(&ompi_info_f_to_c_table, 0, NULL);
-    
+
+    /* ditto for MPI_INFO_GET_ENV */
+    OBJ_DESTRUCT(&ompi_mpi_info_env.info);
+    opal_pointer_array_set_item(&ompi_info_f_to_c_table, 1, NULL);
+
     /* Go through the f2c table and see if anything is left.  Free them
        all. */
-    
+
     max = opal_pointer_array_get_size(&ompi_info_f_to_c_table);
-    for (i = 0; i < max; ++i) {
+    for (i = 2; i < max; ++i) {
         info = (ompi_info_t *)opal_pointer_array_get_item(&ompi_info_f_to_c_table, i);
-        
+
         /* If the info was freed but still exists because the user
            told us to never free handles, then do an OBJ_RELEASE it
            and all is well.  Then get the value again and see if it's
            actually been freed. */
-        
+
         if (NULL != info && ompi_debug_no_free_handles && info->i_freed) {
             OBJ_RELEASE(info);
             info = (ompi_info_t *)opal_pointer_array_get_item(&ompi_info_f_to_c_table, i);
-        } 
-        
+        }
+
         /* If it still exists here and was never freed, then it's an
            orphan */
-        
+
         if (NULL != info) {
-            
+
             /* If the user wanted warnings about MPI object leaks, print out
                a message */
-            
+
             if (!info->i_freed && ompi_debug_show_handle_leaks) {
                 if (ompi_debug_show_handle_leaks) {
                     opal_output(0, "WARNING: MPI_Info still allocated at MPI_FINALIZE");
@@ -385,7 +546,7 @@ int ompi_info_finalize(void)
                          opal_list_get_end(&(info->super)) != item;
                          item = opal_list_get_next(item)) {
                         entry = (ompi_info_entry_t *) item;
-                        opal_output(0, "WARNING:   key=\"%s\", value=\"%s\"", 
+                        opal_output(0, "WARNING:   key=\"%s\", value=\"%s\"",
                                     entry->ie_key,
                                     NULL != entry->ie_value ? entry->ie_value : "(null)");
                         found = true;
@@ -393,7 +554,7 @@ int ompi_info_finalize(void)
                 }
                 OBJ_RELEASE(info);
             }
-            
+
             /* Don't bother setting each element back down to NULL; it
                would just take a lot of thread locks / unlocks and
                since we're destroying everything, it isn't worth it */
@@ -403,7 +564,7 @@ int ompi_info_finalize(void)
             }
         }
     }
-  
+
     /* All done -- destroy the table */
 
     OBJ_DESTRUCT(&ompi_info_f_to_c_table);
@@ -415,9 +576,9 @@ int ompi_info_finalize(void)
  * This function is invoked when OBJ_NEW() is called. Here, we add this
  * info pointer to the table and then store its index as the handle
  */
-static void info_constructor(ompi_info_t *info) 
+static void info_constructor(ompi_info_t *info)
 {
-    info->i_f_to_c_index = opal_pointer_array_add(&ompi_info_f_to_c_table, 
+    info->i_f_to_c_index = opal_pointer_array_add(&ompi_info_f_to_c_table,
                                                   info);
     info->i_lock = OBJ_NEW(opal_mutex_t);
     info->i_freed = false;
@@ -432,17 +593,17 @@ static void info_constructor(ompi_info_t *info)
 
 
 /*
- * This function is called during OBJ_DESTRUCT of "info". When this 
- * done, we need to remove the entry from the ompi fortran to C 
+ * This function is called during OBJ_DESTRUCT of "info". When this
+ * done, we need to remove the entry from the ompi fortran to C
  * translation table
- */ 
-static void info_destructor(ompi_info_t *info) 
+ */
+static void info_destructor(ompi_info_t *info)
 {
     opal_list_item_t *item;
     ompi_info_entry_t *iterator;
 
     /* Remove every key in the list */
-  
+
     for (item = opal_list_remove_first(&(info->super));
          NULL != item;
          item = opal_list_remove_first(&(info->super))) {
@@ -452,11 +613,11 @@ static void info_destructor(ompi_info_t *info)
 
     /* reset the &ompi_info_f_to_c_table entry - make sure that the
        entry is in the table */
-    
+
     if (MPI_UNDEFINED != info->i_f_to_c_index &&
-        NULL != opal_pointer_array_get_item(&ompi_info_f_to_c_table, 
+        NULL != opal_pointer_array_get_item(&ompi_info_f_to_c_table,
                                             info->i_f_to_c_index)){
-        opal_pointer_array_set_item(&ompi_info_f_to_c_table, 
+        opal_pointer_array_set_item(&ompi_info_f_to_c_table,
                                     info->i_f_to_c_index, NULL);
     }
 
@@ -469,14 +630,14 @@ static void info_destructor(ompi_info_t *info)
 /*
  * ompi_info_entry_t interface functions
  */
-static void info_entry_constructor(ompi_info_entry_t *entry) 
+static void info_entry_constructor(ompi_info_entry_t *entry)
 {
     memset(entry->ie_key, 0, sizeof(entry->ie_key));
     entry->ie_key[MPI_MAX_INFO_KEY] = 0;
 }
 
 
-static void info_entry_destructor(ompi_info_entry_t *entry) 
+static void info_entry_destructor(ompi_info_entry_t *entry)
 {
     if (NULL != entry->ie_value) {
         free(entry->ie_value);
@@ -490,13 +651,13 @@ static void info_entry_destructor(ompi_info_entry_t *entry)
  * Do NOT thread lock in here -- the calling function is responsible
  * for that.
  */
-static ompi_info_entry_t *info_find_key (ompi_info_t *info, char *key)
+static ompi_info_entry_t *info_find_key (ompi_info_t *info, const char *key)
 {
     ompi_info_entry_t *iterator;
 
     /* No thread locking in here! */
 
-    /* Iterate over all the entries. If the key is found, then 
+    /* Iterate over all the entries. If the key is found, then
      * return immediately. Else, the loop will fall of the edge
      * and NULL is returned
      */
@@ -554,7 +715,7 @@ ompi_info_value_to_bool(char *value, bool *interp)
             *interp = false;
         } else {
             *interp = true;
-        } 
+        }
         return OMPI_SUCCESS;
     }
 

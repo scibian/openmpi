@@ -1,19 +1,24 @@
+/* -*- Mode: C; c-basic-offset:4 ; indent-tabs-mode:nil -*- */
 /*
  * Copyright (c) 2004-2005 The Trustees of Indiana University.
  *                         All rights reserved.
  * Copyright (c) 2004-2006 The Trustees of the University of Tennessee.
  *                         All rights reserved.
- * Copyright (c) 2004-2008 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2008 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
- * Copyright (c) 2007      Los Alamos National Security, LLC.  All rights
- *                         reserved. 
+ * Copyright (c) 2007-2015 Los Alamos National Security, LLC.  All rights
+ *                         reserved.
  * Copyright (c) 2009      Sun Microsystems, Inc. All rights reserved.
+ * Copyright (c) 2015      Research Organization for Information Science
+ *                         and Technology (RIST). All rights reserved.
+ * Copyright (c) 2015      Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2015      Intel, Inc. All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -34,9 +39,11 @@
 #include "osc_base_obj_convert.h"
 #include "ompi/memchecker.h"
 
+#define OMPI_OSC_BASE_DECODE_MAX 32
+
 int
 ompi_osc_base_get_primitive_type_info(ompi_datatype_t *datatype,
-                                      ompi_datatype_t **prim_datatype, 
+                                      ompi_datatype_t **prim_datatype,
                                       uint32_t *prim_count)
 {
     ompi_datatype_t *primitive_datatype = NULL;
@@ -61,128 +68,9 @@ ompi_osc_base_get_primitive_type_info(ompi_datatype_t *datatype,
     return OMPI_SUCCESS;
 }
 
-
-struct ompi_osc_base_convertor_t {
-    opal_convertor_t convertor;
-    ompi_op_t *op;
-    ompi_datatype_t *datatype;
-};
-typedef struct ompi_osc_base_convertor_t ompi_osc_base_convertor_t;
-static OBJ_CLASS_INSTANCE(ompi_osc_base_convertor_t, opal_convertor_t, NULL, NULL);
-
-#define COPY_TYPE( TYPENAME, TYPE, COUNT )                              \
-static int copy_##TYPENAME( opal_convertor_t *pConvertor, uint32_t count, \
-                            char* from, size_t from_len, ptrdiff_t from_extent, \
-                            char* to, size_t to_len, ptrdiff_t to_extent, \
-                            ptrdiff_t *advance)                         \
-{                                                                       \
-    size_t remote_TYPE_size = sizeof(TYPE) * (COUNT); /* TODO */        \
-    size_t local_TYPE_size = (COUNT) * sizeof(TYPE);                    \
-    ompi_osc_base_convertor_t *osc_convertor =                          \
-        (ompi_osc_base_convertor_t*) pConvertor;                        \
-                                                                        \
-    if( (from_extent == (ptrdiff_t)local_TYPE_size) &&                  \
-        (to_extent == (ptrdiff_t)remote_TYPE_size) ) {                  \
-        ompi_op_reduce(osc_convertor->op, from, to, count, osc_convertor->datatype); \
-    } else {                                                            \
-        uint32_t i;                                                     \
-        for( i = 0; i < count; i++ ) {                                  \
-            ompi_op_reduce(osc_convertor->op, from, to, 1, osc_convertor->datatype); \
-            to += to_extent;                                            \
-            from += from_extent;                                        \
-        }                                                               \
-    }                                                                   \
-    *advance = count * from_extent;                                     \
-    return count;                                                       \
-}
-
-/* set up copy functions for the basic C MPI data types */
-COPY_TYPE( char, char, 1 )
-COPY_TYPE( short, short, 1 )
-COPY_TYPE( int, int, 1 )
-COPY_TYPE( long, long, 1 )
-COPY_TYPE( long_long, long long, 1 )
-COPY_TYPE( float, float, 1 )
-COPY_TYPE( double, double, 1 )
-COPY_TYPE( long_double, long double, 1 )
-COPY_TYPE( complex_float, ompi_mpi_cxx_cplex, 1 )
-COPY_TYPE( complex_double, ompi_mpi_cxx_dblcplex, 1 )
-COPY_TYPE( complex_long_double, ompi_mpi_cxx_ldblcplex, 1 )
-
-/* table of predefined copy functions - one for each MPI type */
-/* XXX TODO Adapt to new layout */
-static conversion_fct_t ompi_osc_base_copy_functions[OMPI_DATATYPE_MAX_PREDEFINED] = {
-   (conversion_fct_t)NULL,                      /* DT_LOOP                */
-   (conversion_fct_t)NULL,                      /* DT_END_LOOP            */
-   (conversion_fct_t)NULL,                      /* DT_LB                  */
-   (conversion_fct_t)NULL,                      /* DT_UB                  */
-   (conversion_fct_t)copy_char,                 /* DT_CHAR                */
-   (conversion_fct_t)copy_char,                 /* DT_CHARACTER           */
-   (conversion_fct_t)copy_char,                 /* DT_UNSIGNED_CHAR       */
-   (conversion_fct_t)copy_char,                 /* DT_SIGNED_CHAR       */
-   (conversion_fct_t)copy_char,                 /* DT_BYTE                */
-   (conversion_fct_t)copy_short,                /* DT_SHORT               */
-   (conversion_fct_t)copy_short,                /* DT_UNSIGNED_SHORT      */
-   (conversion_fct_t)copy_int,                  /* DT_INT                 */
-   (conversion_fct_t)copy_int,                  /* DT_UNSIGNED            */
-   (conversion_fct_t)copy_long,                 /* DT_LONG                */
-   (conversion_fct_t)copy_long,                 /* DT_UNSIGNED_LONG       */
-   (conversion_fct_t)copy_long_long,            /* DT_LONG_LONG           */
-   (conversion_fct_t)copy_long_long,            /* DT_UNSIGNED_LONG_LONG  */
-   (conversion_fct_t)copy_float,                /* DT_FLOAT               */
-   (conversion_fct_t)copy_double,               /* DT_DOUBLE              */
-   (conversion_fct_t)copy_long_double,          /* DT_LONG_DOUBLE         */
-   (conversion_fct_t)NULL,                      /* DT_PACKED              */
-   (conversion_fct_t)NULL,                      /* DT_WCHAR               */
-#if SIZEOF_BOOL == SIZEOF_CHAR
-   (conversion_fct_t)copy_char,                 /* DT_CXX_BOOL            */
-#elif SIZEOF_BOOL == SIZEOF_SHORT
-   (conversion_fct_t)copy_short,                /* DT_CXX_BOOL            */
-#elif SIZEOF_BOOL == SIZEOF_INT
-   (conversion_fct_t)copy_int,                  /* DT_CXX_BOOL            */
-#elif SIZEOF_BOOL == SIZEOF_LONG
-   (conversion_fct_t)copy_long,                 /* DT_CXX_BOOL            */
-#else
-   (conversion_fct_t)NULL,                      /* DT_CXX_BOOL            */
-#endif
-#if OMPI_SIZEOF_FORTRAN_LOGICAL == SIZEOF_CHAR
-   (conversion_fct_t)copy_char,                 /* DT_LOGIC               */
-#elif OMPI_SIZEOF_FORTRAN_LOGICAL == SIZEOF_SHORT
-   (conversion_fct_t)copy_short,                /* DT_LOGIC               */
-#elif OMPI_SIZEOF_FORTRAN_LOGICAL == SIZEOF_INT
-   (conversion_fct_t)copy_int,                  /* DT_LOGIC               */
-#elif OMPI_SIZEOF_FORTRAN_LOGICAL == SIZEOF_LONG
-   (conversion_fct_t)copy_long,                 /* DT_LOGIC               */
-#else
-   (conversion_fct_t)NULL,                      /* DT_LOGIC               */
-#endif
-   (conversion_fct_t)copy_int,                  /* DT_INTEGER             */
-   (conversion_fct_t)copy_float,                /* DT_REAL                */
-   (conversion_fct_t)copy_double,               /* DT_DBLPREC             */
-   (conversion_fct_t)copy_complex_float,        /* DT_COMPLEX_FLOAT       */
-   (conversion_fct_t)copy_complex_double,       /* DT_COMPLEX_DOUBLE      */
-   (conversion_fct_t)copy_complex_long_double,  /* DT_COMPLEX_LONG_DOUBLE */
-   (conversion_fct_t)NULL,                      /* DT_2INT                */
-   (conversion_fct_t)NULL,                      /* DT_2INTEGER            */
-   (conversion_fct_t)NULL,                      /* DT_2REAL               */
-   (conversion_fct_t)NULL,                      /* DT_2DBLPREC            */
-   (conversion_fct_t)NULL,                      /* DT_2COMPLEX            */
-   (conversion_fct_t)NULL,                      /* DT_2DOUBLE_COMPLEX     */
-   (conversion_fct_t)NULL,                      /* DT_FLOAT_INT           */
-   (conversion_fct_t)NULL,                      /* DT_DOUBLE_INT          */
-   (conversion_fct_t)NULL,                      /* DT_LONG_DOUBLE_INT     */
-   (conversion_fct_t)NULL,                      /* DT_LONG_INT            */
-   (conversion_fct_t)NULL,                      /* DT_SHORT_INT           */
-   (conversion_fct_t)NULL,                      /* DT_UNAVAILABLE         */
-};
-
-int
-ompi_osc_base_process_op(void *outbuf,
-                         void *inbuf,
-                         size_t inbuflen,
-                         struct ompi_datatype_t *datatype,
-                         int count,
-                         ompi_op_t *op)
+int ompi_osc_base_process_op (void *outbuf, void *inbuf, size_t inbuflen,
+                              struct ompi_datatype_t *datatype, int count,
+                              ompi_op_t *op)
 {
     if (op == &ompi_mpi_op_replace.op) {
         return OMPI_ERR_NOT_SUPPORTED;
@@ -191,51 +79,152 @@ ompi_osc_base_process_op(void *outbuf,
     if (ompi_datatype_is_predefined(datatype)) {
         ompi_op_reduce(op, inbuf, outbuf, count, datatype);
     } else {
+        opal_convertor_t convertor;
         struct ompi_datatype_t *primitive_datatype = NULL;
-        ompi_osc_base_convertor_t convertor;
-        struct iovec iov;
-        uint32_t iov_count = 1;
-        size_t max_data;
-        struct opal_convertor_master_t master = {NULL, 0, 0, 0, {0, }, NULL};
+        struct iovec iov[OMPI_OSC_BASE_DECODE_MAX];
+        uint32_t iov_count;
+        size_t size, primitive_size;
+        OPAL_PTRDIFF_TYPE lb, extent;
+        bool done;
 
         primitive_datatype = ompi_datatype_get_single_predefined_type_from_args(datatype);
+        if (ompi_datatype_is_contiguous_memory_layout (datatype, count) &&
+            1 == datatype->super.desc.used) {
+            /* NTH: the datatype is made up of a contiguous block of the primitive
+             * datatype. fast path. do not set up a convertor to deal with the
+             * datatype. */
+            count *= datatype->super.desc.desc[0].elem.count;
+
+            /* in case it is possible for the datatype to have a non-zero lb in this case.
+             * remove me if this is not possible */
+            ompi_datatype_get_extent (datatype, &lb, &extent);
+            outbuf = (void *)((uintptr_t) outbuf + lb);
+
+            ompi_op_reduce(op, inbuf, outbuf, count, primitive_datatype);
+            return OMPI_SUCCESS;
+        }
+
+        ompi_datatype_type_size (primitive_datatype, &primitive_size);
 
         /* create convertor */
-        OBJ_CONSTRUCT(&convertor, ompi_osc_base_convertor_t);
-        convertor.op = op;
-        convertor.datatype = primitive_datatype;
+        OBJ_CONSTRUCT(&convertor, opal_convertor_t);
+        opal_convertor_copy_and_prepare_for_recv(ompi_mpi_local_convertor, &datatype->super,
+                                                 count, outbuf, 0, &convertor);
 
-        /* initialize convertor */
-        opal_convertor_copy_and_prepare_for_recv(ompi_proc_local()->proc_convertor,
-                                                 &(datatype->super),
-                                                 count,
-                                                 outbuf,
-                                                 0,
-                                                 &convertor.convertor);
+        do {
+            iov_count = OMPI_OSC_BASE_DECODE_MAX;
+            done = opal_convertor_raw (&convertor, iov, &iov_count, &size);
 
-        memcpy(&master, convertor.convertor.master, sizeof(struct opal_convertor_master_t));
-        master.next = convertor.convertor.master;
-        master.pFunctions = (conversion_fct_t*) &ompi_osc_base_copy_functions;
-        convertor.convertor.master = &master;
-        convertor.convertor.fAdvance = opal_unpack_general;
+            for (uint32_t i = 0 ; i < iov_count ; ++i) {
+                int primitive_count = iov[i].iov_len / primitive_size;
+                ompi_op_reduce (op, inbuf, iov[i].iov_base, primitive_count, primitive_datatype);
+                inbuf = (void *)((intptr_t) inbuf + iov[i].iov_len);
+            }
+        } while (!done);
 
-        iov.iov_len  = inbuflen;
-        iov.iov_base = (IOVBASE_TYPE*) inbuf;
-        max_data     = iov.iov_len;
-        MEMCHECKER(
-            memchecker_convertor_call(&opal_memchecker_base_mem_defined,
-                                      &convertor.convertor);
-        );
-        opal_convertor_unpack(&convertor.convertor, 
-                              &iov,
-                              &iov_count,
-                              &max_data);
         MEMCHECKER(
             memchecker_convertor_call(&opal_memchecker_base_mem_noaccess,
-                                      &convertor.convertor);
+                                      &convertor);
         );
+
+        opal_convertor_cleanup (&convertor);
         OBJ_DESTRUCT(&convertor);
     }
+
+    return OMPI_SUCCESS;
+}
+
+int ompi_osc_base_sndrcv_op (const void *origin, int32_t origin_count,
+                             struct ompi_datatype_t *origin_dt,
+                             void *target, int32_t target_count,
+                             struct ompi_datatype_t *target_dt,
+                             ompi_op_t *op)
+{
+    ompi_datatype_t *origin_primitive, *target_primitive;
+    opal_convertor_t origin_convertor, target_convertor;
+    struct iovec origin_iovec[OMPI_OSC_BASE_DECODE_MAX];
+    struct iovec target_iovec[OMPI_OSC_BASE_DECODE_MAX];
+    uint32_t origin_iov_count, target_iov_count;
+    uint32_t origin_iov_index, target_iov_index;
+    size_t origin_size, target_size, primitive_size;
+    int primitive_count;
+    size_t acc_len;
+    bool done;
+
+    if (ompi_datatype_is_predefined(origin_dt) && origin_dt == target_dt) {
+        ompi_op_reduce(op, (void *)origin, target, origin_count, origin_dt);
+
+        return OMPI_SUCCESS;
+    }
+
+    origin_primitive = ompi_datatype_get_single_predefined_type_from_args(origin_dt);
+    target_primitive = ompi_datatype_get_single_predefined_type_from_args(target_dt);
+
+    /* check that the two primitives are the same */
+    if (OPAL_UNLIKELY(origin_primitive != target_primitive)) {
+        return OMPI_ERR_RMA_SYNC;
+    }
+
+    ompi_datatype_type_size (target_primitive, &primitive_size);
+
+    OBJ_CONSTRUCT(&origin_convertor, opal_convertor_t);
+    opal_convertor_copy_and_prepare_for_send (ompi_mpi_local_convertor, &origin_dt->super,
+                                              origin_count, origin, 0, &origin_convertor);
+
+    OBJ_CONSTRUCT(&target_convertor, opal_convertor_t);
+    opal_convertor_copy_and_prepare_for_recv (ompi_mpi_local_convertor, &target_dt->super,
+                                              target_count, target, 0, &target_convertor);
+
+    target_iov_index = 0;
+    target_iov_count = 0;
+
+    do {
+        /* decode segments of the source data */
+        origin_iov_count = OMPI_OSC_BASE_DECODE_MAX;
+        origin_iov_index = 0;
+
+        done = opal_convertor_raw (&origin_convertor, origin_iovec, &origin_iov_count, &origin_size);
+
+        /* loop on the target segments until we have exhaused the decoded source data */
+        while (origin_iov_index != origin_iov_count) {
+            if (target_iov_index == target_iov_count) {
+                /* decode segments of the target buffer */
+                target_iov_count = OMPI_OSC_BASE_DECODE_MAX;
+                target_iov_index = 0;
+                (void) opal_convertor_raw (&target_convertor, target_iovec, &target_iov_count, &target_size);
+            }
+
+            /* we already checked that the target was large enough. this should be impossible */
+            assert (0 != target_iov_count);
+
+            /* determine how much to accumulate */
+            if (target_iovec[target_iov_index].iov_len < origin_iovec[origin_iov_index].iov_len) {
+                acc_len = target_iovec[target_iov_index].iov_len;
+            } else {
+                acc_len = origin_iovec[origin_iov_index].iov_len;
+            }
+
+            primitive_count = acc_len / primitive_size;
+
+            ompi_op_reduce (op, origin_iovec[origin_iov_index].iov_base, target_iovec[target_iov_index].iov_base,
+                            primitive_count, target_primitive);
+
+            /* adjust io vectors */
+            target_iovec[target_iov_index].iov_len -= acc_len;
+            origin_iovec[origin_iov_index].iov_len -= acc_len;
+            target_iovec[target_iov_index].iov_base = (void *)((intptr_t) target_iovec[target_iov_index].iov_base + acc_len);
+            origin_iovec[origin_iov_index].iov_base = (void *)((intptr_t) origin_iovec[origin_iov_index].iov_base + acc_len);
+
+            origin_iov_index += 0 == origin_iovec[origin_iov_index].iov_len;
+            target_iov_index += 0 == target_iovec[target_iov_index].iov_len;
+        }
+    } while (!done);
+
+    opal_convertor_cleanup (&origin_convertor);
+    OBJ_DESTRUCT(&origin_convertor);
+
+    opal_convertor_cleanup (&target_convertor);
+    OBJ_DESTRUCT(&target_convertor);
 
     return OMPI_SUCCESS;
 }

@@ -1,3 +1,4 @@
+/* -*- Mode: C; c-basic-offset:4 ; indent-tabs-mode:nil -*- */
 /*
  * Copyright (c) 2004-2007 The Trustees of Indiana University and Indiana
  *                         University Research and Technology
@@ -5,14 +6,18 @@
  * Copyright (c) 2004-2005 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2008 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2008 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
+ * Copyright (c) 2013      Los Alamos National Security, LLC.  All rights
+ *                         reserved.
+ * Copyright (c) 2015      Research Organization for Information Science
+ *                         and Technology (RIST). All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 #include "ompi_config.h"
@@ -26,19 +31,18 @@
 #include "ompi/datatype/ompi_datatype.h"
 #include "ompi/memchecker.h"
 
-#if OPAL_HAVE_WEAK_SYMBOLS && OMPI_PROFILING_DEFINES
+#if OMPI_BUILD_MPI_PROFILING
+#if OPAL_HAVE_WEAK_SYMBOLS
 #pragma weak MPI_Send = PMPI_Send
 #endif
-
-#if OMPI_PROFILING_DEFINES
-#include "ompi/mpi/c/profile/defines.h"
+#define MPI_Send PMPI_Send
 #endif
 
 static const char FUNC_NAME[] = "MPI_Send";
 
 
-int MPI_Send(void *buf, int count, MPI_Datatype type, int dest,
-             int tag, MPI_Comm comm) 
+int MPI_Send(const void *buf, int count, MPI_Datatype type, int dest,
+             int tag, MPI_Comm comm)
 {
     int rc = MPI_SUCCESS;
 
@@ -56,7 +60,7 @@ int MPI_Send(void *buf, int count, MPI_Datatype type, int dest,
             rc = MPI_ERR_COUNT;
         } else if (tag < 0 || tag > mca_pml.pml_max_tag) {
             rc = MPI_ERR_TAG;
-        } else if (ompi_comm_peer_invalid(comm, dest) && 
+        } else if (ompi_comm_peer_invalid(comm, dest) &&
                    (MPI_PROC_NULL != dest)) {
             rc = MPI_ERR_RANK;
         } else {
@@ -69,8 +73,6 @@ int MPI_Send(void *buf, int count, MPI_Datatype type, int dest,
     if (MPI_PROC_NULL == dest) {
         return MPI_SUCCESS;
     }
-
-    OPAL_CR_ENTER_LIBRARY();
 
     rc = MCA_PML_CALL(send(buf, count, type, dest, tag, MCA_PML_BASE_SEND_STANDARD, comm));
     OMPI_ERRHANDLER_RETURN(rc, comm, rc, FUNC_NAME);

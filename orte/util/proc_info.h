@@ -2,17 +2,20 @@
  * Copyright (c) 2004-2005 The Trustees of Indiana University and Indiana
  *                         University Research and Technology
  *                         Corporation.  All rights reserved.
- * Copyright (c) 2004-2005 The University of Tennessee and The University
+ * Copyright (c) 2004-2011 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
+ * Copyright (c) 2011-2012 Los Alamos National Security, LLC.
+ *                         All rights reserved.
+ * Copyright (c) 2013-2015 Intel, Inc. All rights reserved
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -28,20 +31,19 @@
 
 #include "orte_config.h"
 
-#ifdef HAVE_STDINT_H
 #include <stdint.h>
-#endif
 
 #ifdef HAVE_SYS_TYPES_H
 #include <sys/types.h>
 #endif
 
 #include "orte/types.h"
+
 #include "opal/dss/dss_types.h"
+#include "opal/mca/hwloc/hwloc.h"
+#include "opal/util/proc.h"
 
 BEGIN_C_DECLS
-
-#define ORTE_MAX_HOSTNAME_SIZE  512
 
 typedef uint32_t orte_proc_type_t;
 #define ORTE_PROC_TYPE_NONE     0x0000
@@ -53,7 +55,12 @@ typedef uint32_t orte_proc_type_t;
 #define ORTE_PROC_MPI           0x0020
 #define ORTE_PROC_APP           0x0030
 #define ORTE_PROC_CM            0x0040
-#define ORTE_PROC_CM_APP        0x0080
+#define ORTE_PROC_AGGREGATOR    0x0080
+#define ORTE_PROC_DVM           0x0102   // DVM + daemon
+#define ORTE_PROC_IOF_ENDPT     0x1000
+#define ORTE_PROC_SCHEDULER     0x2000
+#define ORTE_PROC_MASTER_ACTUAL 0x4000
+#define ORTE_PROC_MASTER        (ORTE_PROC_MASTER_ACTUAL + ORTE_PROC_HNP)
 
 #define ORTE_PROC_IS_SINGLETON      (ORTE_PROC_SINGLETON & orte_process_info.proc_type)
 #define ORTE_PROC_IS_DAEMON         (ORTE_PROC_DAEMON & orte_process_info.proc_type)
@@ -63,7 +70,11 @@ typedef uint32_t orte_proc_type_t;
 #define ORTE_PROC_IS_MPI            (ORTE_PROC_MPI & orte_process_info.proc_type)
 #define ORTE_PROC_IS_APP            (ORTE_PROC_APP & orte_process_info.proc_type)
 #define ORTE_PROC_IS_CM             (ORTE_PROC_CM & orte_process_info.proc_type)
-#define ORTE_PROC_IS_CM_APP         (ORTE_PROC_CM_APP & orte_process_info.proc_type)
+#define ORTE_PROC_IS_AGGREGATOR     (ORTE_PROC_AGGREGATOR & orte_process_info.proc_type)
+#define ORTE_PROC_IS_DVM            (ORTE_PROC_DVM & orte_process_info.proc_type)
+#define ORTE_PROC_IS_IOF_ENDPT      (ORTE_PROC_IOF_ENDPT & orte_process_info.proc_type)
+#define ORTE_PROC_IS_SCHEDULER      (ORTE_PROC_SCHEDULER & orte_process_info.proc_type)
+#define ORTE_PROC_IS_MASTER         (ORTE_PROC_MASTER_ACTUAL & orte_process_info.proc_type)
 
 
 /**
@@ -76,21 +87,30 @@ typedef uint32_t orte_proc_type_t;
  * files - however, these are all initialized elsewhere.
  */
 struct orte_proc_info_t {
+    opal_proc_t super;
     orte_process_name_t my_name;        /**< My official process name */
     orte_process_name_t my_daemon;      /**< Name of my local daemon */
     char *my_daemon_uri;                /**< Contact info to local daemon */
     orte_process_name_t my_hnp;         /**< Name of my hnp */
     char *my_hnp_uri;                   /**< Contact info for my hnp */
+    orte_process_name_t my_parent;      /**< Name of my parent (or my HNP if no parent was specified) */
+    orte_process_name_t my_scheduler;   /**< name of the scheduler for this system */
     pid_t hnp_pid;                      /**< hnp pid - used if singleton */
-    int32_t app_num;                    /**< our index into the app_context array */
+    orte_app_idx_t app_num;             /**< our index into the app_context array */
     orte_vpid_t num_procs;              /**< number of processes in this job */
+    orte_vpid_t max_procs;              /**< Maximum number of processes ever in the job */
+    orte_vpid_t num_daemons;            /**< number of daemons in system */
     int num_nodes;                      /**< number of nodes in the job */
     char *nodename;                     /**< string name for this node */
+    char **aliases;                     /**< aliases for this node */
     pid_t pid;                          /**< Local process ID for this process */
     orte_proc_type_t proc_type;         /**< Type of process */
     opal_buffer_t *sync_buf;            /**< buffer to store sync response */
     uint16_t my_port;                   /**< TCP port for out-of-band comm */
-    int32_t num_restarts;               /**< number of times this proc has restarted */
+    int num_restarts;                   /**< number of times this proc has restarted */
+    orte_node_rank_t my_node_rank;      /**< node rank */
+    orte_local_rank_t my_local_rank;    /**< local rank */
+    int32_t num_local_peers;            /**< number of procs from my job that share my node with me */
     /* The session directory has the form
      * <prefix>/<openmpi-sessions-user>/<jobid>/<procid>, where the prefix
      * can either be provided by the user via the
@@ -105,6 +125,9 @@ struct orte_proc_info_t {
     char *sock_stdin;                   /**< Path name to temp file for stdin. */
     char *sock_stdout;                  /**< Path name to temp file for stdout. */
     char *sock_stderr;                  /**< Path name to temp file for stderr. */
+    char *cpuset;                       /**< String-representation of bitmap where we are bound */
+    int app_rank;                        /**< rank within my app_context */
+    orte_vpid_t my_hostid;               /** identifies the local host for a coprocessor */
 };
 typedef struct orte_proc_info_t orte_proc_info_t;
 
@@ -140,6 +163,8 @@ ORTE_DECLSPEC extern orte_proc_info_t orte_process_info;
 ORTE_DECLSPEC int orte_proc_info(void);
 
 ORTE_DECLSPEC int orte_proc_info_finalize(void);
+
+ORTE_DECLSPEC bool orte_ifislocal(const char *name);
 
 END_C_DECLS
 

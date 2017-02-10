@@ -2,18 +2,22 @@
  * Copyright (c) 2004-2007 The Trustees of Indiana University and Indiana
  *                         University Research and Technology
  *                         Corporation.  All rights reserved.
- * Copyright (c) 2004-2005 The University of Tennessee and The University
+ * Copyright (c) 2004-2013 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2008 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2008 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
  * Copyright (c) 2007      Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2012      Los Alamos Nat Security, LLC. All rights reserved.
+ * Copyright (c) 2012-2013 Inria.  All rights reserved.
+ * Copyright (c) 2015      Research Organization for Information Science
+ *                         and Technology (RIST). All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 #include "ompi_config.h"
@@ -26,22 +30,20 @@
 #include "ompi/mca/topo/topo.h"
 #include "ompi/memchecker.h"
 
-#if OPAL_HAVE_WEAK_SYMBOLS && OMPI_PROFILING_DEFINES
+#if OMPI_BUILD_MPI_PROFILING
+#if OPAL_HAVE_WEAK_SYMBOLS
 #pragma weak MPI_Graph_neighbors = PMPI_Graph_neighbors
 #endif
-
-#if OMPI_PROFILING_DEFINES
-#include "ompi/mpi/c/profile/defines.h"
+#define MPI_Graph_neighbors PMPI_Graph_neighbors
 #endif
 
 static const char FUNC_NAME[] = "MPI_Graph_neighbors";
 
 
 int MPI_Graph_neighbors(MPI_Comm comm, int rank, int maxneighbors,
-                        int *neighbors) 
+                        int neighbors[])
 {
     int err;
-    mca_topo_base_module_graph_neighbors_fn_t func;
 
     MEMCHECKER(
         memchecker_comm(comm);
@@ -58,11 +60,6 @@ int MPI_Graph_neighbors(MPI_Comm comm, int rank, int maxneighbors,
             return OMPI_ERRHANDLER_INVOKE (comm, MPI_ERR_COMM,
                                            FUNC_NAME);
         }
-        if (!OMPI_COMM_IS_GRAPH(comm)) {
-            return OMPI_ERRHANDLER_INVOKE (comm, MPI_ERR_TOPOLOGY,
-                                           FUNC_NAME);
-        }
-
         if ((0 > maxneighbors) || ((0 < maxneighbors) && NULL == neighbors)) {
             return OMPI_ERRHANDLER_INVOKE (comm, MPI_ERR_ARG,
                                            FUNC_NAME);
@@ -73,18 +70,13 @@ int MPI_Graph_neighbors(MPI_Comm comm, int rank, int maxneighbors,
         }
     }
 
-    OPAL_CR_ENTER_LIBRARY();
-
-    /* neighbors the function pointer to do the right thing */
-    func = comm->c_topo->topo_graph_neighbors;
+    if (!OMPI_COMM_IS_GRAPH(comm)) {
+        return OMPI_ERRHANDLER_INVOKE (comm, MPI_ERR_TOPOLOGY,
+                                       FUNC_NAME);
+    }
 
     /* call the function */
-    err = func(comm, rank, maxneighbors, neighbors);
-    OPAL_CR_EXIT_LIBRARY();
-    if ( MPI_SUCCESS != err ) {
-        return OMPI_ERRHANDLER_INVOKE(comm, err, FUNC_NAME);
-    }
-    
-    /* All done */
-    return MPI_SUCCESS;
+    err = comm->c_topo->topo.graph.graph_neighbors(comm, rank, maxneighbors, neighbors);
+
+    OMPI_ERRHANDLER_RETURN(err, comm, err, FUNC_NAME);
 }

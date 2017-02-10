@@ -2,10 +2,11 @@
  *
  * Copyright (c) 2008 Los Alamos National Security, LLC.  All rights reserved.
  *
+ * Copyright (c) 2015 Cisco Systems, Inc.  All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  *
  */
@@ -15,6 +16,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <time.h>
+#include <sys/time.h>
 
 #include <mpi.h>
 
@@ -34,7 +36,7 @@ int main(int argc, char* argv[])
     bool odd_nnodes;
     bool recvit;
     char *ppnstr;
-    
+
     if (argc < 3) {
         fprintf(stderr, "start times must be provided\n");
         return 1;
@@ -44,7 +46,7 @@ int main(int argc, char* argv[])
     ppn = strtol(ppnstr, NULL, 10);
     start_sec = strtol(argv[1], NULL, 10);
     start_usec = strtol(argv[2], NULL, 10);
-    
+
     MPI_Init(NULL, NULL);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
@@ -59,16 +61,16 @@ int main(int argc, char* argv[])
             goto cleanup;
         }
     }
-    
+
     /* see how many nodes we have */
     nnodes = size / ppn;
-    
+
     odd_nnodes = false;
     if (0 != (nnodes % 2)) {
         /* we have an odd # of nodes */
         odd_nnodes = true;
     }
-    
+
     /* compute the rank of the rank with which I am to exchange a message.
      * Per requirements, this proc must be on another node. To accomplish
      * this with max efficiency, we take advantage of knowing that the ppn
@@ -78,10 +80,10 @@ int main(int argc, char* argv[])
      * "neighboring" - i.e., that they hopefully share a switch so that the
      * hop count of sending the messages is minimized.
      */
-    
+
     /* first, determine if my node is odd or even */
     my_node = rank / ppn;
-    
+
      if (0 != (my_node % 2)) {
         /* compute my twin's rank - as I am an odd numbered node, my
          * twin will be on the node below me. Thus, its rank will be
@@ -119,7 +121,7 @@ int main(int argc, char* argv[])
             MPI_Recv(&msg, 1, MPI_INT, my_twin, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
         }
     }
-    
+
     /* if we have an odd number of nodes and I am on node=0, then I have
      * to take the extra recv
      */
@@ -127,12 +129,12 @@ int main(int argc, char* argv[])
         my_twin = size - ppn + rank;
         MPI_Recv(&msg, 1, MPI_INT, my_twin, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
     }
-    
+
     /* get a completion time stamp */
     gettimeofday(&tv, NULL);
     my_timestamp[0] = tv.tv_sec;
     my_timestamp[1] = tv.tv_usec;
-    
+
     /* THIS COMPLETES THE OFFICIAL TIMING POINT */
 
     /* Gather to get all the timestamps to rank 0 */
@@ -187,10 +189,10 @@ int main(int argc, char* argv[])
                     minutes, seconds, maxrank);
         }
     }
-    
+
 cleanup:
     /* this completes the test */
     MPI_Finalize();
-    
+
     return 0;
 }

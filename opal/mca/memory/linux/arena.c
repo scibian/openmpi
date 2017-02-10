@@ -462,8 +462,11 @@ ptmalloc_init __MALLOC_P((void))
     if(s[0]) mALLOPt(M_CHECK_ACTION, (int)(s[0] - '0'));
     __malloc_check_init();
   }
+#if 0
+  /* OMPI Change: Don't call the initialize hook; it was us. */
   if(__malloc_initialize_hook != NULL)
     (*__malloc_initialize_hook)();
+#endif
 
   __malloc_initialized = 1;
 }
@@ -474,7 +477,7 @@ thread_atfork_static(ptmalloc_lock_all, ptmalloc_unlock_all, \
                      ptmalloc_unlock_all2)
 #endif
 
-
+
 
 /* Managing heaps and arenas (for concurrent threads) */
 
@@ -722,7 +725,7 @@ arena_get2(a_tsd, size) mstate a_tsd; size_t size;
   /* Add the new arena to the global list.  */
   (void)mutex_lock(&list_lock);
   a->next = main_arena.next;
-/* OMPI: use our barriers 
+/* OMPI: use our barriers
   atomic_write_barrier ();
 */
   opal_atomic_wmb();

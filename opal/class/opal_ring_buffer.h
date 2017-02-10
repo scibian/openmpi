@@ -6,15 +6,15 @@
  * Copyright (c) 2004-2008 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
  * Copyright (c) 2010      Cisco Systems, Inc. All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 /** @file
@@ -26,8 +26,6 @@
 
 #include "opal_config.h"
 
-#include "opal/threads/mutex.h"
-#include "opal/threads/condition.h"
 #include "opal/threads/threads.h"
 #include "opal/class/opal_object.h"
 #include "opal/util/output.h"
@@ -97,7 +95,8 @@ OPAL_DECLSPEC void* opal_ring_buffer_pop(opal_ring_buffer_t *ring);
 
 /*
  * Access an element of the ring, without removing it, indexed
- * starting at the tail
+ * starting at the tail - a value of -1 will return the element
+ * at the head of the ring
  */
 OPAL_DECLSPEC void* opal_ring_buffer_poke(opal_ring_buffer_t *ring, int i);
 

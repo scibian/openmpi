@@ -1,11 +1,13 @@
-/* 
- * Copyright (c) 2007      Los Alamos National Security, LLC.  All rights
- *                         reserved. 
+/*
+ * Copyright (c) 2007-2013 Los Alamos National Security, LLC.  All rights
+ *                         reserved.
  * Copyright (c) 2008      Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2015      Research Organization for Information Science
+ *                         and Technology (RIST). All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -15,11 +17,7 @@
 
 #include "opal_config.h"
 
-#if OPAL_HAVE_POSIX_THREADS
 #include <pthread.h>
-#elif OPAL_HAVE_SOLARIS_THREADS
-#include <thread.h>
-#endif
 
 #include "opal/constants.h"
 
@@ -69,11 +67,11 @@ typedef void* opal_tsd_key_t;
  * @param destructor[in] Cleanup function to call when a thread exits
  *
  * @retval OPAL_SUCCESS  Success
- * @retval EAGAIN        The system lacked the necessary resource to 
+ * @retval EAGAIN        The system lacked the necessary resource to
  *                       create another thread specific data key
  * @retval ENOMEM        Insufficient memory exists to create the key
  */
-OPAL_DECLSPEC int opal_tsd_key_create(opal_tsd_key_t *key, 
+OPAL_DECLSPEC int opal_tsd_key_create(opal_tsd_key_t *key,
                                       opal_tsd_destructor_t destructor);
 
 
@@ -136,7 +134,7 @@ OPAL_DECLSPEC int opal_tsd_setspecific(opal_tsd_key_t key, void *value);
  */
 OPAL_DECLSPEC int opal_tsd_getspecific(opal_tsd_key_t key, void **valuep);
 
-#elif OPAL_HAVE_POSIX_THREADS
+#else
 
 typedef pthread_key_t opal_tsd_key_t;
 
@@ -165,88 +163,6 @@ opal_tsd_getspecific(opal_tsd_key_t key, void **valuep)
     *valuep = pthread_getspecific(key);
     return OPAL_SUCCESS;
 }
-
-#elif OPAL_HAVE_SOLARIS_THREADS
-
-typedef thread_key_t opal_tsd_key_t;
-
-static inline int
-opal_tsd_key_create(opal_tsd_key_t *key,
-                    opal_tsd_destructor_t destructor)
-{
-    return thr_keycreate(key, destructor);
-}
-
-static inline int
-opal_tsd_key_delete(opal_tsd_key_t key)
-{
-    return OPAL_SUCCESS;
-}
-
-static inline int
-opal_tsd_setspecific(opal_tsd_key_t key, void *value)
-{
-    return thr_setspecific(key, value);
-}
-
-static inline int
-opal_tsd_getspecific(opal_tsd_key_t key, void **valuep)
-{
-    return thr_getspecific(key, valuep);
-}
-
-#elif defined(__WINDOWS__)
-
-/* BWB - FIX ME - this is still not quite right -- we also need to
-   implement support for running the destructors when a thread exits,
-   but I'm not sure we have a framework for doing that just yet. */
-
-typedef DWORD opal_tsd_key_t;
-
-static inline int
-opal_tsd_key_create(opal_tsd_key_t *key,
-                    opal_tsd_destructor_t destructor)
-{
-    *key = TlsAlloc();
-
-    return (*key == TLS_OUT_OF_INDEXES) ? OPAL_ERROR : OPAL_SUCCESS;
-}
-
-static inline int
-opal_tsd_key_delete(opal_tsd_key_t key)
-{
-    key = TlsFree(key);
-
-    return (key == 0) ? OPAL_ERROR : OPAL_SUCCESS;
-}
-
-static inline int
-opal_tsd_setspecific(opal_tsd_key_t key, void *value)
-{
-    BOOL ret = TlsSetValue(key, (LPVOID) value);
-
-    return (ret) ? OPAL_SUCCESS : OPAL_ERROR;
-}
-
-static inline int
-opal_tsd_getspecific(opal_tsd_key_t key, void **valuep)
-{
-    *valuep = TlsGetValue(key);
-    return OPAL_SUCCESS;
-}
-
-#else
-
-typedef int opal_tsd_key_t;
-
-OPAL_DECLSPEC int opal_tsd_key_create(opal_tsd_key_t *key, 
-                                      opal_tsd_destructor_t destructor);
-
-OPAL_DECLSPEC int opal_tsd_key_delete(opal_tsd_key_t key);
-
-OPAL_DECLSPEC int opal_tsd_setspecific(opal_tsd_key_t key, void *value);
-
-OPAL_DECLSPEC int opal_tsd_getspecific(opal_tsd_key_t key, void **valuep);
 
 #endif
 

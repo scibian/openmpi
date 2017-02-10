@@ -10,19 +10,19 @@
 # Copyright (c) 2004-2005 The Regents of the University of California.
 #                         All rights reserved.
 # Copyright (c) 2009      Sun Microsystems, Inc.  All rights reserved.
-# Copyright (c) 2009      Cisco Systems, Inc.  All rights reserved.
-#
+# Copyright (c) 2009-2014 Cisco Systems, Inc.  All rights reserved.
+# Copyright (c) 2012      NVIDIA Corporation.  All rights reserved.
 # $COPYRIGHT$
-# 
+#
 # Additional copyrights may follow
-# 
+#
 # $HEADER$
 #
 
-dist_pkgdata_DATA = \
+dist_ompidata_DATA = \
 	help-mpi-pml-ob1.txt
 
-EXTRA_DIST = post_configure.sh .windows
+EXTRA_DIST = post_configure.sh
 
 ob1_sources  = \
 	pml_ob1.c \
@@ -46,9 +46,15 @@ ob1_sources  = \
 	pml_ob1_recvreq.h \
 	pml_ob1_sendreq.c \
 	pml_ob1_sendreq.h \
-	pml_ob1_start.c 
+	pml_ob1_start.c
 
-if OMPI_BUILD_pml_ob1_DSO
+# If we have CUDA support requested, build the CUDA file also
+if OPAL_cuda_support
+ob1_sources += \
+    pml_ob1_cuda.c
+endif
+
+if MCA_BUILD_ompi_pml_ob1_DSO
 component_noinst =
 component_install = mca_pml_ob1.la
 else
@@ -56,10 +62,15 @@ component_noinst = libmca_pml_ob1.la
 component_install =
 endif
 
-mcacomponentdir = $(pkglibdir)
+mcacomponentdir = $(ompilibdir)
 mcacomponent_LTLIBRARIES = $(component_install)
 mca_pml_ob1_la_SOURCES = $(ob1_sources)
 mca_pml_ob1_la_LDFLAGS = -module -avoid-version
+
+if OPAL_cuda_support
+mca_pml_ob1_la_LIBADD = \
+    $(OMPI_TOP_BUILDDIR)/opal/mca/common/cuda/lib@OPAL_LIB_PREFIX@mca_common_cuda.la
+endif
 
 noinst_LTLIBRARIES = $(component_noinst)
 libmca_pml_ob1_la_SOURCES = $(ob1_sources)

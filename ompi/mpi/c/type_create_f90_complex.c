@@ -1,20 +1,25 @@
+/* -*- Mode: C; c-basic-offset:4 ; indent-tabs-mode:nil -*- */
 /*
  * Copyright (c) 2004-2007 The Trustees of Indiana University and Indiana
  *                         University Research and Technology
  *                         Corporation.  All rights reserved.
- * Copyright (c) 2004-2008 The University of Tennessee and The University
+ * Copyright (c) 2004-2015 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
  * Copyright (c) 2006-2009 Sun Microsystems, Inc.  All rights reserved.
  * Copyright (c) 2008      Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2013      Los Alamos National Security, LLC.  All rights
+ *                         reserved.
+ * Copyright (c) 2015      Research Organization for Information Science
+ *                         and Technology (RIST). All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -27,12 +32,11 @@
 
 #include <float.h>
 
-#if OPAL_HAVE_WEAK_SYMBOLS && OMPI_PROFILING_DEFINES
+#if OMPI_BUILD_MPI_PROFILING
+#if OPAL_HAVE_WEAK_SYMBOLS
 #pragma weak MPI_Type_create_f90_complex = PMPI_Type_create_f90_complex
 #endif
-
-#if OMPI_PROFILING_DEFINES
-#include "ompi/mpi/c/profile/defines.h"
+#define MPI_Type_create_f90_complex PMPI_Type_create_f90_complex
 #endif
 
 static const char FUNC_NAME[] = "MPI_Type_create_f90_complex";
@@ -41,8 +45,6 @@ static const char FUNC_NAME[] = "MPI_Type_create_f90_complex";
 int MPI_Type_create_f90_complex(int p, int r, MPI_Datatype *newtype)
 {
     uint64_t key;
-
-    OPAL_CR_NOOP_PROGRESS();
 
     if (MPI_PARAM_CHECK) {
         OMPI_ERR_INIT_FINALIZE(FUNC_NAME);
@@ -79,7 +81,7 @@ int MPI_Type_create_f90_complex(int p, int r, MPI_Datatype *newtype)
 
     if( *newtype != &ompi_mpi_datatype_null.dt ) {
         ompi_datatype_t* datatype;
-        int* a_i[2];
+        const int* a_i[2];
         int rc;
 
         key = (((uint64_t)p) << 32) | ((uint64_t)r);
@@ -104,7 +106,7 @@ int MPI_Type_create_f90_complex(int p, int r, MPI_Datatype *newtype)
 
         a_i[0] = &r;
         a_i[1] = &p;
-        ompi_datatype_set_args( datatype, 1, a_i, 0, NULL, 0, NULL, MPI_COMBINER_F90_COMPLEX );
+        ompi_datatype_set_args( datatype, 2, a_i, 0, NULL, 0, NULL, MPI_COMBINER_F90_COMPLEX );
 
         rc = opal_hash_table_set_value_uint64( &ompi_mpi_f90_complex_hashtable, key, datatype );
         if (OMPI_SUCCESS != rc) {

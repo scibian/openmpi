@@ -1,3 +1,4 @@
+/* -*- Mode: C; c-basic-offset:4 ; indent-tabs-mode:nil -*- */
 /*
  * Copyright (c) 2004-2008 The Trustees of Indiana University and Indiana
  *                         University Research and Technology
@@ -9,10 +10,12 @@
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
- * Copyright (c) 2007-2013 Cisco Systems, Inc.  All rights reserved.
- * Copyright (c) 2010-2011 Los Alamos National Security, LLC.
- *                         All rights reserved.
+ * Copyright (c) 2007-2015 Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2010-2015 Los Alamos National Security, LLC. All rights
+ *                         reserved.
  * Copyright (c) 2011      NVIDIA Corporation.  All rights reserved.
+ * Copyright (c) 2014      Research Organization for Information Science
+ *                         and Technology (RIST). All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -31,9 +34,7 @@
 #ifdef HAVE_SYS_MMAN_H
 #include <sys/mman.h>
 #endif /* HAVE_SYS_MMAN_H */
-#ifdef HAVE_STRING_H
 #include <string.h>
-#endif /* HAVE_STRING_H */
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
 #endif /* HAVE_UNISTD_H */
@@ -44,13 +45,14 @@
 #if HAVE_SYS_SHM_H
 #include <sys/shm.h>
 #endif /* HAVE_SYS_SHM_H */
-#ifdef HAVE_SYS_STAT_H
+#if HAVE_SYS_STAT_H
 #include <sys/stat.h>
 #endif /* HAVE_SYS_STAT_H */
 
 #include "opal/constants.h"
 #include "opal/util/show_help.h"
 #include "opal/util/output.h"
+#include "opal/util/sys_limits.h"
 #include "opal/mca/shmem/base/base.h"
 #include "opal/mca/shmem/shmem.h"
 #include "shmem_sysv.h"
@@ -60,6 +62,7 @@ const char *opal_shmem_sysv_component_version_string =
     "OPAL sysv shmem MCA component version " OPAL_VERSION;
 
 /* local functions */
+static int sysv_register (void);
 static int sysv_open(void);
 static int sysv_query(mca_base_module_t **module, int *priority);
 static int sysv_runtime_query(mca_base_module_t **module,
@@ -70,52 +73,51 @@ static int sysv_runtime_query(mca_base_module_t **module,
  * and pointers to our public functions in it
  */
 opal_shmem_sysv_component_t mca_shmem_sysv_component = {
-    /* ////////////////////////////////////////////////////////////////////// */
-    /* super */
-    /* ////////////////////////////////////////////////////////////////////// */
-    {
+    .super = {
         /* common MCA component data */
         {
             OPAL_SHMEM_BASE_VERSION_2_0_0,
 
             /* component name and version */
-            "sysv",
-            OPAL_MAJOR_VERSION,
-            OPAL_MINOR_VERSION,
-            OPAL_RELEASE_VERSION,
+            .mca_component_name = "sysv",
+            MCA_BASE_MAKE_VERSION(component, OPAL_MAJOR_VERSION, OPAL_MINOR_VERSION,
+                                  OPAL_RELEASE_VERSION),
 
-            /* component open */
-            sysv_open,
-            /* component close */
-            NULL,
-            /* component query */
-            sysv_query
+            .mca_open_component = sysv_open,
+            .mca_query_component = sysv_query,
+            .mca_register_component_params = sysv_register
         },
         /* MCA v2.0.0 component meta data */
-        {
+        .base_data = {
             /* the component is checkpoint ready */
             MCA_BASE_METADATA_PARAM_CHECKPOINT
         },
-        sysv_runtime_query,
+        .runtime_query = sysv_runtime_query,
     },
-    /* ////////////////////////////////////////////////////////////////////// */
-    /* sysv component-specific information */
-    /* see: shmem_sysv.h for more information */
+};
+
+/* ////////////////////////////////////////////////////////////////////////// */
+static int
+sysv_register(void)
+{
     /* ////////////////////////////////////////////////////////////////////// */
     /* (default) priority - set lower than mmap's priority */
-    30
-};
+    mca_shmem_sysv_component.priority = 30;
+    (void) mca_base_component_var_register(&mca_shmem_sysv_component.super.base_version,
+                                           "priority", "Priority for the shmem sysv "
+                                           "component (default: 30)", MCA_BASE_VAR_TYPE_INT,
+                                           NULL, 0, MCA_BASE_VAR_FLAG_SETTABLE,
+                                           OPAL_INFO_LVL_3,
+                                           MCA_BASE_VAR_SCOPE_ALL_EQ,
+                                           &mca_shmem_sysv_component.priority);
+
+    return OPAL_SUCCESS;
+}
 
 /* ////////////////////////////////////////////////////////////////////////// */
 static int
 sysv_open(void)
 {
-    mca_base_param_reg_int(
-        &mca_shmem_sysv_component.super.base_version,
-        "priority", "Priority of the sysv shmem component", false, false,
-        mca_shmem_sysv_component.priority, &mca_shmem_sysv_component.priority
-    );
-
     return OPAL_SUCCESS;
 }
 
@@ -145,7 +147,7 @@ sysv_runtime_query(mca_base_module_t **module, int *priority, const char *hint)
      */
     if (NULL != hint) {
         OPAL_OUTPUT_VERBOSE(
-            (70, opal_shmem_base_output,
+            (70, opal_shmem_base_framework.framework_output,
              "shmem: sysv: runtime_query: "
              "attempting to use runtime hint (%s)\n", hint)
         );
@@ -166,8 +168,13 @@ sysv_runtime_query(mca_base_module_t **module, int *priority, const char *hint)
     }
 
     /* if we are here, then let the run-time test games begin */
+    OPAL_OUTPUT_VERBOSE(
+        (70, opal_shmem_base_framework.framework_output,
+         "shmem: sysv: runtime_query: NO HINT PROVIDED:"
+         "starting run-time test...\n")
+    );
 
-    if (-1 == (shmid = shmget(IPC_PRIVATE, (size_t)(getpagesize()),
+    if (-1 == (shmid = shmget(IPC_PRIVATE, (size_t)(opal_getpagesize()),
                               IPC_CREAT | IPC_EXCL | S_IRWXU ))) {
         goto out;
     }
@@ -192,7 +199,7 @@ sysv_runtime_query(mca_base_module_t **module, int *priority, const char *hint)
     }
 
 out:
-    if ((char *)-1 != addr) {
+    if (NULL != addr && (char *)-1 != addr) {
         shmdt(addr);
     }
     return OPAL_SUCCESS;

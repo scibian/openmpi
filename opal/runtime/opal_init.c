@@ -1,5 +1,6 @@
+/* -*- Mode: C; c-basic-offset:4 ; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2004-2007 The Trustees of Indiana University and Indiana
+ * Copyright (c) 2004-2010 The Trustees of Indiana University and Indiana
  *                         University Research and Technology
  *                         Corporation.  All rights reserved.
  * Copyright (c) 2004-2005 The University of Tennessee and The University
@@ -9,11 +10,14 @@
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
- * Copyright (c) 2007-2008 Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2007-2016 Cisco Systems, Inc.  All rights reserved.
  * Copyright (c) 2007      Sun Microsystems, Inc.  All rights reserved.
  * Copyright (c) 2009      Oak Ridge National Labs.  All rights reserved.
- * Copyright (c) 2011      Los Alamos National Security, LLC.
+ * Copyright (c) 2010-2015 Los Alamos National Security, LLC.
  *                         All rights reserved.
+ * Copyright (c) 2013-2016 Intel, Inc. All rights reserved
+ * Copyright (c) 2015      Research Organization for Information Science
+ *                         and Technology (RIST). All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -23,12 +27,18 @@
 
 /** @file **/
 
+#ifdef HAVE_UNISTD_H
+#include <unistd.h>
+#endif
+
 #include "opal_config.h"
 
 #include "opal/util/malloc.h"
+#include "opal/util/arch.h"
+#include "opal/util/opal_environ.h"
 #include "opal/util/output.h"
-#include "opal/util/trace.h"
 #include "opal/util/show_help.h"
+#include "opal/util/proc.h"
 #include "opal/memoryhooks/memory.h"
 #include "opal/mca/base/base.h"
 #include "opal/runtime/opal.h"
@@ -36,20 +46,18 @@
 #include "opal/datatype/opal_datatype.h"
 #include "opal/mca/installdirs/base/base.h"
 #include "opal/mca/memory/base/base.h"
+#include "opal/mca/patcher/base/base.h"
 #include "opal/mca/memcpy/base/base.h"
 #include "opal/mca/hwloc/base/base.h"
-#include "opal/mca/paffinity/base/base.h"
+#include "opal/mca/sec/base/base.h"
 #include "opal/mca/timer/base/base.h"
 #include "opal/mca/memchecker/base/base.h"
 #include "opal/dss/dss.h"
-#include "opal/mca/carto/base/base.h"
 #include "opal/mca/shmem/base/base.h"
-
-#include "opal/runtime/opal_cr.h"
-#include "opal/mca/crs/base/base.h"
+#include "opal/threads/threads.h"
 
 #include "opal/runtime/opal_progress.h"
-#include "opal/event/event.h"
+#include "opal/mca/event/base/base.h"
 #include "opal/mca/backtrace/base/base.h"
 
 #include "opal/constants.h"
@@ -66,13 +74,16 @@
 const char opal_version_string[] = OPAL_IDENT_STRING;
 
 int opal_initialized = 0;
+bool opal_init_called = false;
 int opal_util_initialized = 0;
-bool opal_profile = false;
-char *opal_profile_file = NULL;
-int opal_cache_line_size;
+/* We have to put a guess in here in case hwloc is not available.  If
+   hwloc is available, this value will be overwritten when the
+   hwloc data is loaded. */
+int opal_cache_line_size = 128;
+bool opal_warn_on_fork = true;
 
-static const char *
-opal_err2str(int errnum)
+static int
+opal_err2str(int errnum, const char **errmsg)
 {
     const char *retval;
 
@@ -104,8 +115,8 @@ opal_err2str(int errnum)
     case OPAL_ERR_NOT_SUPPORTED:
         retval = "Not supported";
         break;
-    case OPAL_ERR_INTERUPTED:
-        retval = "Interupted";
+    case OPAL_ERR_INTERRUPTED:
+        retval = "Interrupted";
         break;
     case OPAL_ERR_WOULD_BLOCK:
         retval = "Would block";
@@ -173,11 +184,100 @@ opal_err2str(int errnum)
     case OPAL_ERR_DATA_OVERWRITE_ATTEMPT:
         retval = "Attempt to overwrite a data value";
         break;
+    case OPAL_ERR_MODULE_NOT_FOUND:
+        retval = "Framework requires at least one active module, but none found";
+        break;
+    case OPAL_ERR_TOPO_SLOT_LIST_NOT_SUPPORTED:
+        retval = "OS topology does not support slot_list process affinity";
+        break;
+    case OPAL_ERR_TOPO_SOCKET_NOT_SUPPORTED:
+        retval = "Could not obtain socket topology information";
+        break;
+    case OPAL_ERR_TOPO_CORE_NOT_SUPPORTED:
+        retval = "Could not obtain core topology information";
+        break;
+    case OPAL_ERR_NOT_ENOUGH_SOCKETS:
+        retval = "Not enough sockets to meet request";
+        break;
+    case OPAL_ERR_NOT_ENOUGH_CORES:
+        retval = "Not enough cores to meet request";
+        break;
+    case OPAL_ERR_INVALID_PHYS_CPU:
+        retval = "Invalid physical cpu number returned";
+        break;
+    case OPAL_ERR_MULTIPLE_AFFINITIES:
+        retval = "Multiple methods for assigning process affinity were specified";
+        break;
+    case OPAL_ERR_SLOT_LIST_RANGE:
+        retval = "Provided slot_list range is invalid";
+        break;
+    case OPAL_ERR_NETWORK_NOT_PARSEABLE:
+        retval = "Provided network specification is not parseable";
+        break;
+    case OPAL_ERR_SILENT:
+        retval = NULL;
+        break;
+    case OPAL_ERR_NOT_INITIALIZED:
+        retval = "Not initialized";
+        break;
+    case OPAL_ERR_NOT_BOUND:
+        retval = "Not bound";
+        break;
+    case OPAL_ERR_TAKE_NEXT_OPTION:
+        retval = "Take next option";
+        break;
+    case OPAL_ERR_PROC_ENTRY_NOT_FOUND:
+        retval = "Database entry not found";
+        break;
+    case OPAL_ERR_DATA_VALUE_NOT_FOUND:
+        retval = "Data for specified key not found";
+        break;
+    case OPAL_ERR_CONNECTION_FAILED:
+        retval = "Connection failed";
+        break;
+    case OPAL_ERR_AUTHENTICATION_FAILED:
+        retval = "Authentication failed";
+        break;
+    case OPAL_ERR_COMM_FAILURE:
+        retval = "Comm failure";
+        break;
+    case OPAL_ERR_SERVER_NOT_AVAIL:
+        retval = "Server not available";
+        break;
     default:
         retval = NULL;
     }
 
-    return retval;
+    *errmsg = retval;
+    return OPAL_SUCCESS;
+}
+
+
+int opal_init_psm(void)
+{
+    /* Very early in the init sequence -- before *ANY* MCA components
+       are opened -- we need to disable some behavior from the PSM and
+       PSM2 libraries (by default): at least some old versions of
+       these libraries hijack signal handlers during their library
+       constructors and then do not un-hijack them when the libraries
+       are unloaded.
+
+       It is a bit of an abstraction break that we have to put
+       vendor/transport-specific code in the OPAL core, but we're
+       out of options, unfortunately.
+
+       NOTE: We only disable this behavior if the corresponding
+       environment variables are not already set (i.e., if the
+       user/environment has indicated a preference for this behavior,
+       we won't override it). */
+    if (NULL == getenv("IPATH_NO_BACKTRACE")) {
+        opal_setenv("IPATH_NO_BACKTRACE", "1", true, &environ);
+    }
+    if (NULL == getenv("HFI_NO_BACKTRACE")) {
+        opal_setenv("HFI_NO_BACKTRACE", "1", true, &environ);
+    }
+
+    return OPAL_SUCCESS;
 }
 
 
@@ -186,6 +286,7 @@ opal_init_util(int* pargc, char*** pargv)
 {
     int ret;
     char *error = NULL;
+    char hostname[OPAL_MAXHOSTNAMELEN];
 
     if( ++opal_util_initialized != 1 ) {
         if( opal_util_initialized < 1 ) {
@@ -194,11 +295,24 @@ opal_init_util(int* pargc, char*** pargv)
         return OPAL_SUCCESS;
     }
 
-    /* JMS See note in runtime/opal.h -- this is temporary; to be
-       replaced with real hwloc information soon (in trunk/v1.5 and
-       beyond, only).  This *used* to be a #define, so it's important
-       to define it very early.  */
-    opal_cache_line_size = 128;
+#if OPAL_NO_LIB_DESTRUCTOR
+    if (opal_init_called) {
+        /* can't use show_help here */
+        fprintf (stderr, "opal_init_util: attempted to initialize after finalize without compiler "
+                 "support for either __attribute__(destructor) or linker support for -fini -- process "
+                 "will likely abort\n");
+        return OPAL_ERR_NOT_SUPPORTED;
+    }
+#endif
+
+    opal_init_called = true;
+
+    /* set the nodename right away so anyone who needs it has it. Note
+     * that we don't bother with fqdn and prefix issues here - we let
+     * the RTE later replace this with a modified name if the user
+     * requests it */
+    gethostname(hostname, sizeof(hostname));
+    opal_process_info.nodename = strdup(hostname);
 
     /* initialize the memory allocator */
     opal_malloc_init();
@@ -207,25 +321,22 @@ opal_init_util(int* pargc, char*** pargv)
     opal_output_init();
 
     /* initialize install dirs code */
-    if (OPAL_SUCCESS != (ret = opal_installdirs_base_open())) {
-        fprintf(stderr, "opal_installdirs_base_open() failed -- process will likely abort (%s:%d, returned %d instead of OPAL_INIT)\n",
+    if (OPAL_SUCCESS != (ret = mca_base_framework_open(&opal_installdirs_base_framework, 0))) {
+        fprintf(stderr, "opal_installdirs_base_open() failed -- process will likely abort (%s:%d, returned %d instead of OPAL_SUCCESS)\n",
                 __FILE__, __LINE__, ret);
         return ret;
     }
-    
+
     /* initialize the help system */
     opal_show_help_init();
 
     /* register handler for errnum -> string converstion */
-    if (OPAL_SUCCESS != 
+    if (OPAL_SUCCESS !=
         (ret = opal_error_register("OPAL",
                                    OPAL_ERR_BASE, OPAL_ERR_MAX, opal_err2str))) {
         error = "opal_error_register";
         goto return_error;
     }
-
-    /* init the trace function */
-    opal_trace_init();
 
     /* keyval lex-based parser */
     if (OPAL_SUCCESS != (ret = opal_util_keyval_parse_init())) {
@@ -233,14 +344,13 @@ opal_init_util(int* pargc, char*** pargv)
         goto return_error;
     }
 
-    if (OPAL_SUCCESS != (ret = opal_net_init())) {
-        error = "opal_net_init";
-        goto return_error;
-    }
+    // Disable PSM signal hijacking (see comment in function for more
+    // details)
+    opal_init_psm();
 
     /* Setup the parameter system */
-    if (OPAL_SUCCESS != (ret = mca_base_param_init())) {
-        error = "mca_base_param_init";
+    if (OPAL_SUCCESS != (ret = mca_base_var_init())) {
+        error = "mca_base_var_init";
         goto return_error;
     }
 
@@ -250,14 +360,30 @@ opal_init_util(int* pargc, char*** pargv)
         goto return_error;
     }
 
+    if (OPAL_SUCCESS != (ret = opal_net_init())) {
+        error = "opal_net_init";
+        goto return_error;
+    }
+
     /* pretty-print stack handlers */
     if (OPAL_SUCCESS != (ret = opal_util_register_stackhandlers())) {
         error = "opal_util_register_stackhandlers";
         goto return_error;
     }
 
-    if (OPAL_SUCCESS != (ret = opal_util_init_sys_limits())) {
-        error = "opal_util_init_sys_limits";
+    /* set system resource limits - internally protected against
+     * doing so twice in cases where the launch agent did it for us
+     */
+    if (OPAL_SUCCESS != (ret = opal_util_init_sys_limits(&error))) {
+        opal_show_help("help-opal-runtime.txt",
+                        "opal_init:syslimit", false,
+                        error);
+        return OPAL_ERR_SILENT;
+    }
+
+    /* initialize the arch string */
+    if (OPAL_SUCCESS != (ret = opal_arch_init ())) {
+        error = "opal_arch_init";
         goto return_error;
     }
 
@@ -273,12 +399,20 @@ opal_init_util(int* pargc, char*** pargv)
         goto return_error;
     }
 
+    /* initialize the mca */
+    if (OPAL_SUCCESS != (ret = mca_base_open())) {
+        error = "mca_base_open";
+        goto return_error;
+    }
+
     return OPAL_SUCCESS;
 
  return_error:
-    opal_show_help( "help-opal-runtime.txt",
-                    "opal_init:startup:internal-failure", true,
-                    error, ret );
+    if (OPAL_ERR_SILENT != ret) {
+        opal_show_help( "help-opal-runtime.txt",
+                        "opal_init:startup:internal-failure", true,
+                        error, ret );
+    }
     return ret;
 }
 
@@ -301,35 +435,19 @@ opal_init(int* pargc, char*** pargv)
         return ret;
     }
 
-    /* initialize the mca */
-    if (OPAL_SUCCESS != (ret = mca_base_open())) {
-        error = "mca_base_open";
-        goto return_error;
-    }
-
     /* open hwloc - since this is a static framework, no
      * select is required
      */
-    if (OPAL_SUCCESS != (ret = opal_hwloc_base_open())) {
-        error = "opal_paffinity_base_open";
+    if (OPAL_SUCCESS != (ret = mca_base_framework_open(&opal_hwloc_base_framework, 0))) {
+        error = "opal_hwloc_base_open";
         goto return_error;
     }
 
-    /* open the processor affinity base */
-    if (OPAL_SUCCESS != (ret = opal_paffinity_base_open())) {
-        error = "opal_paffinity_base_open";
-        goto return_error;
-    }
-    if (OPAL_SUCCESS != (ret = opal_paffinity_base_select())) {
-        error = "opal_paffinity_base_select";
-        goto return_error;
-    }
-    
     /* the memcpy component should be one of the first who get
-     * loaded in order to make sure we ddo have all the available
+     * loaded in order to make sure we have all the available
      * versions of memcpy correctly configured.
      */
-    if( OPAL_SUCCESS != (ret = opal_memcpy_base_open()) ) {
+    if (OPAL_SUCCESS != (ret = mca_base_framework_open(&opal_memcpy_base_framework, 0))) {
         error = "opal_memcpy_base_open";
         goto return_error;
     }
@@ -338,7 +456,7 @@ opal_init(int* pargc, char*** pargv)
        triggered before this (any time after mem_free_init(),
        actually).  This is a hook available for memory manager hooks
        without good initialization routine support */
-    if (OPAL_SUCCESS != (ret = opal_memory_base_open())) {
+    if (OPAL_SUCCESS != (ret = mca_base_framework_open(&opal_memory_base_framework, 0))) {
         error = "opal_memory_base_open";
         goto return_error;
     }
@@ -350,7 +468,7 @@ opal_init(int* pargc, char*** pargv)
     }
 
     /* initialize the memory checker, to allow early support for annotation */
-    if (OPAL_SUCCESS != (ret = opal_memchecker_base_open())) {
+    if (OPAL_SUCCESS != (ret = mca_base_framework_open(&opal_memchecker_base_framework, 0))) {
         error = "opal_memchecker_base_open";
         goto return_error;
     }
@@ -361,40 +479,27 @@ opal_init(int* pargc, char*** pargv)
         goto return_error;
     }
 
-    if (OPAL_SUCCESS != (ret = opal_backtrace_base_open())) {
+    if (OPAL_SUCCESS != (ret = mca_base_framework_open(&opal_backtrace_base_framework, 0))) {
         error = "opal_backtrace_base_open";
         goto return_error;
     }
 
-    if (OPAL_SUCCESS != (ret = opal_timer_base_open())) {
+    if (OPAL_SUCCESS != (ret = mca_base_framework_open(&opal_timer_base_framework, 0))) {
         error = "opal_timer_base_open";
         goto return_error;
     }
 
-    /* setup the carto framework */
-    if (OPAL_SUCCESS != (ret = opal_carto_base_open())) {
-        error = "opal_carto_base_open";
-        goto return_error;
-    }
-
-    if (OPAL_SUCCESS != (ret = opal_carto_base_select())) {
-        error = "opal_carto_base_select";
-        goto return_error;
-    }
-    
     /*
-     * Need to start the event and progress engines if noone else is.
-     * opal_cr_init uses the progress engine, so it is lumped together
-     * into this set as well.
+     * Need to start the event and progress engines if none else is.
      */
     /*
      * Initialize the event library
      */
-    if (OPAL_SUCCESS != (ret = opal_event_init())) {
-        error = "opal_event_init";
+    if (OPAL_SUCCESS != (ret = mca_base_framework_open(&opal_event_base_framework, 0))) {
+        error = "opal_event_base_open";
         goto return_error;
     }
-            
+
     /*
      * Initialize the general progress engine
      */
@@ -406,7 +511,7 @@ opal_init(int* pargc, char*** pargv)
     opal_progress_event_users_increment();
 
     /* setup the shmem framework */
-    if (OPAL_SUCCESS != (ret = opal_shmem_base_open())) {
+    if (OPAL_SUCCESS != (ret = mca_base_framework_open(&opal_shmem_base_framework, 0))) {
         error = "opal_shmem_base_open";
         goto return_error;
     }
@@ -416,17 +521,16 @@ opal_init(int* pargc, char*** pargv)
         goto return_error;
     }
 
-    /*
-     * Initalize the checkpoint/restart functionality
-     * Note: Always do this so we can detect if the user
-     * attempts to checkpoint a non checkpointable job,
-     * otherwise the tools may hang or not clean up properly.
-     */
-    if (OPAL_SUCCESS != (ret = opal_cr_init() ) ) {
-        error = "opal_cr_init() failed";
+    /* initialize the security framework */
+    if( OPAL_SUCCESS != (ret = mca_base_framework_open(&opal_sec_base_framework, 0)) ) {
+        error = "opal_sec_base_open";
         goto return_error;
     }
-    
+    if( OPAL_SUCCESS != (ret = opal_sec_base_select()) ) {
+        error = "opal_sec_base_select";
+        goto return_error;
+    }
+
     return OPAL_SUCCESS;
 
  return_error:
@@ -436,3 +540,106 @@ opal_init(int* pargc, char*** pargv)
     return ret;
 }
 
+int opal_init_test(void)
+{
+    int ret;
+    char *error;
+
+    /* initialize the memory allocator */
+    opal_malloc_init();
+
+    /* initialize the output system */
+    opal_output_init();
+
+    /* initialize install dirs code */
+    if (OPAL_SUCCESS != (ret = mca_base_framework_open(&opal_installdirs_base_framework, 0))) {
+        fprintf(stderr, "opal_installdirs_base_open() failed -- process will likely abort (%s:%d, returned %d instead of OPAL_SUCCESS)\n",
+                __FILE__, __LINE__, ret);
+        return ret;
+    }
+
+    /* initialize the help system */
+    opal_show_help_init();
+
+    /* register handler for errnum -> string converstion */
+    if (OPAL_SUCCESS !=
+        (ret = opal_error_register("OPAL",
+                                   OPAL_ERR_BASE, OPAL_ERR_MAX, opal_err2str))) {
+        error = "opal_error_register";
+        goto return_error;
+    }
+
+    /* keyval lex-based parser */
+    if (OPAL_SUCCESS != (ret = opal_util_keyval_parse_init())) {
+        error = "opal_util_keyval_parse_init";
+        goto return_error;
+    }
+
+    if (OPAL_SUCCESS != (ret = opal_net_init())) {
+        error = "opal_net_init";
+        goto return_error;
+    }
+
+    /* Setup the parameter system */
+    if (OPAL_SUCCESS != (ret = mca_base_var_init())) {
+        error = "mca_base_var_init";
+        goto return_error;
+    }
+
+    /* register params for opal */
+    if (OPAL_SUCCESS != (ret = opal_register_params())) {
+        error = "opal_register_params";
+        goto return_error;
+    }
+
+    /* pretty-print stack handlers */
+    if (OPAL_SUCCESS != (ret = opal_util_register_stackhandlers())) {
+        error = "opal_util_register_stackhandlers";
+        goto return_error;
+    }
+
+    /* Initialize the data storage service. */
+    if (OPAL_SUCCESS != (ret = opal_dss_open())) {
+        error = "opal_dss_open";
+        goto return_error;
+    }
+
+    /* initialize the mca */
+    if (OPAL_SUCCESS != (ret = mca_base_open())) {
+        error = "mca_base_open";
+        goto return_error;
+    }
+
+    if (OPAL_SUCCESS != (ret = mca_base_framework_open(&opal_event_base_framework, 0))) {
+        error = "opal_event_base_open";
+        goto return_error;
+    }
+
+    return OPAL_SUCCESS;
+
+ return_error:
+    opal_show_help( "help-opal-runtime.txt",
+                    "opal_init:startup:internal-failure", true,
+                    error, ret );
+    return ret;
+}
+
+static bool fork_warning_issued = false;
+static bool atfork_called = false;
+
+static void warn_fork_cb(void)
+{
+    if (opal_initialized && !fork_warning_issued) {
+        opal_show_help("help-opal-runtime.txt", "opal_init:warn-fork", true,
+                       OPAL_NAME_PRINT(OPAL_PROC_MY_NAME), getpid());
+        fork_warning_issued = true;
+    }
+}
+
+void opal_warn_fork(void)
+{
+    if (opal_warn_on_fork && !atfork_called) {
+        pthread_atfork(warn_fork_cb, NULL, NULL);
+        atfork_called = true;
+    }
+}

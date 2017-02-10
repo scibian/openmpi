@@ -5,15 +5,17 @@
  * Copyright (c) 2004-2005 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
- * Copyright (c) 2007      Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2007-2014 Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2015-2016 Research Organization for Information Science
+ *                         and Technology (RIST). All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 #include "ompi_config.h"
@@ -27,30 +29,27 @@
 #include "ompi/mpi/c/bindings.h"
 #include "ompi/runtime/mpiruntime.h"
 
-#if OPAL_HAVE_WEAK_SYMBOLS && OMPI_PROFILING_DEFINES
+#if OMPI_BUILD_MPI_PROFILING
+#if OPAL_HAVE_WEAK_SYMBOLS
 #pragma weak MPI_Wtick = PMPI_Wtick
 #endif
-
-#if OMPI_PROFILING_DEFINES
-#include "ompi/mpi/c/profile/defines.h"
+#define MPI_Wtick PMPI_Wtick
 #endif
-
-static const char FUNC_NAME[] = "MPI_Wtick";
-
 
 double MPI_Wtick(void)
 {
-    OPAL_CR_NOOP_PROGRESS();
-
-#if OPAL_TIMER_USEC_NATIVE
-    /* We may or may not have native usec precision on Windows, so put
-       this #if before the #ifdef checking for Windows. */
-    return 0.000001;
-#elif defined(__WINDOWS__)
-    if( (opal_timer_t)0 == opal_timer_base_get_freq() ) {
-        opal_output( 0, "No timer frequency\n" );
+#if OPAL_TIMER_CYCLE_NATIVE
+    {
+        opal_timer_t freq = opal_timer_base_get_freq();
+        if (0 == freq) {
+            /* That should never happen, but if it does, return a bogus value
+             * rather than crashing with a division by zero */
+            return (double)0.0;
+        }
+        return (double)1.0 / (double)freq;
     }
-    return (double)opal_timer_base_get_freq();
+#elif OPAL_TIMER_USEC_NATIVE
+    return 0.000001;
 #else
     /* Otherwise, we already return usec precision. */
     return 0.000001;

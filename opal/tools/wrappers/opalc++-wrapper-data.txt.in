@@ -2,7 +2,7 @@
 # compiler flags (using the compiler_args key to chose which block
 # should be activated.  This can be useful for multilib builds.  See the
 # multilib page at:
-#    https://svn.open-mpi.org/trac/ompi/wiki/compilerwrapper3264 
+#    https://github.com/open-mpi/ompi/wiki/compilerwrapper3264
 # for more information.
 
 project=Open Portable Access Layer (OPAL)
@@ -12,11 +12,14 @@ language=C++
 compiler_env=CXX
 compiler_flags_env=CXXFLAGS
 compiler=@CXX@
-extra_includes=@OPAL_WRAPPER_EXTRA_INCLUDES@
 preprocessor_flags=@OPAL_WRAPPER_EXTRA_CPPFLAGS@
+compiler_flags_prefix=@OPAL_WRAPPER_EXTRA_CXXFLAGS_PREFIX@
 compiler_flags=@OPAL_WRAPPER_EXTRA_CXXFLAGS@
 linker_flags=@OPAL_WRAPPER_EXTRA_LDFLAGS@
-libs=-lopen-pal @OPAL_WRAPPER_EXTRA_LIBS@
+libs=-l@OPAL_LIB_PREFIX@open-pal
+libs_static=-l@OPAL_LIB_PREFIX@open-pal @OPAL_WRAPPER_EXTRA_LIBS@
+dyn_lib_file=lib@OPAL_LIB_PREFIX@open-pal.@OPAL_DYN_LIB_SUFFIX@
+static_lib_file=lib@OPAL_LIB_PREFIX@open-pal.a
 required_file=
 includedir=${includedir}
 libdir=${libdir}

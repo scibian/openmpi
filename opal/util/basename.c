@@ -5,24 +5,25 @@
  * Copyright (c) 2004-2005 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
- * Copyright (c) 2009      Cisco Systems, Inc.  All rights reserved
+ * Copyright (c) 2009-2014 Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2014-2015 Research Organization for Information Science
+ *                         and Technology (RIST). All rights reserved.
+ * Copyright (c) 2014      Intel, Inc. All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
 #include "opal_config.h"
 
 #include <stdlib.h>
-#ifdef HAVE_STRING_H
 #include <string.h>
-#endif  /* HAVE_STRING_H */
 #ifdef HAVE_LIBGEN_H
 #include <libgen.h>
 #endif  /* HAVE_LIBGEN_H */
@@ -43,23 +44,13 @@ static inline char* opal_find_last_path_separator( const char* filename, size_t 
 
     /* First skip the latest separators */
     for ( ; p >= filename; p-- ) {
-#if defined(__WINDOWS__)
-        if( (*p != '\\') && (*p != '/') )
-            break;
-#else
         if( *p != OPAL_PATH_SEP[0] )
             break;
-#endif  /* defined(__WINDOWS__) */
     }
 
     for ( ; p >= filename; p-- ) {
-#if defined(__WINDOWS__)
-        if( (*p == '\\') || (*p == '/') )
-            return p;
-#else
         if( *p == OPAL_PATH_SEP[0] )
             return p;
-#endif  /* defined(__WINDOWS__) */
     }
 
     return NULL;  /* nothing found inside the filename */
@@ -81,22 +72,6 @@ char *opal_basename(const char *filename)
     if (sep == filename[0] && '\0' == filename[1]) {
         return strdup(filename);
     }
-
-    /* On Windows, automatically exclude the drive designator */
-
-#ifdef __WINDOWS__
-    if( isalpha(filename[0]) && (':' == filename[1]) ) {
-        if( strlen(filename) == 2 ) {
-            return strdup(filename);
-        } else if( strlen(filename) == 3 && (sep == filename[2]) ) {
-            return strdup(filename);
-        }
-        filename += 2;
-        if( sep == filename[0] ) {
-            ++filename;
-        }
-    }
-#endif
 
     /* Remove trailing sep's (note that we already know that strlen > 0) */
     tmp = strdup(filename);
@@ -124,15 +99,20 @@ char *opal_basename(const char *filename)
 
 char* opal_dirname(const char* filename)
 {
-#if defined(HAVE_DIRNAME)
+#if defined(HAVE_DIRNAME) || OPAL_HAVE_DIRNAME
     char* safe_tmp = strdup(filename), *result;
+    if (NULL == safe_tmp) {
+        return NULL;
+    }
     result = strdup(dirname(safe_tmp));
     free(safe_tmp);
     return result;
 #else
     const char* p = opal_find_last_path_separator(filename, strlen(filename));
+    /* NOTE: p will be NULL if no path separator was in the filename - i.e.,
+     * if filename is just a local file */
 
-    for( ; p != filename; p-- ) {
+    for( ; NULL != p && p != filename; p-- ) {
         if( (*p == '\\') || (*p == '/') ) {
             /* If there are several delimiters remove them all */
             for( --p; p != filename; p-- ) {
@@ -143,6 +123,9 @@ char* opal_dirname(const char* filename)
             }
             if( p != filename ) {
                 char* ret = (char*)malloc( p - filename + 1 );
+                if (NULL == ret) {
+                    return NULL;
+                }
 #ifdef HAVE_STRNCPY_S
                 strncpy_s( ret, (p - filename + 1), filename, p - filename );
 #else
@@ -154,10 +137,6 @@ char* opal_dirname(const char* filename)
             break;  /* return the duplicate of "." */
         }
     }
-#ifdef HAVE__STRDUP
-    return _strdup(".");
-#else
     return strdup(".");
-#endif
-#endif  /* defined(HAVE_DIRNAME) */
+#endif  /* defined(HAVE_DIRNAME) || OPAL_HAVE_DIRNAME */
 }

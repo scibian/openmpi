@@ -1,3 +1,4 @@
+/* -*- Mode: C; c-basic-offset:4 ; indent-tabs-mode:nil -*- */
 /*
  * Copyright (c) 2004-2007 The Trustees of Indiana University and Indiana
  *                         University Research and Technology
@@ -5,14 +6,18 @@
  * Copyright (c) 2004-2005 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
+ * Copyright (c) 2013      Los Alamos National Security, LLC.  All rights
+ *                         reserved.
+ * Copyright (c) 2015      Research Organization for Information Science
+ *                         and Technology (RIST). All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -26,12 +31,11 @@
 #include <stdlib.h>
 #include <string.h>
 
-#if OPAL_HAVE_WEAK_SYMBOLS && OMPI_PROFILING_DEFINES
+#if OMPI_BUILD_MPI_PROFILING
+#if OPAL_HAVE_WEAK_SYMBOLS
 #pragma weak MPI_Info_get_valuelen = PMPI_Info_get_valuelen
 #endif
-
-#if OMPI_PROFILING_DEFINES
-#include "ompi/mpi/c/profile/defines.h"
+#define MPI_Info_get_valuelen PMPI_Info_get_valuelen
 #endif
 
 static const char FUNC_NAME[] = "MPI_Info_get_valuelen";
@@ -52,11 +56,11 @@ static const char FUNC_NAME[] = "MPI_Info_get_valuelen";
  *   @retval MPI_ERR_INFO_KEY
  *
  *   The length returned in C and C++ does not include the end-of-string
- *   character.  If the 'key' is not found on 'info', 'valuelen' is left 
+ *   character.  If the 'key' is not found on 'info', 'valuelen' is left
  *   alone.
  */
-int MPI_Info_get_valuelen(MPI_Info info, char *key, int *valuelen,
-                          int *flag) 
+int MPI_Info_get_valuelen(MPI_Info info, const char *key, int *valuelen,
+                          int *flag)
 {
     int key_length;
     int err;
@@ -73,7 +77,7 @@ int MPI_Info_get_valuelen(MPI_Info info, char *key, int *valuelen,
                                           FUNC_NAME);
         }
         key_length = (key) ? (int)strlen (key) : 0;
-        if ((NULL == key) || (0 == key_length) || 
+        if ((NULL == key) || (0 == key_length) ||
             (MPI_MAX_INFO_KEY <= key_length)) {
             return OMPI_ERRHANDLER_INVOKE(MPI_COMM_WORLD, MPI_ERR_INFO_KEY,
                                           FUNC_NAME);
@@ -83,8 +87,6 @@ int MPI_Info_get_valuelen(MPI_Info info, char *key, int *valuelen,
                                           FUNC_NAME);
         }
     }
-
-    OPAL_CR_ENTER_LIBRARY();
 
     err = ompi_info_get_valuelen (info, key, valuelen, flag);
     OMPI_ERRHANDLER_RETURN(err, MPI_COMM_WORLD, err, FUNC_NAME);

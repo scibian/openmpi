@@ -6,16 +6,18 @@ dnl                         Corporation.  All rights reserved.
 dnl Copyright (c) 2004-2005 The University of Tennessee and The University
 dnl                         of Tennessee Research Foundation.  All rights
 dnl                         reserved.
-dnl Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+dnl Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
 dnl                         University of Stuttgart.  All rights reserved.
 dnl Copyright (c) 2004-2005 The Regents of the University of California.
 dnl                         All rights reserved.
 dnl Copyright (c) 2007-2010 Cisco Systems, Inc.  All rights reserved.
 dnl Copyright (c) 2008      Sun Microsystems, Inc.  All rights reserved.
+dnl Copyright (c) 2015      Research Organization for Information Science
+dnl                         and Technology (RIST). All rights reserved.
 dnl $COPYRIGHT$
-dnl 
+dnl
 dnl Additional copyrights may follow
-dnl 
+dnl
 dnl $HEADER$
 dnl
 
@@ -32,26 +34,21 @@ dnl
 #
 ######################################################################
 AC_DEFUN([OMPI_CONTRIB],[
-    dnl for OMPI_CONFIGURE_USER env variable
-    AC_REQUIRE([OMPI_CONFIGURE_SETUP])
-
-    # May someday be expanded to have autogen find the packages
-    # instead of this hard-coded list
-    # (https://svn.open-mpi.org/trac/ompi/ticket/1162).
-    m4_define([contrib_software_list], [libompitrace, vt])
+    dnl for OPAL_CONFIGURE_USER env variable
+    AC_REQUIRE([OPAL_CONFIGURE_SETUP])
 
     # Option to not build some of the contributed software packages
     AC_ARG_ENABLE([contrib-no-build],
         AC_HELP_STRING([--enable-contrib-no-build=LIST],
-                        [Comma-separated list of contributed package NAMEs that will not be built.  Possible values: contrib_software_list. Example: "--enable-contrib-no-build=libompitrace,vt" will disable building both the "libompitrace" and "vt" contributed software packages.]))
+                        [Comma-separated list of contributed package names that will not be built.  Possible values: ompi_mpicontrib_list.  Example: "--enable-contrib-no-build=foo,bar" will disable building both the "foo" and "bar" contributed software packages (default: none -- i.e., build all possible contrib packages)]))
 
     # Parse the list to see what we should not build
-    ompi_show_subtitle "Configuring contributed software packages"
+    opal_show_subtitle "Configuring contributed software packages"
     AC_MSG_CHECKING([which contributed software packages should be disabled])
     if test "$enable_contrib_no_build" = "yes"; then
         AC_MSG_RESULT([yes])
         AC_MSG_ERROR([*** The enable-contrib-no-build flag requires an explicit list
-*** of packages to not build.  For example, --enable-contrib-no-build=vt])
+*** of packages to not build.  For example, --enable-contrib-no-build=libompitrace])
     else
         ifs_save="$IFS"
         IFS="${IFS}$PATH_SEPARATOR,"
@@ -69,14 +66,16 @@ AC_DEFUN([OMPI_CONTRIB],[
     # List of contrib subdirs to traverse into
     OMPI_CONTRIB_SUBDIRS=
     OMPI_CONTRIB_DIST_SUBDIRS=
+    OMPI_MPI_CONTRIBS=
 
     # Cycle through each of the software packages and
-    # configure them if not disabled.  
-    m4_foreach(software, [contrib_software_list],
-              [m4_include([ompi/contrib/]software[/configure.m4])
-              _OMPI_CONTRIB_CONFIGURE(software)])
+    # configure them if not disabled.
+    m4_foreach(software, [ompi_mpicontrib_list],
+              [_OMPI_CONTRIB_CONFIGURE(software)])
 
     # Setup the top-level glue
+    AC_DEFINE_UNQUOTED([OMPI_MPI_CONTRIBS], ["$OMPI_MPI_CONTRIBS"],
+                       [Contributed software packages built with Open MPI])
     AC_SUBST(OMPI_CONTRIB_SUBDIRS)
     AC_SUBST(OMPI_CONTRIB_DIST_SUBDIRS)
 ])dnl
@@ -98,7 +97,7 @@ AC_DEFUN([OMPI_CONTRIB],[
 ######################################################################
 AC_DEFUN([_OMPI_CONTRIB_CONFIGURE],[
 
-    ompi_show_subsubsubtitle "$1 (m4 configuration macro)"
+    opal_show_subsubsubtitle "$1 (m4 configuration macro)"
 
     # Put in a convenient enable/disable switch (it's a little more
     # user friendly than
@@ -110,12 +109,17 @@ AC_DEFUN([_OMPI_CONTRIB_CONFIGURE],[
     AS_IF([test "x$enable_$1" = xno], [DISABLE_contrib_$1=yes])
 
     OMPI_CONTRIB_HAPPY=0
-    if test "$DISABLE_contrib_$1" = "" -a "$DISABLE_contrib_all" = ""; then
+    if test "$DISABLE_contrib_$1" = "" && test "$DISABLE_contrib_all" = ""; then
         OMPI_contrib_$1_CONFIG([OMPI_CONTRIB_HAPPY=1], [])
         AC_MSG_CHECKING([if contributed component $1 can compile])
         if test "$OMPI_CONTRIB_HAPPY" = "1"; then
             OMPI_CONTRIB_SUBDIRS="$OMPI_CONTRIB_SUBDIRS contrib/$1"
             OMPI_CONTRIB_DIST_SUBDIRS="$OMPI_CONTRIB_DIST_SUBDIRS contrib/$1"
+            if test "$OMPI_MPI_CONTRIBS" = ""; then
+                OMPI_MPI_CONTRIBS=$1
+            else
+                OMPI_MPI_CONTRIBS="$1, $OMPI_MPI_CONTRIBS"
+            fi
             AC_MSG_RESULT([yes])
         else
             AC_MSG_RESULT([no])

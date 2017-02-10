@@ -29,7 +29,7 @@ sources = \
 # mca_<type>_<name>.la (for DSO builds) or libmca_<type>_<name>.la
 # (for static builds).
 
-if OMPI_BUILD_shmem_posix_DSO 
+if MCA_BUILD_opal_shmem_posix_DSO
 component_noinst =
 component_install = mca_shmem_posix.la
 else
@@ -37,7 +37,7 @@ component_noinst = libmca_shmem_posix.la
 component_install =
 endif
 
-mcacomponentdir = $(pkglibdir)
+mcacomponentdir = $(opallibdir)
 mcacomponent_LTLIBRARIES = $(component_install)
 mca_shmem_posix_la_SOURCES = $(sources)
 mca_shmem_posix_la_LDFLAGS = -module -avoid-version
@@ -47,4 +47,4 @@ libmca_shmem_posix_la_SOURCES = $(sources)
 libmca_shmem_posix_la_LDFLAGS = -module -avoid-version
 
 # help file
-dist_pkgdata_DATA = help-opal-shmem-posix.txt
+dist_opaldata_DATA = help-opal-shmem-posix.txt

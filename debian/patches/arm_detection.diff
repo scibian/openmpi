@@ -1,44 +1,49 @@
-Index: openmpi-1.6.5/opal/config/opal_config_asm.m4
+Description:  Detect "armel" and "armhf" architectures on Debian
+Last-Updated: 2016-07-14
+Forwarded: yes
+Bug-Origin: https://github.com/open-mpi/ompi/issues/2514
+
+Index: openmpi-2.0.1/configure
 ===================================================================
---- openmpi-1.6.5.orig/opal/config/opal_config_asm.m4	2013-07-01 09:47:08.000000000 +0200
-+++ openmpi-1.6.5/opal/config/opal_config_asm.m4	2013-07-01 09:47:07.000000000 +0200
-@@ -900,7 +900,7 @@
-             OMPI_GCC_INLINE_ASSIGN='"bis [$]31,[$]31,%0" : "=&r"(ret)'
+--- openmpi-2.0.1.orig/configure
++++ openmpi-2.0.1/configure
+@@ -31917,7 +31917,7 @@ $as_echo "$as_me: WARNING: This usually
+             OPAL_GCC_INLINE_ASSIGN='"mov %0=r0\n;;\n" : "=&r"(ret)'
              ;;
  
 -        armv7*)
 +        armv7*|arm-*-linux-gnueabihf)
-             ompi_cv_asm_arch="ARM"
+             opal_cv_asm_arch="ARM"
              OPAL_ASM_SUPPORT_64BIT=1
              OPAL_ASM_ARM_VERSION=7
-@@ -919,7 +919,7 @@
-             OMPI_GCC_INLINE_ASSIGN='"mov %0, #0" : "=&r"(ret)'
+@@ -31942,7 +31942,7 @@ _ACEOF
+             OPAL_GCC_INLINE_ASSIGN='"mov %0, #0" : "=&r"(ret)'
              ;;
  
 -        armv5*linux*|armv4*linux*)
 +        armv5*linux*|armv4*linux*|arm-*-linux-gnueabi)
              # uses Linux kernel helpers for some atomic operations
-             ompi_cv_asm_arch="ARM"
+             opal_cv_asm_arch="ARM"
              OPAL_ASM_SUPPORT_64BIT=0
-Index: openmpi-1.6.5/configure
+Index: openmpi-2.0.1/config/opal_config_asm.m4
 ===================================================================
---- openmpi-1.6.5.orig/configure	2013-07-01 09:47:08.000000000 +0200
-+++ openmpi-1.6.5/configure	2013-07-01 09:47:08.000000000 +0200
-@@ -27192,7 +27192,7 @@
-             OMPI_GCC_INLINE_ASSIGN='"bis $31,$31,%0" : "=&r"(ret)'
+--- openmpi-2.0.1.orig/config/opal_config_asm.m4
++++ openmpi-2.0.1/config/opal_config_asm.m4
+@@ -922,7 +922,7 @@ AC_DEFUN([OPAL_CONFIG_ASM],[
+             OPAL_GCC_INLINE_ASSIGN='"mov %0=r0\n;;\n" : "=&r"(ret)'
              ;;
  
 -        armv7*)
 +        armv7*|arm-*-linux-gnueabihf)
-             ompi_cv_asm_arch="ARM"
+             opal_cv_asm_arch="ARM"
              OPAL_ASM_SUPPORT_64BIT=1
              OPAL_ASM_ARM_VERSION=7
-@@ -27217,7 +27217,7 @@
-             OMPI_GCC_INLINE_ASSIGN='"mov %0, #0" : "=&r"(ret)'
+@@ -941,7 +941,7 @@ AC_DEFUN([OPAL_CONFIG_ASM],[
+             OPAL_GCC_INLINE_ASSIGN='"mov %0, #0" : "=&r"(ret)'
              ;;
  
 -        armv5*linux*|armv4*linux*)
 +        armv5*linux*|armv4*linux*|arm-*-linux-gnueabi)
              # uses Linux kernel helpers for some atomic operations
-             ompi_cv_asm_arch="ARM"
+             opal_cv_asm_arch="ARM"
              OPAL_ASM_SUPPORT_64BIT=0

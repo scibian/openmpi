@@ -3,7 +3,7 @@
  * Copyright (c) 2004-2006 The Trustees of Indiana University and Indiana
  *                         University Research and Technology
  *                         Corporation.  All rights reserved.
- * Copyright (c) 2004-2010 The University of Tennessee and The University
+ * Copyright (c) 2004-2014 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
  * Copyright (c) 2004-2006 High Performance Computing Center Stuttgart,
@@ -11,6 +11,9 @@
  * Copyright (c) 2004-2006 The Regents of the University of California.
  *                         All rights reserved.
  * Copyright (c) 2009      Oak Ridge National Labs.  All rights reserved.
+ * Copyright (c) 2011      NVIDIA Corporation.  All rights reserved.
+ * Copyright (c) 2013      Research Organization for Information Science
+ *                         and Technology (RIST). All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -22,10 +25,7 @@
 
 #include <stddef.h>
 #include <stdio.h>
-
-#ifdef HAVE_STDINT_H
 #include <stdint.h>
-#endif
 
 #include "opal/prefetch.h"
 #include "opal/util/arch.h"
@@ -37,6 +37,11 @@
 #include "opal/datatype/opal_datatype_checksum.h"
 #include "opal/datatype/opal_datatype_prototypes.h"
 #include "opal/datatype/opal_convertor_internal.h"
+#if OPAL_CUDA_SUPPORT
+#include "opal/datatype/opal_datatype_cuda.h"
+#define MEMCPY_CUDA( DST, SRC, BLENGTH, CONVERTOR ) \
+    CONVERTOR->cbmemcpy( (DST), (SRC), (BLENGTH), (CONVERTOR) )
+#endif
 
 extern int opal_convertor_create_stack_with_pos_general( opal_convertor_t* convertor,
                                                          int starting_point, const int* sizes );
@@ -48,6 +53,9 @@ static void opal_convertor_construct( opal_convertor_t* convertor )
     convertor->partial_length = 0;
     convertor->remoteArch     = opal_local_arch;
     convertor->flags          = OPAL_DATATYPE_FLAG_NO_GAPS | CONVERTOR_COMPLETED;
+#if OPAL_CUDA_SUPPORT
+    convertor->cbmemcpy       = &opal_cuda_memcpy;
+#endif
 }
 
 
@@ -203,7 +211,7 @@ opal_convertor_t* opal_convertor_create( int32_t remote_arch, int32_t mode )
         assert( (CONVERTOR)->bConverted < (CONVERTOR)->local_size );    \
     } while(0)
 
-/** 
+/**
  * Return 0 if everything went OK and if there is still room before the complete
  *          conversion of the data (need additional call with others input buffers )
  *        1 if everything went fine and the data was completly converted
@@ -235,7 +243,11 @@ int32_t opal_convertor_pack( opal_convertor_t* pConv,
             if( OPAL_LIKELY(NULL == iov[i].iov_base) )
                 iov[i].iov_base = (IOVBASE_TYPE *) base_pointer;
             else
+#if OPAL_CUDA_SUPPORT
+                MEMCPY_CUDA( iov[i].iov_base, base_pointer, iov[i].iov_len, pConv );
+#else
                 MEMCPY( iov[i].iov_base, base_pointer, iov[i].iov_len );
+#endif
             pending_length -= iov[i].iov_len;
             base_pointer += iov[i].iov_len;
         }
@@ -248,7 +260,11 @@ complete_contiguous_data_pack:
         if( OPAL_LIKELY(NULL == iov[i].iov_base) )
             iov[i].iov_base = (IOVBASE_TYPE *) base_pointer;
         else
+#if OPAL_CUDA_SUPPORT
+            MEMCPY_CUDA( iov[i].iov_base, base_pointer, iov[i].iov_len, pConv );
+#else
             MEMCPY( iov[i].iov_base, base_pointer, iov[i].iov_len );
+#endif
         pConv->bConverted = pConv->local_size;
         *out_size = i + 1;
         pConv->flags |= CONVERTOR_COMPLETED;
@@ -282,7 +298,11 @@ int32_t opal_convertor_unpack( opal_convertor_t* pConv,
             if( iov[i].iov_len >= pending_length ) {
                 goto complete_contiguous_data_unpack;
             }
+#if OPAL_CUDA_SUPPORT
+            MEMCPY_CUDA( base_pointer, iov[i].iov_base, iov[i].iov_len, pConv );
+#else
             MEMCPY( base_pointer, iov[i].iov_base, iov[i].iov_len );
+#endif
             pending_length -= iov[i].iov_len;
             base_pointer += iov[i].iov_len;
         }
@@ -292,7 +312,11 @@ int32_t opal_convertor_unpack( opal_convertor_t* pConv,
 
 complete_contiguous_data_unpack:
         iov[i].iov_len = pending_length;
+#if OPAL_CUDA_SUPPORT
+        MEMCPY_CUDA( base_pointer, iov[i].iov_base, iov[i].iov_len, pConv );
+#else
         MEMCPY( base_pointer, iov[i].iov_base, iov[i].iov_len );
+#endif
         pConv->bConverted = pConv->local_size;
         *out_size = i + 1;
         pConv->flags |= CONVERTOR_COMPLETED;
@@ -335,13 +359,12 @@ static inline int opal_convertor_create_stack_with_pos_contig( opal_convertor_t*
     if( OPAL_LIKELY(0 == count) ) {
         pStack[1].type     = pElems->elem.common.type;
         pStack[1].count    = pElems->elem.count;
-        pStack[1].disp     = pElems->elem.disp;
     } else {
         pStack[1].type  = OPAL_DATATYPE_UINT1;
         pStack[1].count = pData->size - count;
-        pStack[1].disp  = pData->true_lb + count;
     }
-    pStack[1].index    = 0;  /* useless */
+    pStack[1].disp  = count;
+    pStack[1].index = 0;  /* useless */
 
     pConvertor->bConverted = starting_point;
     pConvertor->stack_pos = 1;
@@ -373,13 +396,16 @@ int opal_convertor_create_stack_at_begining( opal_convertor_t* convertor,
     pStack[0].index = -1;
     pStack[0].count = convertor->count;
     pStack[0].disp  = 0;
+    pStack[0].type  = OPAL_DATATYPE_LOOP;
 
     pStack[1].index = 0;
     pStack[1].disp = 0;
     if( pElems[0].elem.common.type == OPAL_DATATYPE_LOOP ) {
         pStack[1].count = pElems[0].loop.loops;
+        pStack[1].type  = OPAL_DATATYPE_LOOP;
     } else {
         pStack[1].count = pElems[0].elem.count;
+        pStack[1].type  = pElems[0].elem.common.type;
     }
     return OPAL_SUCCESS;
 }
@@ -391,18 +417,31 @@ int32_t opal_convertor_set_position_nocheck( opal_convertor_t* convertor,
     int32_t rc;
 
     /**
-     * If we plan to rollback the convertor then first we have to set it
-     * at the beginning.
+     * create_stack_with_pos_contig always set the position relative to the ZERO
+     * position, so there is no need for special handling. In all other cases,
+     * if we plan to rollback the convertor then first we have to reset it at
+     * the beginning.
      */
-    if( (0 == (*position)) || ((*position) < convertor->bConverted) ) {
-        rc = opal_convertor_create_stack_at_begining( convertor, opal_datatype_local_sizes );
-        if( 0 == (*position) ) return rc;
-    }
     if( OPAL_LIKELY(convertor->flags & OPAL_DATATYPE_FLAG_CONTIGUOUS) ) {
         rc = opal_convertor_create_stack_with_pos_contig( convertor, (*position),
                                                           opal_datatype_local_sizes );
     } else {
+        if( (0 == (*position)) || ((*position) < convertor->bConverted) ) {
+            rc = opal_convertor_create_stack_at_begining( convertor, opal_datatype_local_sizes );
+            if( 0 == (*position) ) return rc;
+        }
         rc = opal_convertor_generic_simple_position( convertor, position );
+        /**
+         * If we have a non-contigous send convertor don't allow it move in the middle
+         * of a predefined datatype, it won't be able to copy out the left-overs
+         * anyway. Instead force the position to stay on predefined datatypes
+         * boundaries. As we allow partial predefined datatypes on the contiguous
+         * case, we should be accepted by any receiver convertor.
+         */
+        if( CONVERTOR_SEND & convertor->flags ) {
+            convertor->bConverted -= convertor->partial_length;
+            convertor->partial_length = 0;
+        }
     }
     *position = convertor->bConverted;
     return rc;
@@ -435,7 +474,10 @@ int32_t opal_convertor_set_position_nocheck( opal_convertor_t* convertor,
 }
 #else
 #define OPAL_CONVERTOR_COMPUTE_REMOTE_SIZE(convertor, datatype, bdt_mask) \
-    assert(0 == (bdt_mask))
+{                                                                         \
+    assert(0 == (bdt_mask));                                              \
+    (void)bdt_mask;  /* silence compiler warning */                       \
+}
 #endif  /* OPAL_ENABLE_HETEROGENEOUS_SUPPORT */
 
 /**
@@ -499,12 +541,10 @@ int32_t opal_convertor_set_position_nocheck( opal_convertor_t* convertor,
             uint32_t required_stack_length = datatype->btypes[OPAL_DATATYPE_LOOP] + 1; \
                                                                         \
             if( required_stack_length > convertor->stack_size ) {       \
+                assert(convertor->pStack == convertor->static_stack);   \
                 convertor->stack_size = required_stack_length;          \
                 convertor->pStack     = (dt_stack_t*)malloc(sizeof(dt_stack_t) * \
                                                             convertor->stack_size ); \
-            } else {                                                    \
-                convertor->pStack = convertor->static_stack;            \
-                convertor->stack_size = DT_STATIC_STACK_SIZE;           \
             }                                                           \
         }                                                               \
         opal_convertor_create_stack_at_begining( convertor, opal_datatype_local_sizes ); \
@@ -519,6 +559,9 @@ int32_t opal_convertor_prepare_for_recv( opal_convertor_t* convertor,
     /* Here I should check that the data is not overlapping */
 
     convertor->flags |= CONVERTOR_RECV;
+#if OPAL_CUDA_SUPPORT
+    mca_cuda_convertor_init(convertor, pUserBuf);
+#endif
 
     OPAL_CONVERTOR_PREPARE( convertor, datatype, count, pUserBuf );
 
@@ -555,6 +598,9 @@ int32_t opal_convertor_prepare_for_send( opal_convertor_t* convertor,
                                          const void* pUserBuf )
 {
     convertor->flags |= CONVERTOR_SEND;
+#if OPAL_CUDA_SUPPORT
+    mca_cuda_convertor_init(convertor, pUserBuf);
+#endif
 
     OPAL_CONVERTOR_PREPARE( convertor, datatype, count, pUserBuf );
 
@@ -623,6 +669,9 @@ int opal_convertor_clone( const opal_convertor_t* source,
         destination->bConverted = source->bConverted;
         destination->stack_pos  = source->stack_pos;
     }
+#if OPAL_CUDA_SUPPORT
+    destination->cbmemcpy   = source->cbmemcpy;
+#endif
     return OPAL_SUCCESS;
 }
 

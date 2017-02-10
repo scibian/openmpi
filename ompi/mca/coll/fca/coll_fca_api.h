@@ -1,5 +1,7 @@
 /**
-  Copyright (c) 2011 Mellanox Technologies. All rights reserved.
+  Copyright (c) 2011      Mellanox Technologies. All rights reserved.
+  Copyright (c) 2015      Research Organization for Information Science
+                          and Technology (RIST). All rights reserved.
   $COPYRIGHT$
 
   Additional copyrights may follow
@@ -9,8 +11,8 @@
 
 #include "ompi_config.h"
 
-#include <fca_api.h>
-#include <config/fca_parse_specfile.h>
+#include <fca/fca_api.h>
+#include <fca/config/fca_parse_specfile.h>
 
 #ifndef FCA_API
 #define OMPI_FCA_VERSION 12
@@ -67,7 +69,7 @@ static inline void mca_coll_fca_get_reduce_root(int root_rank, int my_rank,
     spec->is_root = root_rank == my_rank;
 }
 
-#elif OMPI_FCA_VERSION >= 20 
+#elif OMPI_FCA_VERSION >= 20
 
 #define OMPI_FCA_ALLGATHER          1
 #define OMPI_FCA_ALLGATHERV         1
@@ -76,7 +78,11 @@ static inline void mca_coll_fca_get_reduce_root(int root_rank, int my_rank,
 static inline int mca_coll_fca_comm_init(fca_t *fca_context, int rank, int comm_size,
                                          int local_proc_idx, int num_local_procs,
                                          fca_comm_desc_t *comm_desc,
-                                         fca_comm_t **fca_comm)
+                                         fca_comm_t **fca_comm
+#if OMPI_FCA_VERSION >= 30
+                                         ,   void *comm_init_data
+#endif
+                                         )
 {
     fca_comm_init_spec_t spec;
 
@@ -85,6 +91,9 @@ static inline int mca_coll_fca_comm_init(fca_t *fca_context, int rank, int comm_
     spec.desc = *comm_desc;
     spec.proc_idx = local_proc_idx;
     spec.num_procs = num_local_procs;
+#if OMPI_FCA_VERSION >= 30
+    spec.comm_init_data = comm_init_data;
+#endif
     return fca_comm_init(fca_context, &spec, fca_comm);
 }
 

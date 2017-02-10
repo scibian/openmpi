@@ -6,15 +6,15 @@
 # Copyright (c) 2004-2005 The University of Tennessee and The University
 #                         of Tennessee Research Foundation.  All rights
 #                         reserved.
-# Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+# Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
 #                         University of Stuttgart.  All rights reserved.
 # Copyright (c) 2004-2005 The Regents of the University of California.
 #                         All rights reserved.
-# Copyright (c) 2008-2010 Cisco Systems, Inc.  All rights reserved.
+# Copyright (c) 2008-2015 Cisco Systems, Inc.  All rights reserved.
 # $COPYRIGHT$
-# 
+#
 # Additional copyrights may follow
-# 
+#
 # $HEADER$
 #
 
@@ -22,10 +22,10 @@
 # Version of auto tools that we want
 #
 
-M4_TARGET_VERSION=1.4.16
-AM_TARGET_VERSION=1.11.3
-AC_TARGET_VERSION=2.68
-LT_TARGET_VERSION=2.4.2
+M4_TARGET_VERSION=1.4.17
+AM_TARGET_VERSION=1.15
+AC_TARGET_VERSION=2.69
+LT_TARGET_VERSION=2.4.6
 FLEX_TARGET_VERSION=2.5.35
 
 #
@@ -45,26 +45,52 @@ DISTCHECK_MAKE_FLAGS=-j4
 # Default to requiring *exact* versions if we're making distribution
 # tarballs; but higher-than-expected versions are ok for
 # non-distribution tarballs.
+want_ompi=1
+autogen_args=
+distdir=".."
+greekonly=0
+dirty_ok=0
+gnu_version_ignore=0
 dist_target=distcheck
 distcheck_flags="AM_MAKEFLAGS=$DISTCHECK_MAKE_FLAGS"
+git_update=1
+
 if test "`basename $0`" = "make_tarball"; then
     dist_target=dist
-    distcheck_flags=
+    distcheck_flags="AM_MAKEFLAGS=-j32"
     highok=1
+    dirty_ok=1
+    greekonly=1
 else
     highok=0
 fi
 
-greekonly=0
-want_ompi=1
 while test "$1" != ""; do
     case $1 in
-        -greekonly) greekonly=1 ;;
         --greekonly) greekonly=1 ;;
-        -highok) highok=1 ;;
         --highok) highok=1 ;;
-        -no-ompi) want_ompi=0 ;;
         --no-ompi) want_ompi=0 ;;
+        --autogen-args) autogen_args=$2; shift ;;
+        --distdir) distdir=$2; shift ;;
+        --dirtyok) dirty_ok=1 ;;
+        --verok) gnu_version_ignore=1;;
+        --no-git-update) git_update=0;;
+        *)
+            cat <<EOF
+Unrecognized argument: $1
+
+Valid arguments:
+  --greekonly     Only build the greek tarball (vs. both tarballs)
+  --highok        Ok if Autotools versions are too high
+  --no-ompi       Don't build the OMPI or OSHMEM layers
+  --autogen-args  Arguments to pass to autogen
+  --distdir       Move the tarball(s) to this directory when done
+  --dirtyok       Ok if the source tree is dirty
+  --verok         Ignore result of autotools version checking
+  --no-git-update Skip "git pull" part, assume local repo is updated already
+EOF
+            exit 1
+            ;;
     esac
     shift
 done
@@ -106,7 +132,7 @@ check_gnu_version() {
     target_release=`echo $target_release | sed 's/[A-Za-z]//g'`
 
     result=same
-    if test "$ver" != "$target"; then 
+    if test "$ver" != "$target"; then
         if test "$ver_major" -lt "$target_major"; then
             result=low
         elif test "$ver_major" = "$target_major" -a "$ver_minor" -lt "$target_minor"; then
@@ -146,7 +172,9 @@ Either change this script to match the found version, or install
 the correct version of the tools.
 ----------------------------------------------------------------------
 EOF
-        exit 1
+        if test "$gnu_version_ignore" = "0"; then
+            exit 1
+        fi
 
     elif test "$result" = "high"; then
         if test "$highok" = "0"; then
@@ -167,7 +195,9 @@ Either change this script to match the found version, or install
 the correct version of the tools.
 ----------------------------------------------------------------------
 EOF
+        if test "$gnu_version_ignore" = "0"; then
             exit 1
+        fi
         else
             cat <<EOF
 ----------------------------------------------------------------------
@@ -207,7 +237,9 @@ Either change this script to match the found version, or install
 the correct version of the tools.
 ----------------------------------------------------------------------
 EOF
-        exit 1
+        if test "$gnu_version_ignore" = "0"; then
+            exit 1
+        fi
     fi
 
 }
@@ -220,12 +252,12 @@ make_tarball() {
     #
     # Autogen
     #
-    echo "*** Running autogen.sh..."
+    echo "*** Running autogen $autogen_args..."
     rm -f success
     if test "$want_ompi" = "1" ; then
-        (./autogen.sh 2>&1 && touch success) | tee auto.out
+        (./autogen.pl --force $autogen_args 2>&1 && touch success) | tee auto.out
     else
-        (./autogen.sh -no-ompi 2>&1 && touch success) | tee auto.out
+        (./autogen.pl --force --no-ompi $autogen_args 2>&1 && touch success) | tee auto.out
     fi
     if test ! -f success; then
         echo "Autogen failed.  Aborting"
@@ -237,7 +269,7 @@ make_tarball() {
     #
     echo "*** Running configure..."
     rm -f success
-    (./configure --enable-dist 2>&1 && touch success) | tee config.out
+    (./configure 2>&1 && touch success) | tee config.out
     if test ! -f success; then
         echo "Configure failed.  Aborting"
         exit 1
@@ -250,7 +282,7 @@ make_tarball() {
     # happened to be in the tree already).
     #
     echo "*** Removing old generated flex files..."
-    find . -name \*_lex.c -exec rm -f {} \; -print
+    find . -name \*_lex.c -exec chmod ug+rw {} \; -exec rm -f {} \; -print
 
     #
     # make tarball
@@ -271,7 +303,7 @@ make_tarball() {
     # move
     #
     echo "*** Moving tarballs..."
-    mv openmpi-* ..
+    mv openmpi-* $distdir
 
     echo "*** All done"
 }
@@ -296,64 +328,78 @@ check_gnu_version flex $FLEX_TARGET_VERSION
 # Verify that we're in a top Open MPI dir
 #
 echo "*** Checking to ensure in top-level Open MPI directory..."
-if test -f VERSION -a -f configure.ac -a -f config/ompi_get_version.m4 ; then
+if test -f VERSION -a -f configure.ac -a -f config/opal_get_version.m4 ; then
     happy=1
 else
     echo "Do not appear to be in an Open MPI top directory.  Abort!"
     exit 1
 fi
 
-#
-# Do svn up and all that
-#
+if test $git_update -eq 1; then
 
-if test -d .svn; then
-    echo "*** Removing old VERSION file..."
-    rm -f VERSION
-    echo "*** Restoring pristine VERSION file..."
-    svn revert VERSION
-    echo "*** Running svn up..."
-    svn up
-    if test ! "$?" = "0"; then
-        echo "SVN update failed.  Aborting"
+    #
+    # Get the latest
+    #
+    echo "*** Git pull to get the latest..."
+    git pull --rebase
+    if test $? -ne 0; then
+        echo "*** Git pull failed.  Cannot continue."
         exit 1
     fi
-    echo "*** Getting svn r number..."
-    svn_r="r`svnversion .`"
-elif test -d .hg; then
-    echo "*** Removing old VERSION file..."
-    rm -f VERSION
-    echo "*** Restoring pristine VERSION file..."
-    hg revert VERSION
-    echo "*** Running hg up..."
-    hg up
-    if test ! "$?" = "0"; then
-        echo "HG update failed.  Aborting"
-        exit 1
-    fi
-    echo "*** Getting hg version number..."
-    svn_r=hg`hg tip | grep ^changeset: | head -n 1 | cut -d: -f3`
 fi
-echo "    Repo rev number: $svn_r"
-if test "$svn_r" = ""; then
+
+#
+# Ensure we have a clean repo
+#
+if test $dirty_ok -eq 0; then
+    echo "*** Checking if source tree is dirty..."
+    dirty=0
+    file=git-status.$$.out
+    git status > $file
+    if test "`grep 'Changes not staged for commit' $file`" != "" ||
+       test "`grep 'Changes staged for commit' $file`" != ""; then
+        dirty=1
+    fi
+    rm -f $file
+
+    if test $dirty -eq 1; then
+        echo "    Source tree is dirty.  Cannot continue."
+        exit 1
+    fi
+fi
+
+#
+# Get our repo_rev
+#
+echo "*** Removing old VERSION file..."
+rm -f VERSION
+echo "*** Restoring pristine VERSION file..."
+git checkout VERSION
+echo "*** Getting git version..."
+repo_rev=`git describe --tags --always`
+echo "    Repo rev number: $repo_rev"
+
+# Sanity checks
+if test "$repo_rev" = ""; then
     echo "Somehow the repo rev number is empty.  Abort!"
     exit 1
-elif test "`echo $svn_r | grep ' '`" != ""; then
+elif test "`echo $repo_rev | grep ' '`" != ""; then
     echo "Somehow the repo rev number has a space in it -- bad!"
     exit 1
 fi
 
 #
-# Ditch "svn/hg" from all version numbers
+# Set final values in VERSION
 #
-echo "*** Removing svn version numbers..."
+echo "*** Removing version numbers from VERSION..."
 version_files=VERSION
 release_date=`date '+%b %d, %Y'`
+echo "    Release date: $release_date"
 for file in $version_files; do
     echo " - $file"
-    sed -e 's/^want_svn=.*/want_svn=0/' \
-        -e 's/^svn_r=.*/'svn_r=$svn_r/ \
+    sed -e 's/^repo_rev=.*/'repo_rev=$repo_rev/ \
         -e "s/^date=.*/date=\"$release_date\"/" \
+        -e "s/^tarball_version=.*/tarball_version=/" \
         $file > $file.new
     cp -f $file.new $file
     rm $file.new
@@ -382,7 +428,7 @@ make_tarball
 
 # Now if ! --greekonly, make the non-greek tarball
 
-if test "$greekonly" = "0"; then
+if test $greekonly -eq 0; then
     echo "*** REMOVING ALL GREEK FROM VERSION NUMBERS!!"
     for file in $version_files; do
         echo " - $file"
@@ -395,11 +441,8 @@ if test "$greekonly" = "0"; then
 fi
 
 # Put the VERSION file back the way it was
-if test -d .svn; then
-    svn revert VERSION
-elif test -d .hg; then
-    hg revert VERSION
-fi
+rm -f VERSION
+git checkout VERSION
 
 echo " "
 echo "*** Start time:  $start"

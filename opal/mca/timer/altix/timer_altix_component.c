@@ -1,3 +1,4 @@
+/* -*- Mode: C; c-basic-offset:4 ; indent-tabs-mode:nil -*- */
 /*
  * Copyright (c) 2004-2007 The Trustees of Indiana University and Indiana
  *                         University Research and Technology
@@ -5,14 +6,18 @@
  * Copyright (c) 2004-2005 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
+ * Copyright (c) 2014      Research Organization for Information Science
+ *                         and Technology (RIST). All rights reserved.
+ * Copyright (c) 2015      Los Alamos National Security, LLC. All rights
+ *                         reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -30,6 +35,7 @@
 #include "opal/mca/timer/timer.h"
 #include "opal/mca/timer/altix/timer_altix.h"
 #include "opal/constants.h"
+#include "opal/util/sys_limits.h"
 
 opal_timer_t opal_timer_altix_freq;
 opal_timer_t opal_timer_altix_usec_conv;
@@ -42,20 +48,19 @@ static int opal_timer_altix_close(void);
 const opal_timer_base_component_2_0_0_t mca_timer_altix_component = {
     /* First, the mca_component_t struct containing meta information
        about the component itself */
-    {
+    .timerc_version = {
         OPAL_TIMER_BASE_VERSION_2_0_0,
 
         /* Component name and version */
-        "altix",
-        OPAL_MAJOR_VERSION,
-        OPAL_MINOR_VERSION,
-        OPAL_RELEASE_VERSION,
+        .mca_component_name = "altix",
+        MCA_BASE_MAKE_VERSION(component, OPAL_MAJOR_VERSION, OPAL_MINOR_VERSION,
+                              OPAL_RELEASE_VERSION),
 
         /* Component open and close functions */
-        opal_timer_altix_open,
-        opal_timer_altix_close
+        .mca_open_component = opal_timer_altix_open,
+        .mca_close_component = opal_timer_altix_close,
     },
-    {
+    .timerc_data = {
         /* The component is checkpoint ready */
         MCA_BASE_METADATA_PARAM_CHECKPOINT
     },
@@ -87,7 +92,7 @@ opal_timer_altix_open(void)
     if (ret == -ENOSYS) return OPAL_ERR_NOT_SUPPORTED;
     offset = ret;
 
-    mmdev_map = mmap(0, getpagesize(), PROT_READ, MAP_SHARED, fd, 0);
+    mmdev_map = mmap(0, (size_t)opal_getpagesize(), PROT_READ, MAP_SHARED, fd, 0);
     if (NULL == mmdev_map) return OPAL_ERR_NOT_SUPPORTED;
     opal_timer_altix_mmdev_timer_addr = mmdev_map + offset;
     close(fd);
@@ -100,7 +105,7 @@ static int
 opal_timer_altix_close(void)
 {
     if (NULL != mmdev_map) {
-        munmap(mmdev_map, getpagesize());
+        munmap(mmdev_map, (size_t)opal_getpagesize());
     }
 
     return OPAL_SUCCESS;

@@ -1,22 +1,30 @@
-/* -*- Mode: C; c-basic-offset:4 ; -*- */
+/* -*- Mode: C; c-basic-offset:4 ; indent-tabs-mode:nil -*- */
 /*
  * Copyright (c) 2004-2005 The Trustees of Indiana University and Indiana
  *                         University Research and Technology
  *                         Corporation.  All rights reserved.
- * Copyright (c) 2004-2007 The University of Tennessee and The University
+ * Copyright (c) 2004-2013 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
  * Copyright (c) 2006-2010 University of Houston. All rights reserved.
- * Copyright (c) 2007      Cisco Systems, Inc. All rights reserved.
+ * Copyright (c) 2007-2012 Cisco Systems, Inc.  All rights reserved.
  * Copyright (c) 2009      Sun Microsystems, Inc. All rights reserved.
+ * Copyright (c) 2012-2015 Los Alamos National Security, LLC.
+ *                         All rights reserved.
+ * Copyright (c) 2011-2013 Inria.  All rights reserved.
+ * Copyright (c) 2011-2013 Universite Bordeaux 1
+ *                         All rights reserved.
+ * Copyright (c) 2015      Research Organization for Information Science
+ *                         and Technology (RIST). All rights reserved.
+ * Copyright (c) 2015      Intel, Inc. All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -32,29 +40,39 @@
 #include "ompi/runtime/params.h"
 #include "ompi/communicator/communicator.h"
 #include "ompi/attribute/attribute.h"
-#include "ompi/mca/dpm/dpm.h"
+#include "ompi/dpm/dpm.h"
 #include "ompi/memchecker.h"
 
 /*
 ** Table for Fortran <-> C communicator handle conversion
 ** Also used by P2P code to lookup communicator based
 ** on cid.
-** 
+**
 */
-opal_pointer_array_t ompi_mpi_communicators; 
+opal_pointer_array_t ompi_mpi_communicators = {{0}};
+opal_pointer_array_t ompi_comm_f_to_c_table = {{0}};
 
-ompi_predefined_communicator_t  ompi_mpi_comm_world;
-ompi_predefined_communicator_t  ompi_mpi_comm_self;
-ompi_predefined_communicator_t  ompi_mpi_comm_null;
-ompi_communicator_t  *ompi_mpi_comm_parent;
+ompi_predefined_communicator_t  ompi_mpi_comm_world = {{{0}}};
+ompi_predefined_communicator_t  ompi_mpi_comm_self = {{{0}}};
+ompi_predefined_communicator_t  ompi_mpi_comm_null = {{{0}}};
+ompi_communicator_t  *ompi_mpi_comm_parent = NULL;
+
+ompi_predefined_communicator_t *ompi_mpi_comm_world_addr =
+    &ompi_mpi_comm_world;
+ompi_predefined_communicator_t *ompi_mpi_comm_self_addr =
+    &ompi_mpi_comm_self;
+ompi_predefined_communicator_t *ompi_mpi_comm_null_addr =
+    &ompi_mpi_comm_null;
 
 static void ompi_comm_construct(ompi_communicator_t* comm);
 static void ompi_comm_destruct(ompi_communicator_t* comm);
 
-OBJ_CLASS_INSTANCE(ompi_communicator_t,opal_object_t,ompi_comm_construct,ompi_comm_destruct);
+OBJ_CLASS_INSTANCE(ompi_communicator_t, opal_object_t,
+                   ompi_comm_construct,
+                   ompi_comm_destruct);
 
 /* This is the counter for the number of communicators, which contain
-   process with more than one jobid. This counter is a usefull 
+   process with more than one jobid. This counter is a usefull
    shortcut for finalize and abort. */
 int ompi_comm_num_dyncomm=0;
 
@@ -67,26 +85,47 @@ int ompi_comm_init(void)
     size_t size;
 
     /* Setup communicator array */
-    OBJ_CONSTRUCT(&ompi_mpi_communicators, opal_pointer_array_t); 
+    OBJ_CONSTRUCT(&ompi_mpi_communicators, opal_pointer_array_t);
     if( OPAL_SUCCESS != opal_pointer_array_init(&ompi_mpi_communicators, 0,
+                                                OMPI_FORTRAN_HANDLE_MAX, 64) ) {
+        return OMPI_ERROR;
+    }
+
+    /* Setup f to c table (we can no longer use the cid as the fortran handle) */
+    OBJ_CONSTRUCT(&ompi_comm_f_to_c_table, opal_pointer_array_t);
+    if( OPAL_SUCCESS != opal_pointer_array_init(&ompi_comm_f_to_c_table, 0,
                                                 OMPI_FORTRAN_HANDLE_MAX, 64) ) {
         return OMPI_ERROR;
     }
 
     /* Setup MPI_COMM_WORLD */
     OBJ_CONSTRUCT(&ompi_mpi_comm_world, ompi_communicator_t);
+    assert(ompi_mpi_comm_world.comm.c_f_to_c_index == 0);
     group = OBJ_NEW(ompi_group_t);
-    group->grp_proc_pointers = ompi_proc_world(&size);
-    group->grp_proc_count    = (int)size;
+
+    size = ompi_process_info.num_procs;
+    group->grp_proc_pointers = (ompi_proc_t **) calloc (size, sizeof (ompi_proc_t *));
+    group->grp_proc_count = size;
+
+    for (size_t i = 0 ; i < size ; ++i) {
+        opal_process_name_t name = {.vpid = i, .jobid = OMPI_PROC_MY_NAME->jobid};
+        /* look for existing ompi_proc_t that matches this name */
+        group->grp_proc_pointers[i] = (ompi_proc_t *) ompi_proc_lookup (name);
+        if (NULL == group->grp_proc_pointers[i]) {
+            /* set sentinel value */
+            group->grp_proc_pointers[i] = (ompi_proc_t *) ompi_proc_name_to_sentinel (name);
+        } else {
+            OBJ_RETAIN (group->grp_proc_pointers[i]);
+        }
+    }
+
     OMPI_GROUP_SET_INTRINSIC (group);
     OMPI_GROUP_SET_DENSE (group);
     ompi_set_group_rank(group, ompi_proc_local());
-    ompi_group_increment_proc_count (group);
 
     ompi_mpi_comm_world.comm.c_contextid    = 0;
     ompi_mpi_comm_world.comm.c_id_start_index = 4;
     ompi_mpi_comm_world.comm.c_id_available = 4;
-    ompi_mpi_comm_world.comm.c_f_to_c_index = 0;
     ompi_mpi_comm_world.comm.c_my_rank      = group->grp_my_rank;
     ompi_mpi_comm_world.comm.c_local_group  = group;
     ompi_mpi_comm_world.comm.c_remote_group = group;
@@ -111,15 +150,15 @@ int ompi_comm_init(void)
 
     /* Setup MPI_COMM_SELF */
     OBJ_CONSTRUCT(&ompi_mpi_comm_self, ompi_communicator_t);
+    assert(ompi_mpi_comm_self.comm.c_f_to_c_index == 1);
     group = OBJ_NEW(ompi_group_t);
     group->grp_proc_pointers = ompi_proc_self(&size);
     group->grp_my_rank       = 0;
     group->grp_proc_count    = (int)size;
     OMPI_GROUP_SET_INTRINSIC (group);
     OMPI_GROUP_SET_DENSE (group);
-    
+
     ompi_mpi_comm_self.comm.c_contextid    = 1;
-    ompi_mpi_comm_self.comm.c_f_to_c_index = 1;
     ompi_mpi_comm_self.comm.c_id_start_index = 20;
     ompi_mpi_comm_self.comm.c_id_available = 20;
     ompi_mpi_comm_self.comm.c_my_rank      = group->grp_my_rank;
@@ -143,13 +182,13 @@ int ompi_comm_init(void)
 
     /* Setup MPI_COMM_NULL */
     OBJ_CONSTRUCT(&ompi_mpi_comm_null, ompi_communicator_t);
+    assert(ompi_mpi_comm_null.comm.c_f_to_c_index == 2);
     ompi_mpi_comm_null.comm.c_local_group  = &ompi_mpi_group_null.group;
     ompi_mpi_comm_null.comm.c_remote_group = &ompi_mpi_group_null.group;
-    OBJ_RETAIN(&ompi_mpi_group_null.group); 
+    OBJ_RETAIN(&ompi_mpi_group_null.group);
     OBJ_RETAIN(&ompi_mpi_group_null.group);
 
     ompi_mpi_comm_null.comm.c_contextid    = 2;
-    ompi_mpi_comm_null.comm.c_f_to_c_index = 2;
     ompi_mpi_comm_null.comm.c_my_rank      = MPI_PROC_NULL;
 
     ompi_mpi_comm_null.comm.error_handler  = &ompi_mpi_errors_are_fatal.eh;
@@ -167,9 +206,8 @@ int ompi_comm_init(void)
     OBJ_RETAIN(&ompi_mpi_group_null.group);
     OBJ_RETAIN(&ompi_mpi_errors_are_fatal.eh);
 
-    /* initialize the comm_reg stuff for multi-threaded comm_cid
-       allocation */
-    ompi_comm_reg_init();
+    /* initialize communicator requests (for ompi_comm_idup) */
+    ompi_comm_request_init ();
 
     return OMPI_SUCCESS;
 }
@@ -186,9 +224,9 @@ ompi_communicator_t *ompi_comm_allocate ( int local_size, int remote_size )
         new_comm->c_remote_group = ompi_group_allocate (remote_size);
         new_comm->c_flags |= OMPI_COMM_INTER;
     } else {
-        /* 
-         * simplifies some operations (e.g. p2p), if 
-         * we can always use the remote group 
+        /*
+         * simplifies some operations (e.g. p2p), if
+         * we can always use the remote group
          */
         new_comm->c_remote_group = new_comm->c_local_group;
         OBJ_RETAIN(new_comm->c_remote_group);
@@ -200,7 +238,7 @@ ompi_communicator_t *ompi_comm_allocate ( int local_size, int remote_size )
     return new_comm;
 }
 
-int ompi_comm_finalize(void) 
+int ompi_comm_finalize(void)
 {
     int max, i;
     ompi_communicator_t *comm;
@@ -209,7 +247,16 @@ int ompi_comm_finalize(void)
     OBJ_DESTRUCT( &ompi_mpi_comm_self );
 
     /* disconnect all dynamic communicators */
-    ompi_dpm.dyn_finalize();
+    ompi_dpm_dyn_finalize();
+
+    /* Free the attributes on comm world. This is not done in the
+     * destructor as we delete attributes in ompi_comm_free (which
+     * is not called for comm world) */
+    if (NULL != ompi_mpi_comm_world.comm.c_keyhash) {
+        /* Ignore errors when deleting attributes on comm_world */
+        (void) ompi_attr_delete_all(COMM_ATTR, &ompi_mpi_comm_world.comm, ompi_mpi_comm_world.comm.c_keyhash);
+        OBJ_RELEASE(ompi_mpi_comm_world.comm.c_keyhash);
+    }
 
     /* Shut down MPI_COMM_WORLD */
     OBJ_DESTRUCT( &ompi_mpi_comm_world );
@@ -222,25 +269,25 @@ int ompi_comm_finalize(void)
            is because a parent communicator is created dynamically
            during init, and we just set this pointer to it.  Hence, we
            just pass in the pointer here. */
-       OBJ_DESTRUCT (ompi_mpi_comm_parent);
+        OBJ_DESTRUCT (ompi_mpi_comm_parent);
 
-       /* Please note, that the we did increase the reference count
-          for ompi_mpi_comm_null, ompi_mpi_group_null, and 
-          ompi_mpi_errors_are_fatal in ompi_comm_init because of 
-          ompi_mpi_comm_parent.  In case a 
-          parent communicator is really created, the ref. counters
-          for these objects are decreased again by one. However, in a 
-          static scenario, we should ideally decrease the ref. counter
-          for these objects by one here. The problem just is, that 
-          if the app had a parent_comm, and this has been freed/disconnected,
-          ompi_comm_parent points again to ompi_comm_null, the reference count 
-          for these objects has not been increased again.
-          So the point is, if ompi_mpi_comm_parent == &ompi_mpi_comm_null
-          we do not know whether we have to decrease the ref count for
-          those three objects or not. Since this is a constant, non-increasing
-          amount of memory, we stick with the current solution for now, 
-          namely don't do anything.
-       */  
+        /* Please note, that the we did increase the reference count
+           for ompi_mpi_comm_null, ompi_mpi_group_null, and
+           ompi_mpi_errors_are_fatal in ompi_comm_init because of
+           ompi_mpi_comm_parent.  In case a
+           parent communicator is really created, the ref. counters
+           for these objects are decreased again by one. However, in a
+           static scenario, we should ideally decrease the ref. counter
+           for these objects by one here. The problem just is, that
+           if the app had a parent_comm, and this has been freed/disconnected,
+           ompi_comm_parent points again to ompi_comm_null, the reference count
+           for these objects has not been increased again.
+           So the point is, if ompi_mpi_comm_parent == &ompi_mpi_comm_null
+           we do not know whether we have to decrease the ref count for
+           those three objects or not. Since this is a constant, non-increasing
+           amount of memory, we stick with the current solution for now,
+           namely don't do anything.
+        */
     }
 
     /* Shut down MPI_COMM_NULL */
@@ -256,42 +303,34 @@ int ompi_comm_finalize(void)
             comm=(ompi_communicator_t *)opal_pointer_array_get_item(&ompi_mpi_communicators, i);
             if ( NULL != comm ) {
                 /* Still here ? */
-		if ( !OMPI_COMM_IS_EXTRA_RETAIN(comm)) {
+                if ( !OMPI_COMM_IS_EXTRA_RETAIN(comm)) {
 
-		    /* For communicator that have been marked as "extra retain", we do not further
-		     * enforce to decrease the reference counter once more. These "extra retain"
-		     * communicators created e.g. by the hierarch or inter module did increase
-		     * the reference count by one more than other communicators, on order to
-		     * allow for deallocation with the parent communicator. Note, that
-		     * this only occurs if the cid of the local_comm is lower than of its
-		     * parent communicator. Read the comment in comm_activate for
-		     * a full explanation.
-		     */
-		    if ( ompi_debug_show_handle_leaks && !(OMPI_COMM_IS_FREED(comm)) ){
-			opal_output(0,"WARNING: MPI_Comm still allocated in MPI_Finalize\n");
-			ompi_comm_dump ( comm);
-			OBJ_RELEASE(comm);
-		    }
-		}
+                    /* For communicator that have been marked as "extra retain", we do not further
+                     * enforce to decrease the reference counter once more. These "extra retain"
+                     * communicators created e.g. by the hierarch or inter module did increase
+                     * the reference count by one more than other communicators, on order to
+                     * allow for deallocation with the parent communicator. Note, that
+                     * this only occurs if the cid of the local_comm is lower than of its
+                     * parent communicator. Read the comment in comm_activate for
+                     * a full explanation.
+                     */
+                    if ( ompi_debug_show_handle_leaks && !(OMPI_COMM_IS_FREED(comm)) ){
+                        opal_output(0,"WARNING: MPI_Comm still allocated in MPI_Finalize\n");
+                        ompi_comm_dump ( comm);
+                        OBJ_RELEASE(comm);
+                    }
+                }
             }
         }
     }
 
-
     OBJ_DESTRUCT (&ompi_mpi_communicators);
+    OBJ_DESTRUCT (&ompi_comm_f_to_c_table);
 
-    /* finalize the comm_reg stuff */
-    ompi_comm_reg_finalize();
+    /* finalize communicator requests */
+    ompi_comm_request_fini ();
 
     return OMPI_SUCCESS;
-}
-
-/*
- * For linking only. To be checked.
- */
-int ompi_comm_link_function(void)
-{
-  return OMPI_SUCCESS;
 }
 
 /********************************************************************************/
@@ -301,7 +340,7 @@ int ompi_comm_link_function(void)
 
 static void ompi_comm_construct(ompi_communicator_t* comm)
 {
-    comm->c_f_to_c_index = MPI_UNDEFINED;
+    comm->c_f_to_c_index = opal_pointer_array_add(&ompi_comm_f_to_c_table, comm);
     comm->c_name[0]      = '\0';
     comm->c_contextid    = MPI_UNDEFINED;
     comm->c_id_available = MPI_UNDEFINED;
@@ -314,17 +353,14 @@ static void ompi_comm_construct(ompi_communicator_t* comm)
     comm->error_handler  = NULL;
     comm->c_pml_comm     = NULL;
     comm->c_topo         = NULL;
-    comm->c_topo_component = NULL;
-    comm->c_topo_comm    = NULL; 
-    comm->c_topo_module  = NULL;
 
     /* A keyhash will be created if/when an attribute is cached on
-       this communiucator */
-    comm->c_keyhash = NULL;
+       this communicator */
+    comm->c_keyhash      = NULL;
 
-    comm->errhandler_type           = OMPI_ERRHANDLER_TYPE_COMM;
+    comm->errhandler_type  = OMPI_ERRHANDLER_TYPE_COMM;
 #ifdef OMPI_WANT_PERUSE
-    comm->c_peruse_handles          = NULL;
+    comm->c_peruse_handles = NULL;
 #endif
 
     /* Need to zero out the collectives module because we sometimes
@@ -347,39 +383,6 @@ static void ompi_comm_destruct(ompi_communicator_t* comm)
         mca_coll_base_comm_unselect(comm);
     }
 
-    /*  Check if the communicator is a topology */
-    if ( MPI_COMM_NULL != comm && 
-         (OMPI_COMM_IS_CART(comm) || OMPI_COMM_IS_GRAPH(comm))) {
-
-        /* check and free individual things */
-        
-        if (NULL != comm->c_topo_comm) {
-
-            /* check for all pointers and free them */
-
-            if (NULL != comm->c_topo_comm->mtc_dims_or_index) {
-                free(comm->c_topo_comm->mtc_dims_or_index);
-                comm->c_topo_comm->mtc_dims_or_index = NULL;
-            }
-        
-            if (NULL != comm->c_topo_comm->mtc_periods_or_edges) {
-                free(comm->c_topo_comm->mtc_periods_or_edges);
-                comm->c_topo_comm->mtc_periods_or_edges = NULL;
-            }
-
-            if (NULL != comm->c_topo_comm->mtc_coords) {
-                free(comm->c_topo_comm->mtc_coords);
-                comm->c_topo_comm->mtc_coords = NULL;
-            }
-
-            free(comm->c_topo_comm);
-            comm->c_topo_comm = NULL;
-        }
-
-    }
-
-    comm->c_topo_component = NULL;
-
     /* Tell the PML that this communicator is done.
        MCA_PML_CALL(add_comm()) was called explicitly in
        ompi_comm_init() when setting up COMM_WORLD and COMM_SELF; it's
@@ -399,23 +402,25 @@ static void ompi_comm_destruct(ompi_communicator_t* comm)
         MCA_PML_CALL(del_comm (comm));
     }
 
-    /* Release topology information */
-    mca_topo_base_comm_unselect(comm);
+    /* Release topology module */
+    if (NULL != comm->c_topo) {
+        OBJ_RELEASE(comm->c_topo);
+        comm->c_topo = NULL;
+    }
 
     if (NULL != comm->c_local_group) {
-        ompi_group_decrement_proc_count (comm->c_local_group);
         OBJ_RELEASE ( comm->c_local_group );
         comm->c_local_group = NULL;
         if ( OMPI_COMM_IS_INTRA(comm) ) {
             /* We have to decrement the ref count on the remote group
-               even if it is identical to the local one in case of intra-comm */
+               even if it is identical to the local one in case of
+               intra-comm */
             OBJ_RELEASE ( comm->c_remote_group );
             comm->c_remote_group = NULL;
         }
     }
 
     if (NULL != comm->c_remote_group) {
-        ompi_group_decrement_proc_count (comm->c_remote_group);
         OBJ_RELEASE ( comm->c_remote_group );
         comm->c_remote_group = NULL;
     }
@@ -425,15 +430,19 @@ static void ompi_comm_destruct(ompi_communicator_t* comm)
         comm->error_handler = NULL;
     }
 
-    /* reset the ompi_comm_f_to_c_table entry */
-    if ( MPI_UNDEFINED != comm->c_f_to_c_index && 
+    /* mark this cid as available */
+    if ( MPI_UNDEFINED != (int)comm->c_contextid &&
          NULL != opal_pointer_array_get_item(&ompi_mpi_communicators,
-                                             comm->c_f_to_c_index )) {
+                                             comm->c_contextid)) {
         opal_pointer_array_set_item ( &ompi_mpi_communicators,
-                                      comm->c_f_to_c_index, NULL);
-
+                                      comm->c_contextid, NULL);
     }
 
-
-    return;
+    /* reset the ompi_comm_f_to_c_table entry */
+    if ( MPI_UNDEFINED != comm->c_f_to_c_index &&
+         NULL != opal_pointer_array_get_item(&ompi_comm_f_to_c_table,
+                                             comm->c_f_to_c_index)) {
+        opal_pointer_array_set_item ( &ompi_comm_f_to_c_table,
+                                      comm->c_f_to_c_index, NULL);
+    }
 }

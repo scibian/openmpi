@@ -1,7 +1,0 @@
-## Binaries
-usr/bin/ompi-checkpoint
-usr/bin/ompi-restart
-usr/bin/opal-checkpoint
-usr/bin/opal-restart
-usr/bin/orte-checkpoint
-usr/bin/orte-restart

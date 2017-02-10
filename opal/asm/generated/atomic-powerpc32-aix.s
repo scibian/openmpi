@@ -47,10 +47,10 @@ opal_atomic_cmpset_32:
 	.csect  [PR]
 	.align  2
 .opal_atomic_cmpset_32:
-	L1: lwarx   0, 0, 3  
-	   cmpw    0, 0, 4  
+	L1: lwarx   0, 0, 3
+	   cmpw    0, 0, 4
 	   bne-    L2
-	   stwcx.  5, 0, 3  
+	   stwcx.  5, 0, 3
 	   bne-    L1
 	L2:
 	xor 3,0,4
@@ -67,12 +67,12 @@ opal_atomic_cmpset_acq_32:
 	.csect  [PR]
 	.align  2
 .opal_atomic_cmpset_acq_32:
-	L3: lwarx   0, 0, 3  
-	   cmpw    0, 0, 4  
-	   bne-    L4         
-	   stwcx.  5, 0, 3  
+	L3: lwarx   0, 0, 3
+	   cmpw    0, 0, 4
+	   bne-    L4
+	   stwcx.  5, 0, 3
 	   bne-    L3
-	sync 
+	sync
 	L4:
 	xor 3,0,4
 	subfic 5,3,0
@@ -90,12 +90,12 @@ opal_atomic_cmpset_rel_32:
 	.align  2
 .opal_atomic_cmpset_rel_32:
 	eieio
-	L5: lwarx   0, 0, 3  
-	   cmpw    0, 0, 4  
+	L5: lwarx   0, 0, 3
+	   cmpw    0, 0, 4
 	   bne-    L6
-	   stwcx.  5, 0, 3  
+	   stwcx.  5, 0, 3
 	   bne-    L5
-	sync 
+	sync
 	L6:
 	xor 3,0,4
 	subfic 5,3,0
@@ -112,9 +112,9 @@ opal_atomic_add_32:
 	.csect  [PR]
 	.align  2
 .opal_atomic_add_32:
-	L13:   lwarx 0, 0, 3 
-	     add  0, 4, 0                
-	     stwcx.   0, 0, 3              
+	L13:   lwarx 0, 0, 3
+	     add  0, 4, 0
+	     stwcx.   0, 0, 3
 	     bne-  L13
 	mr	3,0
 	blr
@@ -129,9 +129,9 @@ opal_atomic_sub_32:
 	.align  2
 .opal_atomic_sub_32:
 	L14:   lwarx 0,0,3
-	     subf  0,4,0                
-	     stwcx.   0,0,3              
-	     bne-  L14             
+	     subf  0,4,0
+	     stwcx.   0,0,3
+	     bne-  L14
 	mr	3,0
 	blr
 

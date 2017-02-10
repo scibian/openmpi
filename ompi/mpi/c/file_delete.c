@@ -1,3 +1,4 @@
+/* -*- Mode: C; c-basic-offset:4 ; indent-tabs-mode:nil -*- */
 /*
  * Copyright (c) 2004-2007 The Trustees of Indiana University and Indiana
  *                         University Research and Technology
@@ -5,14 +6,18 @@
  * Copyright (c) 2004-2005 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
+ * Copyright (c) 2013      Los Alamos National Security, LLC.  All rights
+ *                         reserved.
+ * Copyright (c) 2015      Research Organization for Information Science
+ *                         and Technology (RIST). All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -26,18 +31,17 @@
 #include "ompi/mca/io/io.h"
 #include "ompi/mca/io/base/base.h"
 
-#if OPAL_HAVE_WEAK_SYMBOLS && OMPI_PROFILING_DEFINES
+#if OMPI_BUILD_MPI_PROFILING
+#if OPAL_HAVE_WEAK_SYMBOLS
 #pragma weak MPI_File_delete = PMPI_File_delete
 #endif
-
-#if OMPI_PROFILING_DEFINES
-#include "ompi/mpi/c/profile/defines.h"
+#define MPI_File_delete PMPI_File_delete
 #endif
 
 static const char FUNC_NAME[] = "MPI_File_delete";
 
 
-int MPI_File_delete(char *filename, MPI_Info info) 
+int MPI_File_delete(const char *filename, MPI_Info info)
 {
     int rc;
 
@@ -62,26 +66,16 @@ int MPI_File_delete(char *filename, MPI_Info info)
     /* The io framework is only initialized lazily.  If it hasn't
        already been initialized, do so now (note that MPI_FILE_OPEN
        and MPI_FILE_DELETE are the only two places that it will be
-       initialized). */
+       initialized). We might want to add a check to see if the
+       framework is open instead of just incrementing the open count. */
 
-    if (!(mca_io_base_components_opened_valid ||
-          mca_io_base_components_available_valid)) {
-        if (OMPI_SUCCESS != (rc = mca_io_base_open())) {
-            return OMPI_ERRHANDLER_INVOKE(MPI_FILE_NULL, rc, FUNC_NAME);
-        }
-        if (OMPI_SUCCESS != 
-            (rc = mca_io_base_find_available(OPAL_ENABLE_PROGRESS_THREADS,
-                                             OMPI_ENABLE_THREAD_MULTIPLE))) {
-            return OMPI_ERRHANDLER_INVOKE(MPI_FILE_NULL, rc, FUNC_NAME);
-        }
+    if (OMPI_SUCCESS != (rc = mca_base_framework_open(&ompi_io_base_framework, 0))) {
+        return OMPI_ERRHANDLER_INVOKE(MPI_FILE_NULL, rc, FUNC_NAME);
     }
-
-    OPAL_CR_ENTER_LIBRARY();
 
     /* Since there is no MPI_File handle associated with this
        function, the MCA has to do a selection and perform the
        action */
-
     rc = mca_io_base_delete(filename, info);
     OMPI_ERRHANDLER_RETURN(rc, MPI_FILE_NULL, rc, FUNC_NAME);
 }

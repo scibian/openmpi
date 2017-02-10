@@ -1,3 +1,4 @@
+/* -*- Mode: C; c-basic-offset:4 ; indent-tabs-mode:nil -*- */
 /*
  * Copyright (c) 2004-2008 The Trustees of Indiana University and Indiana
  *                         University Research and Technology
@@ -5,14 +6,16 @@
  * Copyright (c) 2004-2005 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
+ * Copyright (c) 2015      Los Alamos National Security, LLC. All rights
+ *                         reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  *
  * These symbols are in a file by themselves to provide nice linker
@@ -24,8 +27,6 @@
 
 #include "orte_config.h"
 #include "orte/constants.h"
-
-#include "opal/mca/base/mca_base_param.h"
 
 #include "orte/util/proc_info.h"
 
@@ -39,24 +40,23 @@ extern orte_ess_base_module_t orte_ess_env_module;
  * and pointers to our public functions in it
  */
 orte_ess_base_component_t mca_ess_env_component = {
-    {
-        ORTE_ESS_BASE_VERSION_2_0_0,
+    .base_version = {
+        ORTE_ESS_BASE_VERSION_3_0_0,
 
         /* Component name and version */
-        "env",
-        ORTE_MAJOR_VERSION,
-        ORTE_MINOR_VERSION,
-        ORTE_RELEASE_VERSION,
+        .mca_component_name = "env",
+        MCA_BASE_MAKE_VERSION(component, ORTE_MAJOR_VERSION, ORTE_MINOR_VERSION,
+                              ORTE_RELEASE_VERSION),
 
         /* Component open and close functions */
-        orte_ess_env_component_open,
-        orte_ess_env_component_close,
-        orte_ess_env_component_query
+        .mca_open_component = orte_ess_env_component_open,
+        .mca_close_component = orte_ess_env_component_close,
+        .mca_query_component = orte_ess_env_component_query,
     },
-    {
+    .base_data = {
         /* The component is checkpoint ready */
         MCA_BASE_METADATA_PARAM_CHECKPOINT
-    }
+    },
 };
 
 
@@ -68,25 +68,15 @@ orte_ess_env_component_open(void)
 
 int orte_ess_env_component_query(mca_base_module_t **module, int *priority)
 {
-    /* we are the env module, so set the priority to
-     * be higher than the tool component so that a
-     * tool launched as a distributed set of procs
-     * (i.e., a "tool with name") will select this
-     * module, but low enough that any other environment
-     * will override us
-     */
-
-    /* if we don't have a path back to the HNP, then we
-     * were not launched by mpirun, so don't pick us as
-     * it would be impossible for the correct env vars
-     * to have been set!
-     */
-    if (NULL != orte_process_info.my_hnp_uri) {
-        *priority = 20;
+    /* we are the env module, only used by daemons that are
+     * launched by ssh so allow any enviro-specifc modules
+     * to override us */
+    if (ORTE_PROC_IS_DAEMON) {
+        *priority = 1;
         *module = (mca_base_module_t *)&orte_ess_env_module;
         return ORTE_SUCCESS;
     }
-    
+
     /* if not, then return NULL - we cannot be selected */
     *priority = -1;
     *module = NULL;

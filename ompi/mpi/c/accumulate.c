@@ -1,3 +1,4 @@
+/* -*- Mode: C; c-basic-offset:4 ; indent-tabs-mode:nil -*- */
 /*
  * Copyright (c) 2004-2007 The Trustees of Indiana University and Indiana
  *                         University Research and Technology
@@ -5,15 +6,19 @@
  * Copyright (c) 2004-2005 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2008 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2008 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
  * Copyright (c) 2009      Sun Microsystmes, Inc.  All rights reserved.
+ * Copyright (c) 2013-2015 Los Alamos National Security, LLC. All rights
+ *                         reserved.
+ * Copyright (c) 2015      Research Organization for Information Science
+ *                         and Technology (RIST). All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 #include "ompi_config.h"
@@ -29,19 +34,18 @@
 #include "ompi/datatype/ompi_datatype_internal.h"
 #include "ompi/memchecker.h"
 
-#if OPAL_HAVE_WEAK_SYMBOLS && OMPI_PROFILING_DEFINES
+#if OMPI_BUILD_MPI_PROFILING
+#if OPAL_HAVE_WEAK_SYMBOLS
 #pragma weak MPI_Accumulate = PMPI_Accumulate
 #endif
-
-#if OMPI_PROFILING_DEFINES
-#include "ompi/mpi/c/profile/defines.h"
+#define MPI_Accumulate PMPI_Accumulate
 #endif
 
 static const char FUNC_NAME[] = "MPI_Accumulate";
 
-int MPI_Accumulate(void *origin_addr, int origin_count, MPI_Datatype origin_datatype,
+int MPI_Accumulate(const void *origin_addr, int origin_count, MPI_Datatype origin_datatype,
                    int target_rank, MPI_Aint target_disp, int target_count,
-                   MPI_Datatype target_datatype, MPI_Op op, MPI_Win win) 
+                   MPI_Datatype target_datatype, MPI_Op op, MPI_Win win)
 {
     int rc;
     ompi_win_t *ompi_win = (ompi_win_t*) win;
@@ -49,7 +53,7 @@ int MPI_Accumulate(void *origin_addr, int origin_count, MPI_Datatype origin_data
     MEMCHECKER(
         memchecker_datatype(origin_datatype);
         memchecker_datatype(target_datatype);
-        memchecker_call(&opal_memchecker_base_isdefined, origin_addr, origin_count, origin_datatype);
+        memchecker_call(&opal_memchecker_base_isdefined, (void *) origin_addr, origin_count, origin_datatype);
     );
 
     if (MPI_PARAM_CHECK) {
@@ -64,13 +68,11 @@ int MPI_Accumulate(void *origin_addr, int origin_count, MPI_Datatype origin_data
         } else if (ompi_win_peer_invalid(win, target_rank) &&
                    (MPI_PROC_NULL != target_rank)) {
             rc = MPI_ERR_RANK;
-        } else if (MPI_OP_NULL == op) {
+        } else if (MPI_OP_NULL == op || MPI_NO_OP == op) {
             rc = MPI_ERR_OP;
         } else if (!ompi_op_is_intrinsic(op)) {
             rc = MPI_ERR_OP;
-        } else if (!ompi_win_comm_allowed(win)) {
-            rc = MPI_ERR_RMA_SYNC;
-        } else if ( target_disp < 0 ) {
+        } else if ( MPI_WIN_FLAVOR_DYNAMIC != win->w_flavor && target_disp < 0 ) {
             rc = MPI_ERR_DISP;
         } else {
             OMPI_CHECK_DATATYPE_FOR_ONE_SIDED(rc, origin_datatype, origin_count);
@@ -83,7 +85,7 @@ int MPI_Accumulate(void *origin_addr, int origin_count, MPI_Datatype origin_data
                    for other reduction operators, we don't require such
                    behavior, as checking for it is expensive here and we don't
                    care in implementation.. */
-                if (op != &ompi_mpi_op_replace.op) {
+                if (op != &ompi_mpi_op_replace.op && op != &ompi_mpi_op_no_op.op) {
                     ompi_datatype_t *op_check_dt, *origin_check_dt;
                     char *msg;
 
@@ -123,15 +125,13 @@ int MPI_Accumulate(void *origin_addr, int origin_count, MPI_Datatype origin_data
         return MPI_SUCCESS;
     }
 
-    OPAL_CR_ENTER_LIBRARY();
-
-    rc = ompi_win->w_osc_module->osc_accumulate(origin_addr, 
+    rc = ompi_win->w_osc_module->osc_accumulate(origin_addr,
                                                 origin_count,
                                                 origin_datatype,
-                                                target_rank, 
-                                                target_disp, 
+                                                target_rank,
+                                                target_disp,
                                                 target_count,
-                                                target_datatype, 
+                                                target_datatype,
                                                 op, win);
     OMPI_ERRHANDLER_RETURN(rc, win, rc, FUNC_NAME);
 }

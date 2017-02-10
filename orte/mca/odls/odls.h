@@ -1,5 +1,5 @@
-/* -*- C -*-
- *
+/* -*- Mode: C; c-basic-offset:4 ; indent-tabs-mode:nil -*- */
+/*
  * Copyright (c) 2004-2008 The Trustees of Indiana University and Indiana
  *                         University Research and Technology
  *                         Corporation.  All rights reserved.
@@ -10,6 +10,8 @@
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
+ * Copyright (c) 2011-2015 Los Alamos National Security, LLC. All rights
+ *                         reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -29,11 +31,13 @@
 #include "orte_config.h"
 #include "orte/types.h"
 
-#include "opal/mca/mca.h"
+#include "orte/mca/mca.h"
 #include "opal/class/opal_pointer_array.h"
 
 #include "opal/dss/dss_types.h"
 #include "orte/mca/rml/rml_types.h"
+#include "orte/runtime/orte_globals.h"
+
 #include "orte/mca/odls/odls_types.h"
 
 BEGIN_C_DECLS
@@ -41,7 +45,7 @@ BEGIN_C_DECLS
 /*
  * odls module functions
  */
-    
+
 /*
  * Construct a buffer for use in adding local processes
  * In order to reuse daemons, we need a way for the HNP to construct a buffer that
@@ -62,7 +66,7 @@ typedef int (*orte_odls_base_module_launch_local_processes_fn_t)(opal_buffer_t *
 /**
  * Kill the local processes on this node
  */
-typedef int (*orte_odls_base_module_kill_local_processes_fn_t)(opal_pointer_array_t *procs, bool set_state);
+typedef int (*orte_odls_base_module_kill_local_processes_fn_t)(opal_pointer_array_t *procs);
 
 /**
  * Signal local processes
@@ -77,11 +81,9 @@ typedef int (*orte_odls_base_module_deliver_message_fn_t)(orte_jobid_t job, opal
                                                           orte_rml_tag_t tag);
 
 /**
- * Register to require sync before termination
+ * Restart a local process
  */
-typedef int (*orte_odls_base_module_require_sync_fn_t)(orte_process_name_t *proc,
-                                                       opal_buffer_t *buffer,
-                                                       bool drop_nidmap);
+typedef int (*orte_odls_base_module_restart_proc_fn_t)(orte_proc_t *child);
 
 /**
  * pls module version
@@ -90,9 +92,9 @@ struct orte_odls_base_module_1_3_0_t {
     orte_odls_base_module_get_add_procs_data_fn_t           get_add_procs_data;
     orte_odls_base_module_launch_local_processes_fn_t       launch_local_procs;
     orte_odls_base_module_kill_local_processes_fn_t         kill_local_procs;
-    orte_odls_base_module_signal_local_process_fn_t   		signal_local_procs;
+    orte_odls_base_module_signal_local_process_fn_t         signal_local_procs;
     orte_odls_base_module_deliver_message_fn_t              deliver_message;
-    orte_odls_base_module_require_sync_fn_t                 require_sync;
+    orte_odls_base_module_restart_proc_fn_t                 restart_proc;
 };
 
 /** shorten orte_odls_base_module_1_3_0_t declaration */
@@ -119,8 +121,7 @@ typedef orte_odls_base_component_2_0_0_t orte_odls_base_component_t;
  * Macro for use in modules that are of type odls
  */
 #define ORTE_ODLS_BASE_VERSION_2_0_0 \
-  MCA_BASE_VERSION_2_0_0, \
-  "odls", 2, 0, 0
+    ORTE_MCA_BASE_VERSION_2_1_0("odls", 2, 0, 0)
 
 /* Global structure for accessing ODLS functions
 */

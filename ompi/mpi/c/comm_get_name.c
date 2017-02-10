@@ -5,15 +5,17 @@
  * Copyright (c) 2004-2005 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2008 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2008 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
  * Copyright (c) 2006-2008 Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2015      Research Organization for Information Science
+ *                         and Technology (RIST). All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -29,34 +31,31 @@
 #include "opal/threads/mutex.h"
 #include "ompi/memchecker.h"
 
-#if OPAL_HAVE_WEAK_SYMBOLS && OMPI_PROFILING_DEFINES
+#if OMPI_BUILD_MPI_PROFILING
+#if OPAL_HAVE_WEAK_SYMBOLS
 #pragma weak MPI_Comm_get_name = PMPI_Comm_get_name
 #endif
-
-#if OMPI_PROFILING_DEFINES
-#include "ompi/mpi/c/profile/defines.h"
+#define MPI_Comm_get_name PMPI_Comm_get_name
 #endif
 
 static const char FUNC_NAME[] = "MPI_Comm_get_name";
 
 
-int MPI_Comm_get_name(MPI_Comm comm, char *name, int *length)  
+int MPI_Comm_get_name(MPI_Comm comm, char *name, int *length)
 {
     MEMCHECKER(
         memchecker_comm(comm);
     );
 
-    OPAL_CR_NOOP_PROGRESS();
-
     if ( MPI_PARAM_CHECK ) {
         OMPI_ERR_INIT_FINALIZE(FUNC_NAME);
 
         if ( ompi_comm_invalid ( comm ) )
-            return OMPI_ERRHANDLER_INVOKE ( MPI_COMM_WORLD, MPI_ERR_COMM, 
+            return OMPI_ERRHANDLER_INVOKE ( MPI_COMM_WORLD, MPI_ERR_COMM,
                                             FUNC_NAME);
 
-        if ( NULL == name || NULL == length ) 
-            return OMPI_ERRHANDLER_INVOKE ( comm, MPI_ERR_ARG, 
+        if ( NULL == name || NULL == length )
+            return OMPI_ERRHANDLER_INVOKE ( comm, MPI_ERR_ARG,
                                             FUNC_NAME);
     }
 #ifdef USE_MUTEX_FOR_COMMS
@@ -67,7 +66,7 @@ int MPI_Comm_get_name(MPI_Comm comm, char *name, int *length)
        - name[*resultlen] == '\0'
        - and therefore (*resultlen) cannot be > (MPI_MAX_OBJECT_NAME-1)
 
-       The Fortran API version will pad to the right if necessary. 
+       The Fortran API version will pad to the right if necessary.
 
        Note that comm->c_name is guaranteed to be \0-terminated and
        able to completely fit into MPI_MAX_OBJECT_NAME bytes (i.e.,

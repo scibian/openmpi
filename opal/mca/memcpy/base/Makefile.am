@@ -3,9 +3,9 @@
 #                         of Tennessee Research Foundation.  All rights
 #                         reserved.
 # $COPYRIGHT$
-# 
+#
 # Additional copyrights may follow
-# 
+#
 # $HEADER$
 #
 
@@ -14,5 +14,4 @@ headers += \
         base/memcpy_base_default.h
 
 libmca_memcpy_la_SOURCES += \
-        base/memcpy_base_close.c \
         base/memcpy_base_open.c

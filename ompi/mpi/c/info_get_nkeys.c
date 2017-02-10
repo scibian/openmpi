@@ -5,14 +5,16 @@
  * Copyright (c) 2004-2005 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
+ * Copyright (c) 2015      Research Organization for Information Science
+ *                         and Technology (RIST). All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -24,12 +26,11 @@
 #include "ompi/errhandler/errhandler.h"
 #include "ompi/info/info.h"
 
-#if OPAL_HAVE_WEAK_SYMBOLS && OMPI_PROFILING_DEFINES
+#if OMPI_BUILD_MPI_PROFILING
+#if OPAL_HAVE_WEAK_SYMBOLS
 #pragma weak MPI_Info_get_nkeys = PMPI_Info_get_nkeys
 #endif
-
-#if OMPI_PROFILING_DEFINES
-#include "ompi/mpi/c/profile/defines.h"
+#define MPI_Info_get_nkeys PMPI_Info_get_nkeys
 #endif
 
 static const char FUNC_NAME[] = "MPI_Info_get_nkeys";
@@ -46,10 +47,10 @@ static const char FUNC_NAME[] = "MPI_Info_get_nkeys";
  * @retval MPI_ERR_ARG
  * @retval MPI_ERR_INFO
  *
- * This function returns the number of elements in the list 
+ * This function returns the number of elements in the list
  * containing the key-value pairs
  */
-int MPI_Info_get_nkeys(MPI_Info info, int *nkeys) 
+int MPI_Info_get_nkeys(MPI_Info info, int *nkeys)
 {
     int err;
 
@@ -65,8 +66,6 @@ int MPI_Info_get_nkeys(MPI_Info info, int *nkeys)
                                           FUNC_NAME);
         }
     }
-
-    OPAL_CR_ENTER_LIBRARY();
 
     err = ompi_info_get_nkeys(info, nkeys);
     OMPI_ERRHANDLER_RETURN(err, MPI_COMM_WORLD, err, FUNC_NAME);

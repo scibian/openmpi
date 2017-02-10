@@ -5,18 +5,19 @@
  * Copyright (c) 2004-2005 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2008 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2008 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
  * Copyright (c) 2007      Los Alamos National Security, LLC.
- *                         All rights reserved. 
+ *                         All rights reserved.
  * Copyright (c) 2007      Voltaire. All rights reserved.
+ * Copyright (c) 2012      Los Alamos National Security, LLC. All rights reserved.
  *
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -86,6 +87,17 @@ OPAL_DECLSPEC  int opal_argv_append(int *argc, char ***argv, const char *arg) __
 OPAL_DECLSPEC  int opal_argv_append_nosize(char ***argv, const char *arg);
 
 /**
+ * Insert the provided arg at the beginning of the array
+ *
+ * @param argv Pointer to an argv array
+ * @param str Pointer to the string to prepend
+ *
+ * @retval OPAL_SUCCESS On success
+ * @retval OPAL_ERROR On failure
+ */
+OPAL_DECLSPEC int opal_argv_prepend_nosize(char ***argv, const char *arg);
+
+/**
  * Append to an argv-style array, but only if the provided argument
  * doesn't already exist somewhere in the array. Ignore the size of the array.
  *
@@ -116,9 +128,9 @@ OPAL_DECLSPEC  int opal_argv_append_unique_nosize(char ***argv, const char *arg,
    * array.
    */
 OPAL_DECLSPEC  void opal_argv_free(char **argv);
-  
+
   /**
-   * Split a string into a NULL-terminated argv array. Do not include empty 
+   * Split a string into a NULL-terminated argv array. Do not include empty
    * strings in result array.
    *
    * @param src_string Input string.
@@ -135,7 +147,7 @@ OPAL_DECLSPEC  void opal_argv_free(char **argv);
 OPAL_DECLSPEC  char **opal_argv_split(const char *src_string, int delimiter) __opal_attribute_malloc__ __opal_attribute_warn_unused_result__;
 
   /**
-   * Split a string into a NULL-terminated argv array. Include empty 
+   * Split a string into a NULL-terminated argv array. Include empty
    * strings in result array.
    *
    * @param src_string Input string.
@@ -233,7 +245,7 @@ OPAL_DECLSPEC  char **opal_argv_copy(char **argv) __opal_attribute_malloc__ __op
      * free()ed (it is assumed that the argv "owns" the memory that
      * the pointer points to).
      */
-OPAL_DECLSPEC  int opal_argv_delete(int *argc, char ***argv, 
+OPAL_DECLSPEC  int opal_argv_delete(int *argc, char ***argv,
                                     int start, int num_to_delete);
 
     /**
@@ -258,6 +270,29 @@ OPAL_DECLSPEC  int opal_argv_delete(int *argc, char ***argv,
      * target).
      */
 OPAL_DECLSPEC  int opal_argv_insert(char ***target, int start, char **source);
+
+/**
+ * Insert one argv element in front of a specific position in an array
+ *
+ * @param target The argv to insert tokens into
+ * @param location Index where the token will be placed in target
+ * @param source The token to be inserted
+ *
+ * @retval OPAL_SUCCESS upon success
+ * @retval OPAL_BAD_PARAM if any parameters are non-sensical
+ *
+ * This function takes one arg and inserts it in the middle of
+ * another.  The token will be inserted at the specified index
+ * in the target argv; all other tokens will be shifted down.
+ * Similar to opal_argv_append(), the target may be realloc()'ed
+ * to accomodate the new storage requirements.
+ *
+ * The source token is left unaffected -- its contents are copied
+ * by value over to the target array (i.e., the string that
+ * source points to is strdup'ed into the new location in
+ * target).
+ */
+OPAL_DECLSPEC  int opal_argv_insert_element(char ***target, int location, char *source);
 
 END_C_DECLS
 

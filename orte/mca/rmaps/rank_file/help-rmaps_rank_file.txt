@@ -1,5 +1,8 @@
 # Copyright (c) 2004-2005 The Regents of the University of California.
 #                         All rights reserved.
+# Copyright (c) 2011      Cisco Systems, Inc.  All rights reserved.
+# Copyright (c) 2013      Los Alamos National Security, LLC.
+#                         All rights reserved.
 # $COPYRIGHT$
 #
 # Additional copyrights may follow
@@ -9,40 +12,64 @@
 # This is the US/English general help file for rankle utilities.
 #
 # Voltaire
+[no-hwloc]
+A slot_list containing detailed location info was given, but
+hwloc support is not available:
+
+  Rank:      %d
+  Slot list:  %s
+
+Unfortunately, hwloc support is required for this action.
+Please reconfigure OMPI for hwloc if binding to specified
+cpus is desired.
 [no-rankfile]
 Open RTE was unable to open the rankfile:
     %s
 Check to make sure the path and filename are correct.
 
-usage:  mpirun mca rmaps_rankfile_path rankfile ./app
+usage:  mpirun -mca rmaps_rankfile_path rankfile ./app
 
-all unspecified by rankfile ranks are assigned using
-byslot or bynode policy.
-
-example:  cat hosfile
+Examples of proper syntax include:
+  cat hostfile
     host1
     host2
     host3
     host4
-          cat rankfile
+  cat rankfile
     rank 1=host1 slot=1:0,1
     rank 0=host2 slot=0:*
     rank 2=host4 slot=1-2
-    rank 3=host3 slot=0:1,1:0-2
+    rank 3=host3 slot=0:1;1:0-2
 #
 [parse_error_string]
 Open RTE detected a parse error in the rankfile (%s)
 It occured on line number %d on token %d:
     %s
+Examples of proper syntax include:
+    rank 1=host1 slot=1:0,1
+    rank 0=host2 slot=0:*
+    rank 2=host4 slot=1-2
+    rank 3=host3 slot=0:1;1:0-2
 #
 [parse_error_int]
 Open RTE detected a parse error in the rankfile (%s)
 It occured on line number %d on token %d:
     %d
+Examples of proper syntax include:
+    rank 1=host1 slot=1:0,1
+    rank 0=host2 slot=0:*
+    rank 2=host4 slot=1-2
+    rank 3=host3 slot=0:1;1:0-2
 #
 [parse_error]
 Open RTE detected a parse error in the rankfile (%s)
-It occured on line number %d on token %d.
+It occured on line number %d on token %d. Examples of
+proper syntax include:
+    rank 1=host1 slot=1:0,1
+    rank 0=host2 slot=0:*
+    rank 2=host4 slot=1-2
+    rank 3=host3 slot=0:1;1:0-2
+
 #
 [not-all-mapped-alloc]
 Some of the requested ranks are not included in the current allocation.
@@ -81,7 +108,11 @@ Error, rank %d is already assigned to %s, check %s
 Error, invalid syntax in the rankfile (%s)
 syntax must be the fallowing
 rank i=host_i slot=string
-ex: rank 1=host1 slot=1:0,1
+Examples of proper syntax include:
+    rank 1=host1 slot=1:0,1
+    rank 0=host2 slot=0:*
+    rank 2=host4 slot=1-2
+    rank 3=host3 slot=0:1;1:0-2
 #
 [orte-rmaps-rf:multi-apps-and-zero-np]
 RMAPS found multiple applications to be launched, with
@@ -89,29 +120,12 @@ at least one that failed to specify the number of processes to execute.
 When specifying multiple applications, you must specify how many processes
 of each to launch via the -np argument.
 #
-[orte-rmaps-rf:per-node-and-too-many-procs]
-There are not enough nodes in your allocation to satisfy your request to
-launch
-%d processes on a per-node basis - only %d nodes were available.
+[missing-rank]
+A rank is missing its location specification:
 
-Either request fewer processes, or obtain a larger allocation.
-#
-[orte-rmaps-rf:n-per-node-and-too-many-procs]
-There are not enough nodes in your allocation to satisfy your request to
-launch
-%d processes on a %d per-node basis - only %d nodes with a total of %d slots
-%were available.
+  Rank:        %d
+  Rank file:   %s
 
-Either request fewer processes, or obtain a larger allocation.
-#
-[orte-rmaps-rf:n-per-node-and-not-enough-slots]
-There are not enough slots on the nodes in your allocation to satisfy your
-request to launch on a %d process-per-node basis - only %d slots/node were
-available.
-
-Either request fewer processes/node, or obtain a larger allocation.
-#
-[not-supported]
-The rank_file mapper no longer supports mapping to physical processor ids.
-Please express the mapping in terms of logical processors by removing all
-'P' or 'p' modifiers.
+All processes must have their location specified in the rank file. Either
+add an entry to the file, or provide a default slot_list to use for
+any unspecified ranks.

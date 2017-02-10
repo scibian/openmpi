@@ -1,3 +1,4 @@
+/* -*- Mode: C; c-basic-offset:4 ; indent-tabs-mode:nil -*- */
 /*
  * Copyright (c) 2004-2008 The Trustees of Indiana University and Indiana
  *                         University Research and Technology
@@ -9,8 +10,8 @@
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
- * Copyright (c) 2007-2010 Cisco Systems, Inc.  All rights reserved.
- * Copyright (c) 2010-2011 Los Alamos National Security, LLC.
+ * Copyright (c) 2007-2015 Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2010-2015 Los Alamos National Security, LLC.
  *                         All rights reserved.
  * Copyright (c) 2011      NVIDIA Corporation.  All rights reserved.
  * $COPYRIGHT$
@@ -30,9 +31,7 @@
 
 
 #include <errno.h>
-#ifdef HAVE_STRING_H
 #include <string.h>
-#endif /* HAVE_STRING_H */
 #ifdef HAVE_SYS_MMAN_H
 #include <sys/mman.h>
 #endif /* HAVE_SYS_MMAN_H */
@@ -56,6 +55,7 @@ const char *opal_shmem_posix_component_version_string =
     "OPAL posix shmem MCA component version " OPAL_VERSION;
 
 /* local functions */
+static int posix_register (void);
 static int posix_open(void);
 static int posix_query(mca_base_module_t **module, int *priority);
 static int posix_runtime_query(mca_base_module_t **module,
@@ -69,52 +69,52 @@ static bool rt_successful = false;
  * and pointers to our public functions in it
  */
 opal_shmem_posix_component_t mca_shmem_posix_component = {
-    /* ////////////////////////////////////////////////////////////////////// */
-    /* super */
-    /* ////////////////////////////////////////////////////////////////////// */
-    {
-        /* common MCA component data */
-        {
+    .super = {
+        .base_version = {
             OPAL_SHMEM_BASE_VERSION_2_0_0,
 
             /* component name and version */
-            "posix",
-            OPAL_MAJOR_VERSION,
-            OPAL_MINOR_VERSION,
-            OPAL_RELEASE_VERSION,
+            .mca_component_name = "posix",
+            MCA_BASE_MAKE_VERSION(component, OPAL_MAJOR_VERSION, OPAL_MINOR_VERSION,
+                                  OPAL_RELEASE_VERSION),
 
-            /* component open */
-            posix_open,
-            /* component close */
-            NULL,
-            /* component query */
-            posix_query
+            .mca_open_component = posix_open,
+            .mca_query_component = posix_query,
+            .mca_register_component_params = posix_register
         },
         /* MCA v2.0.0 component meta data */
-        {
+        .base_data = {
             /* the component is checkpoint ready */
             MCA_BASE_METADATA_PARAM_CHECKPOINT
         },
-        posix_runtime_query,
+        .runtime_query = posix_runtime_query,
     },
-    /* ////////////////////////////////////////////////////////////////////// */
-    /* posix component-specific information */
-    /* see: shmem_posix.h for more information */
-    /* ////////////////////////////////////////////////////////////////////// */
-    /* (default) priority - set lower than mmap's priority */
-    40
 };
+
 
 /* ////////////////////////////////////////////////////////////////////////// */
 static int
+posix_register(void)
+{
+    /* ////////////////////////////////////////////////////////////////////// */
+    /* (default) priority - set lower than mmap's priority */
+    mca_shmem_posix_component.priority = 40;
+    (void) mca_base_component_var_register(&mca_shmem_posix_component.super.base_version,
+                                           "priority", "Priority for the shmem posix "
+                                           "component (default: 40)", MCA_BASE_VAR_TYPE_INT,
+                                           NULL, 0, MCA_BASE_VAR_FLAG_SETTABLE,
+                                           OPAL_INFO_LVL_3,
+                                           MCA_BASE_VAR_SCOPE_ALL_EQ,
+                                           &mca_shmem_posix_component.priority);
+
+    return OPAL_SUCCESS;
+}
+
+/* ////////////////////////////////////////////////////////////////////////// */
+
+static int
 posix_open(void)
 {
-    mca_base_param_reg_int(
-        &mca_shmem_posix_component.super.base_version,
-        "priority", "Priority of the posix shmem component", false, false,
-        mca_shmem_posix_component.priority, &mca_shmem_posix_component.priority
-    );
-
     return OPAL_SUCCESS;
 }
 
@@ -143,7 +143,7 @@ posix_runtime_query(mca_base_module_t **module,
      */
     if (NULL != hint) {
         OPAL_OUTPUT_VERBOSE(
-            (70, opal_shmem_base_output,
+            (70, opal_shmem_base_framework.framework_output,
              "shmem: posix: runtime_query: "
              "attempting to use runtime hint (%s)\n", hint)
         );
@@ -166,15 +166,19 @@ posix_runtime_query(mca_base_module_t **module,
      * hint.  it's either up to us to figure it out, or the caller wants us to
      * re-run the runtime query.
      */
+    OPAL_OUTPUT_VERBOSE(
+        (70, opal_shmem_base_framework.framework_output,
+         "shmem: posix: runtime_query: NO HINT PROVIDED:"
+         "starting run-time test...\n")
+    );
     /* shmem_posix_shm_open successfully shm_opened - we can use posix sm! */
     if (-1 != (fd = shmem_posix_shm_open(tmp_buff,
                                          OPAL_SHMEM_POSIX_FILE_LEN_MAX -1))) {
         /* free up allocated resources before we return */
         if (0 != shm_unlink(tmp_buff)) {
             int err = errno;
-            char hn[MAXHOSTNAMELEN];
-            gethostname(hn, MAXHOSTNAMELEN - 1);
-            hn[MAXHOSTNAMELEN - 1] = '\0';
+            char hn[OPAL_MAXHOSTNAMELEN];
+            gethostname(hn, sizeof(hn));
             opal_show_help("help-opal-shmem-posix.txt", "sys call fail", 1,
                            hn, "shm_unlink(2)", "", strerror(err), err);
             /* something strange happened, so consider this a run-time test

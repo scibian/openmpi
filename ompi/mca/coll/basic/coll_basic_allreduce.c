@@ -2,17 +2,19 @@
  * Copyright (c) 2004-2005 The Trustees of Indiana University and Indiana
  *                         University Research and Technology
  *                         Corporation.  All rights reserved.
- * Copyright (c) 2004-2005 The University of Tennessee and The University
+ * Copyright (c) 2004-2015 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
+ * Copyright (c) 2015      Research Organization for Information Science
+ *                         and Technology (RIST). All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -37,7 +39,7 @@
  *	Returns:	- MPI_SUCCESS or error code
  */
 int
-mca_coll_basic_allreduce_intra(void *sbuf, void *rbuf, int count,
+mca_coll_basic_allreduce_intra(const void *sbuf, void *rbuf, int count,
                                struct ompi_datatype_t *dtype,
                                struct ompi_op_t *op,
                                struct ompi_communicator_t *comm,
@@ -72,18 +74,17 @@ mca_coll_basic_allreduce_intra(void *sbuf, void *rbuf, int count,
  *	Returns:	- MPI_SUCCESS or error code
  */
 int
-mca_coll_basic_allreduce_inter(void *sbuf, void *rbuf, int count,
+mca_coll_basic_allreduce_inter(const void *sbuf, void *rbuf, int count,
                                struct ompi_datatype_t *dtype,
                                struct ompi_op_t *op,
                                struct ompi_communicator_t *comm,
                                mca_coll_base_module_t *module)
 {
-    int err, i, rank, root = 0, rsize;
-    ptrdiff_t lb, extent;
+    int err, i, rank, root = 0, rsize, line;
+    ptrdiff_t extent, dsize, gap;
     char *tmpbuf = NULL, *pml_buffer = NULL;
     ompi_request_t *req[2];
-    mca_coll_basic_module_t *basic_module = (mca_coll_basic_module_t*) module;
-    ompi_request_t **reqs = basic_module->mccb_reqs;
+    ompi_request_t **reqs = NULL;
 
     rank = ompi_comm_rank(comm);
     rsize = ompi_comm_remote_size(comm);
@@ -98,47 +99,41 @@ mca_coll_basic_allreduce_inter(void *sbuf, void *rbuf, int count,
      * simultaniously. */
     /*****************************************************************/
     if (rank == root) {
-        err = ompi_datatype_get_extent(dtype, &lb, &extent);
+        err = ompi_datatype_type_extent(dtype, &extent);
         if (OMPI_SUCCESS != err) {
             return OMPI_ERROR;
         }
+        dsize = opal_datatype_span(&dtype->super, count, &gap);
+        tmpbuf = (char *) malloc(dsize);
+        if (NULL == tmpbuf) { err = OMPI_ERR_OUT_OF_RESOURCE; line = __LINE__; goto exit; }
+        pml_buffer = tmpbuf - gap;
 
-        tmpbuf = (char *) malloc(count * extent);
-        if (NULL == tmpbuf) {
-            return OMPI_ERR_OUT_OF_RESOURCE;
+        if (rsize > 1) {
+            reqs = coll_base_comm_get_reqs(module->base_data, rsize - 1);
+            if( NULL == reqs ) { err = OMPI_ERR_OUT_OF_RESOURCE; line = __LINE__; goto exit; }
         }
-        pml_buffer = tmpbuf - lb;
 
         /* Do a send-recv between the two root procs. to avoid deadlock */
         err = MCA_PML_CALL(irecv(rbuf, count, dtype, 0,
                                  MCA_COLL_BASE_TAG_ALLREDUCE, comm,
                                  &(req[0])));
-        if (OMPI_SUCCESS != err) {
-            goto exit;
-        }
+        if (OMPI_SUCCESS != err) { line = __LINE__; goto exit; }
 
         err = MCA_PML_CALL(isend(sbuf, count, dtype, 0,
                                  MCA_COLL_BASE_TAG_ALLREDUCE,
                                  MCA_PML_BASE_SEND_STANDARD,
                                  comm, &(req[1])));
-        if (OMPI_SUCCESS != err) {
-            goto exit;
-        }
+        if (OMPI_SUCCESS != err) { line = __LINE__; goto exit; }
 
         err = ompi_request_wait_all(2, req, MPI_STATUSES_IGNORE);
-        if (OMPI_SUCCESS != err) {
-            goto exit;
-        }
-
+        if (OMPI_SUCCESS != err) { line = __LINE__; goto exit; }
 
         /* Loop receiving and calling reduction function (C or Fortran). */
         for (i = 1; i < rsize; i++) {
             err = MCA_PML_CALL(recv(pml_buffer, count, dtype, i,
                                     MCA_COLL_BASE_TAG_ALLREDUCE, comm,
                                     MPI_STATUS_IGNORE));
-            if (MPI_SUCCESS != err) {
-                goto exit;
-            }
+            if (OMPI_SUCCESS != err) { line = __LINE__; goto exit; }
 
             /* Perform the reduction */
             ompi_op_reduce(op, pml_buffer, rbuf, count, dtype);
@@ -148,15 +143,13 @@ mca_coll_basic_allreduce_inter(void *sbuf, void *rbuf, int count,
         err = MCA_PML_CALL(send(sbuf, count, dtype, root,
                                 MCA_COLL_BASE_TAG_ALLREDUCE,
                                 MCA_PML_BASE_SEND_STANDARD, comm));
-        if (OMPI_SUCCESS != err) {
-            goto exit;
-        }
+        if (OMPI_SUCCESS != err) { line = __LINE__; goto exit; }
     }
 
 
     /* now we have on one process the result of the remote group. To distribute
      * the data to all processes in the local group, we exchange the data between
-     * the two root processes. They then send it to every other process in the 
+     * the two root processes. They then send it to every other process in the
      * remote group. */
     /***************************************************************************/
     if (rank == root) {
@@ -164,26 +157,21 @@ mca_coll_basic_allreduce_inter(void *sbuf, void *rbuf, int count,
         err = MCA_PML_CALL(irecv(pml_buffer, count, dtype, 0,
                                  MCA_COLL_BASE_TAG_ALLREDUCE,
                                  comm, &(req[1])));
-        if (OMPI_SUCCESS != err) {
-            goto exit;
-        }
+        if (OMPI_SUCCESS != err) { line = __LINE__; goto exit; }
 
         err = MCA_PML_CALL(isend(rbuf, count, dtype, 0,
                                  MCA_COLL_BASE_TAG_ALLREDUCE,
                                  MCA_PML_BASE_SEND_STANDARD, comm,
                                  &(req[0])));
-        if (OMPI_SUCCESS != err) {
-            goto exit;
-        }
+        if (OMPI_SUCCESS != err) { line = __LINE__; goto exit; }
+
         err = ompi_request_wait_all(2, req, MPI_STATUSES_IGNORE);
-        if (OMPI_SUCCESS != err) {
-            goto exit;
-        }
+        if (OMPI_SUCCESS != err) { line = __LINE__; goto exit; }
 
         /* distribute the data to other processes in remote group.
          * Note that we start from 1 (not from zero), since zero
-         * has already the correct data AND we avoid a potential 
-         * deadlock here. 
+         * has already the correct data AND we avoid a potential
+         * deadlock here.
          */
         if (rsize > 1) {
             for (i = 1; i < rsize; i++) {
@@ -191,17 +179,13 @@ mca_coll_basic_allreduce_inter(void *sbuf, void *rbuf, int count,
                                          MCA_COLL_BASE_TAG_ALLREDUCE,
                                          MCA_PML_BASE_SEND_STANDARD, comm,
                                          &reqs[i - 1]));
-                if (OMPI_SUCCESS != err) {
-                    goto exit;
-                }
+                if (OMPI_SUCCESS != err) { line = __LINE__; goto exit; }
             }
 
             err =
                 ompi_request_wait_all(rsize - 1, reqs,
                                       MPI_STATUSES_IGNORE);
-            if (OMPI_SUCCESS != err) {
-                goto exit;
-            }
+            if (OMPI_SUCCESS != err) { line = __LINE__; goto exit; }
         }
     } else {
         err = MCA_PML_CALL(recv(rbuf, count, dtype, root,
@@ -210,10 +194,14 @@ mca_coll_basic_allreduce_inter(void *sbuf, void *rbuf, int count,
     }
 
   exit:
+    if( MPI_SUCCESS != err ) {
+        OPAL_OUTPUT((ompi_coll_base_framework.framework_output,"%s:%4d\tError occurred %d, rank %2d", __FILE__,
+                     line, err, rank));
+        ompi_coll_base_free_reqs(reqs, rsize - 1);
+    }
     if (NULL != tmpbuf) {
         free(tmpbuf);
     }
-
 
     return err;
 }

@@ -5,17 +5,15 @@
  * Copyright (c) 2004-2009 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
- * Copyright (c) 2007-2008 Cisco Systems, Inc.  All rights reserved.
- * Copyright (c)      2012 Los Alamos National Security, LLC.  All rights
- *                         reserved. 
+ * Copyright (c) 2007-2011 Cisco Systems, Inc.  All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -33,9 +31,10 @@
 BEGIN_C_DECLS
 
 /**
- * Wait for a debugger if asked.
+ * Setup the magic constants so that the debugger can find the DLL
+ * necessary for understanding the queues and other structures.
  */
-extern void ompi_wait_for_debugger(void);
+extern void ompi_debugger_setup_dlls(void);
 
 /**
  * Notify a debugger that we're about to abort
@@ -47,7 +46,22 @@ extern void ompi_debugger_notify_abort(char *string);
  * This function is also defined in orterun for the starter.
  * It should never conflict with this one
  */
-OMPI_DECLSPEC void *MPIR_Breakpoint(void);
+OMPI_DECLSPEC void* MPIR_Breakpoint(void);
+
+/**
+ * Flag debugger will set when an application may proceed past
+ * MPI_INIT.  This needs to live in ompi_debuggers.c so that it's
+ * compiled with -g, but is needed by the runtime framework for
+ * startup
+ */
+OMPI_DECLSPEC extern volatile int MPIR_debug_gate;
+
+/**
+ * Flag debugger will set if application is being debugged.  This
+ * needs to live in ompi_debuggers.c so that it's compiled with -g,
+ * but is needed by the runtime framework for startup.
+ */
+OMPI_DECLSPEC extern volatile int MPIR_being_debugged;
 
 END_C_DECLS
 

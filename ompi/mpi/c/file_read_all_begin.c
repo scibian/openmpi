@@ -5,15 +5,17 @@
  * Copyright (c) 2004-2005 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2008 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2008 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
  * Copyright (c) 2008      Sun Microsystems, Inc.  All rights reserved.
+ * Copyright (c) 2015      Research Organization for Information Science
+ *                         and Technology (RIST). All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -26,26 +28,25 @@
 #include "ompi/datatype/ompi_datatype.h"
 #include "ompi/memchecker.h"
 
-#if OPAL_HAVE_WEAK_SYMBOLS && OMPI_PROFILING_DEFINES
+#if OMPI_BUILD_MPI_PROFILING
+#if OPAL_HAVE_WEAK_SYMBOLS
 #pragma weak MPI_File_read_all_begin = PMPI_File_read_all_begin
 #endif
-
-#if OMPI_PROFILING_DEFINES
-#include "ompi/mpi/c/profile/defines.h"
+#define MPI_File_read_all_begin PMPI_File_read_all_begin
 #endif
 
 static const char FUNC_NAME[] = "MPI_File_read_all_begin";
 
 
 int MPI_File_read_all_begin(MPI_File fh, void *buf, int count,
-                            MPI_Datatype datatype) 
+                            MPI_Datatype datatype)
 {
     int rc;
 
     MEMCHECKER(
         memchecker_datatype(datatype);
     );
-    
+
     if (MPI_PARAM_CHECK) {
         rc = MPI_SUCCESS;
         OMPI_ERR_INIT_FINALIZE(FUNC_NAME);
@@ -59,8 +60,6 @@ int MPI_File_read_all_begin(MPI_File fh, void *buf, int count,
         }
         OMPI_ERRHANDLER_CHECK(rc, fh, rc, FUNC_NAME);
     }
-
-    OPAL_CR_ENTER_LIBRARY();
 
     /* Call the back-end io component function */
 
@@ -76,6 +75,6 @@ int MPI_File_read_all_begin(MPI_File fh, void *buf, int count,
     }
 
     /* All done */
-    
+
     OMPI_ERRHANDLER_RETURN(rc, fh, rc, FUNC_NAME);
 }

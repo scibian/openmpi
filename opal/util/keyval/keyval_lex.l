@@ -1,3 +1,7 @@
+%option nounput
+%option noinput
+%option yylineno
+
 %{ /* -*- C -*- */
 /*
  * Copyright (c) 2004-2005 The Trustees of Indiana University and Indiana
@@ -6,14 +10,16 @@
  * Copyright (c) 2004-2006 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
+ * Copyright (c) 2012      Los Alamos National Security, LLC. All rights
+ *                         reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -32,7 +38,6 @@
 
 BEGIN_C_DECLS
 
-static int finish_parsing(void);
 int opal_util_keyval_yywrap(void);
 
 END_C_DECLS
@@ -44,9 +49,6 @@ int opal_util_keyval_yynewlines = 1;
 bool opal_util_keyval_parse_done = false;
 char *opal_util_keyval_string = NULL;
 
-#define yyterminate() \
-  return finish_parsing()
-
 %}
 
 WHITE       [\f\t\v ]
@@ -54,6 +56,7 @@ CHAR        [A-Za-z0-9_\-\.]
 
 %x VALUE
 %x comment
+%x MCA_VALUE
 
 %%
 
@@ -66,7 +69,7 @@ CHAR        [A-Za-z0-9_\-\.]
 <comment>[^*\n]*       ; /* Eat up non '*'s */
 <comment>"*"+[^*/\n]*  ; /* Eat '*'s not followed by a '/' */
 <comment>\n         { opal_util_keyval_yynewlines++;
-                      return OPAL_UTIL_KEYVAL_PARSE_NEWLINE; } 
+                      return OPAL_UTIL_KEYVAL_PARSE_NEWLINE; }
 <comment>"*"+"/"    { BEGIN(INITIAL); /* Done with Block Comment */
                       return OPAL_UTIL_KEYVAL_PARSE_NEWLINE; }
 
@@ -77,19 +80,29 @@ CHAR        [A-Za-z0-9_\-\.]
 <VALUE>{WHITE}*\n   { BEGIN(INITIAL); return OPAL_UTIL_KEYVAL_PARSE_NEWLINE; }
 <VALUE>[^\n]*[^\t \n]/[\t ]*      { return OPAL_UTIL_KEYVAL_PARSE_VALUE; }
 
+<MCA_VALUE>[^\n \t]+      { BEGIN(INITIAL); return OPAL_UTIL_KEYVAL_PARSE_VALUE; }
+<MCA_VALUE>"'"[^\n]*"'"{WHITE}+      { BEGIN(INITIAL); return OPAL_UTIL_KEYVAL_PARSE_VALUE; }
+<MCA_VALUE>"\""[^\n]*"\""{WHITE}+      { BEGIN(INITIAL); return OPAL_UTIL_KEYVAL_PARSE_VALUE; }
+<MCA_VALUE>{WHITE}*\n   { BEGIN(INITIAL); BEGIN(INITIAL); return OPAL_UTIL_KEYVAL_PARSE_NEWLINE; }
+
+"-"?"-mca"{WHITE}+{CHAR}+{WHITE}+ {BEGIN(MCA_VALUE); return OPAL_UTIL_KEYVAL_PARSE_MCAVAR; }
+"-"?"-x"{WHITE}+{CHAR}+{WHITE}*"="{WHITE}* {BEGIN(MCA_VALUE); return OPAL_UTIL_KEYVAL_PARSE_ENVEQL; }
+"-"?"-x"{WHITE}+{CHAR}+{WHITE}*/[^=] { return OPAL_UTIL_KEYVAL_PARSE_ENVVAR; }
+
 .	            { return OPAL_UTIL_KEYVAL_PARSE_ERROR; }
 
 %%
 
+/* Old flex (2.5.4a? and older) does not define a destroy function */
+#if !defined(YY_FLEX_SUBMINOR_VERSION)
+#define YY_FLEX_SUBMINOR_VERSION 0
+#endif
 
-/*
- * This cleans up at the end of the parse (since, in this case, we
- * always parse the entire file) and prevents a memory leak.
- */
-static int finish_parsing(void) 
+#if (YY_FLEX_MAJOR_VERSION < 2) || (YY_FLEX_MAJOR_VERSION == 2 && (YY_FLEX_MINOR_VERSION < 5 || (YY_FLEX_MINOR_VERSION == 5 && YY_FLEX_SUBMINOR_VERSION < 5)))
+int opal_util_keyval_yylex_destroy(void)
 {
     if (NULL != YY_CURRENT_BUFFER) {
-        yy_delete_buffer(YY_CURRENT_BUFFER); 
+        yy_delete_buffer(YY_CURRENT_BUFFER);
 #if defined(YY_CURRENT_BUFFER_LVALUE)
         YY_CURRENT_BUFFER_LVALUE = NULL;
 #else
@@ -98,6 +111,7 @@ static int finish_parsing(void)
     }
     return YY_NULL;
 }
+#endif
 
 int opal_util_keyval_yywrap(void)
 {

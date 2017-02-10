@@ -2,7 +2,7 @@
 
 	.align 4
 
-	
+
 	.globl opal_atomic_mb
 	.type opal_atomic_mb, #function
 opal_atomic_mb:

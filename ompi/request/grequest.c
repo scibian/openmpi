@@ -2,26 +2,26 @@
  * Copyright (c) 2004-2005 The Trustees of Indiana University and Indiana
  *                         University Research and Technology
  *                         Corporation.  All rights reserved.
- * Copyright (c) 2004-2005 The University of Tennessee and The University
+ * Copyright (c) 2004-2016 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
- * Copyright (c) 2006      Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2006-2012 Cisco Systems, Inc.  All rights reserved.
  * Copyright (c) 2009      Sun Microsystems, Inc.  All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
 #include "ompi_config.h"
 #include "ompi/communicator/communicator.h"
 #include "ompi/request/grequest.h"
-#include "ompi/mpi/f77/fint_2_int.h"
+#include "ompi/mpi/fortran/base/fint_2_int.h"
 
 
 /*
@@ -50,10 +50,10 @@ static int ompi_grequest_cancel(ompi_request_t* req, int flag)
 
     if (greq->greq_cancel.c_cancel != NULL) {
         if (greq->greq_funcs_are_c) {
-            rc = greq->greq_cancel.c_cancel(greq->greq_state, 
-                                            greq->greq_base.req_complete);
+            rc = greq->greq_cancel.c_cancel(greq->greq_state,
+                                            REQUEST_COMPLETE(&greq->greq_base));
         } else {
-            fflag = (ompi_fortran_logical_t) greq->greq_base.req_complete;
+            fflag = (ompi_fortran_logical_t) REQUEST_COMPLETE(&greq->greq_base);
             greq->greq_cancel.f_cancel((MPI_Aint*)greq->greq_state, &fflag, &ierr);
             rc = OMPI_FINT_2_INT(ierr);
         }
@@ -89,7 +89,7 @@ static void ompi_grequest_construct(ompi_grequest_t* greq)
  * object.
  *
  * 2. Call MPI_REQUEST_FREE and then (!) -- with some other
- * still-valid copy of the handler -- call MPI_GREQUEST_COMPLETE.  
+ * still-valid copy of the handler -- call MPI_GREQUEST_COMPLETE.
  *
  * 3. Reverse the order of #2 -- call MPI_GREQUEST_COMPLETE and then
  * MPI_REQUEST_FREE.
@@ -161,7 +161,7 @@ int ompi_grequest_start(
     greq->greq_state = gstate;
     greq->greq_query.c_query = gquery_fn;
     greq->greq_free.c_free = gfree_fn;
-    greq->greq_cancel.c_cancel = gcancel_fn; 
+    greq->greq_cancel.c_cancel = gcancel_fn;
     greq->greq_base.req_status = ompi_status_empty;
 
     *request = &greq->greq_base;
@@ -181,9 +181,7 @@ int ompi_grequest_complete(ompi_request_t *req)
 {
     int rc;
 
-    OPAL_THREAD_LOCK(&ompi_request_lock);
     rc = ompi_request_complete(req, true);
-    OPAL_THREAD_UNLOCK(&ompi_request_lock);
     OBJ_RELEASE(req);
     return rc;
 }
@@ -192,7 +190,7 @@ int ompi_grequest_complete(ompi_request_t *req)
 /*
  * Grequest queries are invoked in two places:
  *
- * 1. MPI_TEST* / MPI_WAIT*, when requests have completed. 
+ * 1. MPI_TEST* / MPI_WAIT*, when requests have completed.
  *
  * 2. MPI_REQUEST_GET_STATUS, when requests may or may not have
  * completed.

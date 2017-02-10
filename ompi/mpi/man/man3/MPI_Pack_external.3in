@@ -1,5 +1,9 @@
+.\" -*- nroff -*-
+.\" Copyright 2013 Los Alamos National Security, LLC. All rights reserved.
+.\" Copyright 2010 Cisco Systems, Inc.  All rights reserved.
 .\" Copyright 2006-2008 Sun Microsystems, Inc.
 .\" Copyright (c) 1996 Thinking Machines Corporation
+.\" $COPYRIGHT$
 .TH MPI_Pack_external 3 "#OMPI_DATE#" "#PACKAGE_VERSION#" "#PACKAGE_NAME#"
 
 .SH NAME
@@ -11,9 +15,9 @@
 .SH C Syntax
 .nf
 #include <mpi.h>
-int MPI_Pack_external(char *\fIdatarep\fP, void *\fIinbuf\fP,
+int MPI_Pack_external(const char *\fIdatarep\fP, const void *\fIinbuf\fP,
 	int \fIincount\fP, MPI_Datatype\fI datatype\fP,
-	void *\fIoutbuf\fP, MPI_Aint \fIoutsize\fP, 
+	void *\fIoutbuf\fP, MPI_Aint \fIoutsize\fP,
 	MPI_Aint *\fIposition\fP)
 
 .fi
@@ -24,7 +28,7 @@ MPI_PACK_EXTERNAL(\fIDATAREP, INBUF, INCOUNT, DATATYPE,
 	OUTBUF, OUTSIZE, POSITION, IERROR\fP)
 
 	INTEGER		\fIINCOUNT, DATATYPE, IERROR\fP
-	INTEGER (KIND=MPI_ADDRESS_KIND) \fIOUTSIZE, POSITION\fP
+	INTEGER(KIND=MPI_ADDRESS_KIND) \fIOUTSIZE, POSITION\fP
 	CHARACTER*(*)	\fIDATAREP\fP
 	<type>		\fIINBUF(*), OUTBUF(*)\fP
 
@@ -34,7 +38,7 @@ MPI_PACK_EXTERNAL(\fIDATAREP, INBUF, INCOUNT, DATATYPE,
 #include <mpi.h>
 void MPI::Datatype::Pack_external(const char* \fIdatarep\fP,
 	const void* \fIinbuf\fP, int \fIincount\fP,
-	void* \fIoutbuf\fP, MPI::Aint \fIoutsize\fP, 
+	void* \fIoutbuf\fP, MPI::Aint \fIoutsize\fP,
 	MPI::Aint& \fIposition\fP) const
 
 .fi
@@ -70,7 +74,7 @@ outbuf
 Output buffer start (choice).
 .TP 1i
 IERROR
-Fortran only: Error status (integer). 
+Fortran only: Error status (integer).
 
 .SH DESCRIPTION
 .ft R
@@ -96,30 +100,30 @@ to MPI_Pack_external.
 \fBExample:\fP An example using MPI_Pack_external:
 .sp
 .nf
-	int position, i; 
-	double msg[5]; 
+	int position, i;
+	double msg[5];
 	char buf[1000];
 
 	\&...
 
-	MPI_Comm_rank(MPI_COMM_WORLD, &myrank); 
-	if (myrank == 0) {	/* SENDER CODE */ 
+	MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
+	if (myrank == 0) {	/* SENDER CODE */
 		position = 0;
 		i = 5; /* number of doubles in msg[] */
 		MPI_Pack_external("external32", &i, 1, MPI_INT,
-		    buf, 1000, &position); 
+		    buf, 1000, &position);
 		MPI_Pack_external("external32", &msg, i, MPI_DOUBLE,
-		    buf, 1000, &position); 
-		MPI_Send(buf, position, MPI_PACKED, 1, 0,
-		    MPI_COMM_WORLD); 
-	} else {		/* RECEIVER CODE */ 
-		MPI_Recv(buf, 1, MPI_PACKED, 0, 0, MPI_COMM_WORLD,
+		    buf, 1000, &position);
+		MPI_Send(buf, position, MPI_BYTE, 1, 0,
+		    MPI_COMM_WORLD);
+	} else {		/* RECEIVER CODE */
+		MPI_Recv(buf, 1, MPI_BYTE, 0, 0, MPI_COMM_WORLD,
 		    MPI_STATUS_IGNORE);
-		MPI_Unpack_external("external32", buf, 1000, 
+		MPI_Unpack_external("external32", buf, 1000,
 		    MPI_INT, &i, 1, &position);
-		MPI_Unpack_external("external32", buf, 1000, 
+		MPI_Unpack_external("external32", buf, 1000,
 		    MPI_DOUBLE, &msg, i, &position);
-	}	
+	}
 
 .fi
 .SH NOTES
@@ -147,12 +151,12 @@ equivalent information that would have been stored in a message by one
 send call with a send buffer that is the "concatenation" of the
 individual send buffers.
 .sp
-A packing unit can be sent using type MPI_PACKED. Any point-to-point
+A packing unit can be sent using type MPI_BYTE. Any point-to-point
 or collective communication function can be used to move the sequence
 of bytes that forms the packing unit from one process to another. This
 packing unit can now be received using any receive operation, with any
 datatype. (The type-matching rules are relaxed for messages sent with
-type MPI_PACKED.)
+type MPI_BYTE.)
 .sp
 A packing unit can be unpacked into several successive messages. This
 is effected by several successive related calls to
@@ -175,14 +179,14 @@ Almost all MPI routines return an error value; C routines as
 the value of the function and Fortran routines in the last argument. C++
 functions do not return errors. If the default error handler is set to
 MPI::ERRORS_THROW_EXCEPTIONS, then on error the C++ exception mechanism
-will be used to throw an MPI:Exception object.
+will be used to throw an MPI::Exception object.
 .sp
 Before the error value is returned, the current MPI error handler is
 called. By default, this error handler aborts the MPI job, except for
 I/O function errors. The error handler may be changed with
 MPI_Comm_set_errhandler; the predefined error handler MPI_ERRORS_RETURN
 may be used to cause error values to be returned. Note that MPI does not
-guarantee that an MPI program can continue past an error. 
+guarantee that an MPI program can continue past an error.
 .sp
 See the MPI man page for a full list of MPI error codes.
 

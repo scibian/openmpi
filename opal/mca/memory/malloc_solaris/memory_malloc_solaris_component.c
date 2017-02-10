@@ -1,3 +1,4 @@
+/* -*- Mode: C; c-basic-offset:4 ; indent-tabs-mode:nil -*- */
 /*
  * Copyright (c) 2004-2007 The Trustees of Indiana University and Indiana
  *                         University Research and Technology
@@ -5,16 +6,20 @@
  * Copyright (c) 2004-2005 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
  * Copyright (c) 2007-2011 Oracle and/or its affiliates.  All rights reserved.
  * Copyright (c) 2009-2011 Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2015-2016 Los Alamos National Security, LLC.  All rights
+ *                         reserved.
+ * Copyright (c) 2016      Research Organization for Information Science
+ *                         and Technology (RIST). All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -41,33 +46,33 @@ int  __munmap(caddr_t addr, size_t len);
 #endif
 
 static int opal_memory_malloc_open(void);
+static int opal_memory_malloc_query(int *);
 
 const opal_memory_base_component_2_0_0_t mca_memory_malloc_solaris_component = {
     /* First, the mca_component_t struct containing meta information
        about the component itself */
-    {
+    .memoryc_version = {
         OPAL_MEMORY_BASE_VERSION_2_0_0,
 
         /* Component name and version */
-        "malloc_solaris",
-        OPAL_MAJOR_VERSION,
-        OPAL_MINOR_VERSION,
-        OPAL_RELEASE_VERSION,
+        .mca_component_name = "malloc_solaris",
+        MCA_BASE_MAKE_VERSION(component, OPAL_MAJOR_VERSION, OPAL_MINOR_VERSION,
+                              OPAL_RELEASE_VERSION),
 
         /* Component open and close functions */
-        opal_memory_malloc_open,
-        NULL
+        .mca_open_component = opal_memory_malloc_open,
     },
-    {
+    .memoryc_data = {
         /* The component is checkpoint ready */
         MCA_BASE_METADATA_PARAM_CHECKPOINT
     },
 
     /* This component doesn't need these functions, but need to
        provide safe/empty register/deregister functions to call */
-    NULL,
-    opal_memory_base_component_register_empty,
-    opal_memory_base_component_deregister_empty,
+    .memoryc_query = opal_memory_malloc_query,
+    .memoryc_register = opal_memory_base_component_register_empty,
+    .memoryc_deregister = opal_memory_base_component_deregister_empty,
+    .memoryc_set_alignment = opal_memory_base_component_set_alignment_empty,
 };
 
 /*
@@ -90,6 +95,11 @@ opal_memory_malloc_open(void)
     return OPAL_SUCCESS;
 }
 
+static int opal_memory_malloc_query (int *priority)
+{
+    *priority = 79;
+    return OPAL_SUCCESS;
+}
 
 /*
  * Three ways to call munmap.  Prefered is to call __munmap, which
@@ -120,7 +130,7 @@ munmap(void *addr, size_t len)
     return syscall(SYS_munmap, addr, len);
 #elif defined(HAVE_DLSYM)
     if (NULL == realmunmap) {
-        union { 
+        union {
             int (*munmap_fp)(void*, size_t);
             void *munmap_p;
         } tmp;

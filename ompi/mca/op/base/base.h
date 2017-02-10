@@ -5,16 +5,16 @@
  * Copyright (c) 2004-2006 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
  * Copyright (c) 2006      Sun Microsystems, Inc.  All rights reserved.
  * Copyright (c) 2008-2009 Cisco Systems, Inc.  All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 /**
@@ -34,11 +34,10 @@
 #define MCA_OP_BASE_H
 
 #include "ompi_config.h"
-#include "opal/class/opal_list.h"
-#include "opal/mca/mca.h"
+#include "opal/mca/base/base.h"
 #include "ompi/mca/op/op.h"
 
-BEGIN_C_DECLS 
+BEGIN_C_DECLS
 
 typedef struct ompi_op_base_selected_module_t {
     opal_list_item_t super;
@@ -46,11 +45,6 @@ typedef struct ompi_op_base_selected_module_t {
     ompi_op_base_module_t *op_module;
 } ompi_op_base_selected_module_t;
 
-
-/**
- * Open the op framework.
- */
-OMPI_DECLSPEC int ompi_op_base_open(void);
 
 /**
  * Find all available op components.
@@ -99,40 +93,7 @@ int ompi_op_base_op_select(struct ompi_op_t *op);
  */
 OMPI_DECLSPEC int ompi_op_base_op_unselect(struct ompi_op_t *op);
 
-/**
- * Close the op framework
- */
-OMPI_DECLSPEC int ompi_op_base_close(void);
-
-
-/**
- * Verbose output stream for this framework
- */
-OMPI_DECLSPEC extern int ompi_op_base_output;
-
-/**
- * List of all opened components; created when the op framework is
- * initialized and destroyed when we reduce the list to all available
- * op components.
- */
-OMPI_DECLSPEC extern opal_list_t ompi_op_base_components_opened;
-
-/**
- * Indicator as to whether the list of opened op components is valid
- * or not.
- */
-OMPI_DECLSPEC extern bool ompi_op_base_components_opened_valid;
-
-/**
- * List of all available components.
- */
-OMPI_DECLSPEC extern opal_list_t ompi_op_base_components_available;
-
-/**
- * Indicator as to whether the list of available op components is
- * valid or not.
- */
-OMPI_DECLSPEC extern bool ompi_op_base_components_available_valid;
+OMPI_DECLSPEC extern mca_base_framework_t ompi_op_base_framework;
 
 END_C_DECLS
 #endif /* MCA_OP_BASE_H */

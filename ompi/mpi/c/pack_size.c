@@ -5,15 +5,17 @@
  * Copyright (c) 2004-2005 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2008 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2008 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
  * Copyright (c) 2006      Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2015      Research Organization for Information Science
+ *                         and Technology (RIST). All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 #include "ompi_config.h"
@@ -27,18 +29,17 @@
 #include "opal/datatype/opal_convertor.h"
 #include "ompi/memchecker.h"
 
-#if OPAL_HAVE_WEAK_SYMBOLS && OMPI_PROFILING_DEFINES
+#if OMPI_BUILD_MPI_PROFILING
+#if OPAL_HAVE_WEAK_SYMBOLS
 #pragma weak MPI_Pack_size = PMPI_Pack_size
 #endif
-
-#if OMPI_PROFILING_DEFINES
-#include "ompi/mpi/c/profile/defines.h"
+#define MPI_Pack_size PMPI_Pack_size
 #endif
 
 static const char FUNC_NAME[] = "MPI_Pack_size";
 
 int MPI_Pack_size(int incount, MPI_Datatype datatype, MPI_Comm comm,
-                  int *size) 
+                  int *size)
 {
     opal_convertor_t local_convertor;
     size_t length;
@@ -60,7 +61,6 @@ int MPI_Pack_size(int incount, MPI_Datatype datatype, MPI_Comm comm,
         }
     }
 
-    OPAL_CR_ENTER_LIBRARY();
 
     OBJ_CONSTRUCT( &local_convertor, opal_convertor_t );
     /* the resulting convertor will be set to the position ZERO */
@@ -71,7 +71,6 @@ int MPI_Pack_size(int incount, MPI_Datatype datatype, MPI_Comm comm,
     *size = (int)length;
     OBJ_DESTRUCT( &local_convertor );
 
-    OPAL_CR_EXIT_LIBRARY();
 
     return MPI_SUCCESS;
 }

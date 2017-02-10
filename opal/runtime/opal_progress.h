@@ -1,21 +1,21 @@
-/*
+/* -*- Mode: C; c-basic-offset:4 ; indent-tabs-mode:nil -*- *//*
  * Copyright (c) 2004-2005 The Trustees of Indiana University and Indiana
  *                         University Research and Technology
  *                         Corporation.  All rights reserved.
  * Copyright (c) 2004-2006 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
- * Copyright (c) 2006      Los Alamos National Security, LLC.  All rights
- *                         reserved. 
+ * Copyright (c) 2006-2014 Los Alamos National Security, LLC.  All rights
+ *                         reserved.
  *
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -36,7 +36,7 @@ BEGIN_C_DECLS
 /**
  * Initialize the progress engine
  *
- * Initialize the progress engine, including constructing the 
+ * Initialize the progress engine, including constructing the
  * proper locks and allocating space for the progress registration
  * functions.  At this point, any function in the progress engine
  * interface may be called.
@@ -44,7 +44,7 @@ BEGIN_C_DECLS
 OPAL_DECLSPEC int opal_progress_init(void);
 
 
-/** 
+/**
  * Shut down the progress engine
  *
  * Shut down the progress engine.  This includes deregistering all
@@ -76,7 +76,7 @@ OPAL_DECLSPEC void opal_progress(void);
  * meaning that the call to opal_event_loop() will block pending
  * events, but may block for a period of time.
  *
- * @param flags     One of the valid vlags argument to 
+ * @param flags     One of the valid vlags argument to
  *                  opal_event_loop().
  * @return          Previous value of flags used to call
  *                  opal_event_loop().
@@ -142,7 +142,7 @@ OPAL_DECLSPEC void opal_progress_set_event_poll_rate(int microseconds);
 
 /**
  * Progress callback function typedef
- * 
+ *
  * Prototype for the a progress function callback.  Progress function
  * callbacks can be registered with opal_progress_register() and
  * deregistered with opal_progress_deregister().  It should be noted
@@ -163,6 +163,8 @@ typedef int (*opal_progress_callback_t)(void);
  */
 OPAL_DECLSPEC int opal_progress_register(opal_progress_callback_t cb);
 
+OPAL_DECLSPEC int opal_progress_register_lp (opal_progress_callback_t cb);
+
 
 /**
  * Deregister previously registered event
@@ -173,14 +175,10 @@ OPAL_DECLSPEC int opal_progress_register(opal_progress_callback_t cb);
 OPAL_DECLSPEC int opal_progress_unregister(opal_progress_callback_t cb);
 
 
-OPAL_DECLSPEC extern volatile int32_t opal_progress_thread_count;
 OPAL_DECLSPEC extern int opal_progress_spin_count;
 
-static inline bool opal_progress_threads(void) 
-{ 
-    return (opal_progress_thread_count > 0); 
-}
-
+/* do we want to call sched_yield() if nothing happened */
+OPAL_DECLSPEC extern bool opal_progress_yield_when_idle;
 
 /**
  * Progress until flag is true or poll iterations completed
@@ -188,39 +186,15 @@ static inline bool opal_progress_threads(void)
 static inline bool opal_progress_spin(volatile bool* complete)
 {
     int32_t c;
-    OPAL_THREAD_ADD32(&opal_progress_thread_count,1);
+
     for (c = 0; c < opal_progress_spin_count; c++) {
         if (true == *complete) {
-             OPAL_THREAD_ADD32(&opal_progress_thread_count,-1);
              return true;
         }
         opal_progress();
     }
-    OPAL_THREAD_ADD32(&opal_progress_thread_count,-1);
+
     return false;
-}
-
-
-/**
- * \internal
- * Don't use this variable; use the opal_progress_recursion_depth()
- * function.
- */
-OPAL_DECLSPEC extern 
-#if OPAL_HAVE_THREAD_SUPPORT
-volatile 
-#endif
-uint32_t opal_progress_recursion_depth_counter;
-
-/**
- * Return the current level of recursion -- 0 means that we are not
- * under an opal_progress() call at all.  1 means that you're in the
- * top-level opal_progress() function (i.e., not deep in recursion).
- * Higher values mean that you're that many levels deep in recursion.
- */
-static inline uint32_t opal_progress_recursion_depth(void) 
-{
-    return opal_progress_recursion_depth_counter;
 }
 
 

@@ -34,7 +34,7 @@ opal_atomic_wmb:
 	.type opal_atomic_cmpset_32, @function
 opal_atomic_cmpset_32:
         movl    %esi, %eax
-        lock; cmpxchgl %edx,(%rdi)   
+        lock; cmpxchgl %edx,(%rdi)
         sete     %dl
         movzbl  %dl, %eax
         ret
@@ -45,7 +45,7 @@ opal_atomic_cmpset_32:
 	.type opal_atomic_cmpset_64, @function
 opal_atomic_cmpset_64:
         movq    %rsi, %rax
-        lock; cmpxchgq %rdx,(%rdi)   
+        lock; cmpxchgq %rdx,(%rdi)
         sete     %dl
         movzbl  %dl, %eax
         ret

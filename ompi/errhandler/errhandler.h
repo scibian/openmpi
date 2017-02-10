@@ -1,21 +1,26 @@
-/* -*- Mode: C; c-basic-offset:4 ; -*- */
+/* -*- Mode: C; c-basic-offset:4 ; indent-tabs-mode:nil -*- */
 /*
  * Copyright (c) 2004-2005 The Trustees of Indiana University and Indiana
  *                         University Research and Technology
  *                         Corporation.  All rights reserved.
- * Copyright (c) 2004-2007 The University of Tennessee and The University
+ * Copyright (c) 2004-2011 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
- * Copyright (c) 2008-2009 Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2008-2012 Cisco Systems, Inc.  All rights reserved.
  * Copyright (c) 2008-2009 Sun Microsystems, Inc.  All rights reserved.
+ * Copyright (c) 2015-2016 Intel, Inc. All rights reserved.
+ * Copyright (c) 2016      Los Alamos National Security, LLC. All rights
+ *                         reserved.
+ * Copyright (c) 2016      Research Organization for Information Science
+ *                         and Technology (RIST). All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 /** @file **/
@@ -26,9 +31,11 @@
 #include "ompi_config.h"
 
 #include "mpi.h"
+
 #include "opal/prefetch.h"
 #include "opal/class/opal_object.h"
 #include "opal/class/opal_pointer_array.h"
+
 #include "ompi/runtime/mpiruntime.h"
 #include "ompi/errhandler/errhandler_predefined.h"
 #include "ompi/errhandler/errcode-internal.h"
@@ -48,7 +55,7 @@ enum {
 /**
  * Typedef for all fortran errhandler functions
  */
-typedef void (ompi_errhandler_fortran_handler_fn_t)(MPI_Fint *, 
+typedef void (ompi_errhandler_fortran_handler_fn_t)(MPI_Fint *,
                                                     MPI_Fint *, ...);
 
 /**
@@ -87,9 +94,8 @@ struct ompi_errhandler_t;
 /**
  * C++ invocation function signature
  */
-typedef void (ompi_errhandler_cxx_dispatch_fn_t)(struct ompi_errhandler_t *errhandler,
-                                                 void *handle, int *err_code,
-                                                 const char *message);
+typedef void (ompi_errhandler_cxx_dispatch_fn_t)(void *handle, int *err_code,
+                                                 const char *message, ompi_errhandler_generic_handler_fn_t *fn);
 
 /**
  * Back-end type for MPI_Errorhandler.
@@ -99,7 +105,7 @@ struct ompi_errhandler_t {
 
     char eh_name[MPI_MAX_OBJECT_NAME];
     /* Type of MPI object that this handler is for */
-    
+
     ompi_errhandler_type_t eh_mpi_object_type;
 
     /* What language was the error handler created in */
@@ -143,23 +149,26 @@ typedef struct ompi_predefined_errhandler_t ompi_predefined_errhandler_t;
 
 
 /**
- * Global variable for MPI_ERRHANDLER_NULL
+ * Global variable for MPI_ERRHANDLER_NULL (_addr flavor is for F03 bindings)
  */
 OMPI_DECLSPEC extern ompi_predefined_errhandler_t ompi_mpi_errhandler_null;
+OMPI_DECLSPEC extern ompi_predefined_errhandler_t *ompi_mpi_errhandler_null_addr;
 
 /**
- * Global variable for MPI_ERRORS_ARE_FATAL
+ * Global variable for MPI_ERRORS_ARE_FATAL (_addr flavor is for F03 bindings)
  */
 OMPI_DECLSPEC extern ompi_predefined_errhandler_t ompi_mpi_errors_are_fatal;
+OMPI_DECLSPEC extern ompi_predefined_errhandler_t *ompi_mpi_errors_are_fatal_addr;
 
 /**
- * Global variable for MPI_ERRORS_RETURN
+ * Global variable for MPI_ERRORS_RETURN (_addr flavor is for F03 bindings)
  */
 OMPI_DECLSPEC extern ompi_predefined_errhandler_t ompi_mpi_errors_return;
+OMPI_DECLSPEC extern ompi_predefined_errhandler_t *ompi_mpi_errors_return_addr;
 
 /**
  * Global variable for MPI::ERRORS_THROW_EXCEPTIONS.  Will abort if
- * MPI_INIT wasn't called as MPI::INIT
+ * MPI_INIT wasn't called as MPI::INIT (_addr flavor is for F03 bindings)
  */
 OMPI_DECLSPEC extern ompi_predefined_errhandler_t ompi_mpi_errors_throw_exceptions;
 
@@ -208,7 +217,7 @@ struct ompi_request_t;
   ompi_errhandler_invoke((mpi_object)->error_handler, \
 			 (mpi_object), \
                          (int)(mpi_object)->errhandler_type, \
-                         (err_code < 0 ? (ompi_errcode_get_mpi_code(err_code)) : err_code), \
+                         ompi_errcode_get_mpi_code(err_code), \
 			 (message));
 
 /**
@@ -226,8 +235,7 @@ struct ompi_request_t;
  */
 #define OMPI_ERRHANDLER_CHECK(rc, mpi_object, err_code, message) \
   if( OPAL_UNLIKELY(rc != OMPI_SUCCESS) ) { \
-    int __mpi_err_code = (err_code < 0 ? (ompi_errcode_get_mpi_code(err_code)) : err_code); \
-    OPAL_CR_EXIT_LIBRARY() \
+    int __mpi_err_code = ompi_errcode_get_mpi_code(err_code);         \
     ompi_errhandler_invoke((mpi_object)->error_handler, \
 			   (mpi_object), \
                            (int) (mpi_object)->errhandler_type, \
@@ -252,9 +260,8 @@ struct ompi_request_t;
  * MPI_SUCCESS.
  */
 #define OMPI_ERRHANDLER_RETURN(rc, mpi_object, err_code, message) \
-  OPAL_CR_EXIT_LIBRARY() \
   if ( OPAL_UNLIKELY(OMPI_SUCCESS != rc) ) { \
-    int __mpi_err_code = (err_code < 0 ? (ompi_errcode_get_mpi_code(err_code)) : err_code); \
+    int __mpi_err_code = ompi_errcode_get_mpi_code(err_code);         \
     ompi_errhandler_invoke((mpi_object)->error_handler, \
                            (mpi_object), \
                            (int)(mpi_object)->errhandler_type, \
@@ -301,7 +308,7 @@ struct ompi_request_t;
    *    comm, win, or win)
    * @param type       The type of the MPI object. Necessary, since
    *                   you can not assign a single type to the predefined
-   *                   error handlers. This information is therefore 
+   *                   error handlers. This information is therefore
    *                   stored on the MPI object itself.
    * @param err_code The error code
    * @param message Any additional message; typically the name of the
@@ -317,7 +324,7 @@ struct ompi_request_t;
    * If this function returns, it returns the err_code.  Note that it
    * may not return (e.g., for MPI_ERRORS_ARE_FATAL).
    */
-  OMPI_DECLSPEC int ompi_errhandler_invoke(ompi_errhandler_t *errhandler, void *mpi_object, 
+  OMPI_DECLSPEC int ompi_errhandler_invoke(ompi_errhandler_t *errhandler, void *mpi_object,
                                            int type, int err_code, const char *message);
 
 
@@ -327,7 +334,7 @@ struct ompi_request_t;
    * is safe to invoke this function if none of the requests have an
    * outstanding error; MPI_SUCCESS will be returned.
    */
-  int ompi_errhandler_request_invoke(int count, 
+  int ompi_errhandler_request_invoke(int count,
                                      struct ompi_request_t **requests,
                                      const char *message);
 
@@ -343,7 +350,7 @@ struct ompi_request_t;
    * This function is called as the back-end of all the
    * MPI_*_CREATE_ERRHANDLER functions.  It creates a new
    * ompi_errhandler_t object, initializes it to the correct object
-   * type, and sets the callback function on it.  
+   * type, and sets the callback function on it.
    *
    * The type of the function pointer is (arbitrarily) the fortran
    * function handler type.  Since this function has to accept 4
@@ -356,6 +363,30 @@ struct ompi_request_t;
   OMPI_DECLSPEC ompi_errhandler_t *ompi_errhandler_create(ompi_errhandler_type_t object_type,
 					    ompi_errhandler_generic_handler_fn_t *func,
                                             ompi_errhandler_lang_t language);
+
+/**
+ * Callback function from runtime layer to alert the MPI layer of an error at
+ * the runtime layer.
+ *
+ * @param errors A pointer array containing structs of type
+ *               ompi_rte_error_report_t that consists of at least
+ *               {
+ *                  ompi_process_name_t proc;
+ *                  int errcode;
+ *               }
+ *               Each RTE is allowed to add additional information
+ *               as required
+ *
+ * This function is used to alert the MPI layer to a specific fault detected by the
+ * runtime layer. This could be a process failure, a lost connection, or the inability
+ * to send an OOB message. The MPI layer has the option to perform whatever actions it
+ * needs to stabilize itself and continue running, abort, etc.
+ *
+ * Upon completion, the error handler should return OMPI_SUCCESS if the error has
+ * been resolved and no further callbacks are to be executed. Return of any other
+ * value will cause the RTE to continue executing error callbacks.
+ */
+OMPI_DECLSPEC int ompi_errhandler_runtime_callback(opal_pointer_array_t *errors);
 
 /**
  * Check to see if an errhandler is intrinsic.
@@ -371,7 +402,7 @@ struct ompi_request_t;
  */
 static inline bool ompi_errhandler_is_intrinsic(ompi_errhandler_t *errhandler)
 {
-    if ( OMPI_ERRHANDLER_TYPE_PREDEFINED == errhandler->eh_mpi_object_type ) 
+    if ( OMPI_ERRHANDLER_TYPE_PREDEFINED == errhandler->eh_mpi_object_type )
 	return true;
 
     return false;

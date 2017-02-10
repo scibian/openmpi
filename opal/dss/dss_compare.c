@@ -9,6 +9,10 @@
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
+ * Copyright (c) 2012      Los Alamos National Security, Inc.  All rights reserved.
+ * Copyright (c) 2014      Intel, Inc. All rights reserved.
+ * Copyright (c) 2014      Research Organization for Information Science
+ *                         and Technology (RIST). All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -17,7 +21,11 @@
  */
 
 #include "opal_config.h"
+
 #include <stdlib.h>
+#ifdef HAVE_SYS_TIME_H
+#include <sys/time.h> /* for struct timeval */
+#endif
 
 #include "opal/dss/dss_internal.h"
 
@@ -168,6 +176,24 @@ int opal_dss_compare_uint64(uint64_t *value1, uint64_t *value2, opal_data_type_t
     return OPAL_EQUAL;
 }
 
+int opal_dss_compare_float(float *value1, float *value2, opal_data_type_t type)
+{
+    if (*value1 > *value2) return OPAL_VALUE1_GREATER;
+
+    if (*value2 > *value1) return OPAL_VALUE2_GREATER;
+
+    return OPAL_EQUAL;
+}
+
+int opal_dss_compare_double(double *value1, double *value2, opal_data_type_t type)
+{
+    if (*value1 > *value2) return OPAL_VALUE1_GREATER;
+
+    if (*value2 > *value1) return OPAL_VALUE2_GREATER;
+
+    return OPAL_EQUAL;
+}
+
 /*
  * NON-NUMERIC SYSTEM TYPES
  */
@@ -199,6 +225,28 @@ int opal_dss_compare_string(char *value1, char *value2, opal_data_type_t type)
     return OPAL_EQUAL;
 }
 
+/* TIMEVAL */
+int opal_dss_compare_timeval(struct timeval *value1, struct timeval *value2, opal_data_type_t type)
+{
+    if (value1->tv_sec > value2->tv_sec) return OPAL_VALUE1_GREATER;
+    if (value2->tv_sec > value1->tv_sec) return OPAL_VALUE2_GREATER;
+
+    /* seconds were equal - check usec's */
+    if (value1->tv_usec > value2->tv_usec) return OPAL_VALUE1_GREATER;
+    if (value2->tv_usec > value1->tv_usec) return OPAL_VALUE2_GREATER;
+
+    return OPAL_EQUAL;
+}
+
+/* TIME */
+int opal_dss_compare_time(time_t *value1, time_t *value2, opal_data_type_t type)
+{
+    if (value1 > value2) return OPAL_VALUE1_GREATER;
+    if (value2 > value1) return OPAL_VALUE2_GREATER;
+
+    return OPAL_EQUAL;
+}
+
 /* COMPARE FUNCTIONS FOR GENERIC OPAL TYPES */
 /* OPAL_DATA_TYPE */
 int opal_dss_compare_dt(opal_data_type_t *value1, opal_data_type_t *value2, opal_data_type_t type)
@@ -208,18 +256,6 @@ int opal_dss_compare_dt(opal_data_type_t *value1, opal_data_type_t *value2, opal
     if (*value2 > *value1) return OPAL_VALUE2_GREATER;
 
     return OPAL_EQUAL;
-}
-
-/* OPAL_DATA_VALUE */
-int opal_dss_compare_data_value(opal_dss_value_t *value1, opal_dss_value_t *value2, opal_data_type_t type)
-{
-    /* can't compare if the two types don't match */
-    if (value1->type != value2->type) {
-        return OPAL_ERR_TYPE_MISMATCH;
-    }
-
-    /* okay, go ahead and compare the values themselves */
-    return opal_dss.compare(value1->data, value2->data, value1->type);
 }
 
 /* OPAL_BYTE_OBJECT */
@@ -259,3 +295,100 @@ int opal_dss_compare_pstat(opal_pstats_t *value1, opal_pstats_t *value2, opal_da
 {
     return OPAL_EQUAL;  /* eventually compare field to field */
 }
+
+/* OPAL_NODE_STAT */
+int opal_dss_compare_node_stat(opal_node_stats_t *value1, opal_node_stats_t *value2, opal_data_type_t type)
+{
+    return OPAL_EQUAL;  /* eventually compare field to field */
+}
+
+/* OPAL_VALUE */
+int opal_dss_compare_value(opal_value_t *value1, opal_value_t *value2, opal_data_type_t type)
+{
+    return OPAL_EQUAL;  /* eventually compare field to field */
+}
+
+/* OPAL_BUFFER */
+int opal_dss_compare_buffer_contents(opal_buffer_t *value1, opal_buffer_t *value2, opal_data_type_t type)
+{
+    return OPAL_EQUAL;  /* eventually compare bytes in buffers */
+}
+
+/* OPAL_NAME */
+int opal_dss_compare_name(opal_process_name_t *value1,
+                          opal_process_name_t *value2,
+                          opal_data_type_t type)
+{
+    if (NULL == value1 && NULL == value2) {
+        return OPAL_EQUAL;
+    } else if (NULL == value1) {
+        return OPAL_VALUE2_GREATER;
+    } else if (NULL == value2) {
+        return OPAL_VALUE1_GREATER;
+    }
+
+    /* If any of the fields are wildcard,
+    * then we want to just ignore that one field. In the case
+    * of OPAL_NAME_WILDCARD (where ALL of the fields are wildcard), this
+    * will automatically result in OPAL_EQUAL for any name in the other
+    * value - a totally useless result, but consistent in behavior.
+    */
+
+    /** check the jobids - if one of them is WILDCARD, then ignore
+    * this field since anything is okay
+    */
+    if (value1->jobid != OPAL_JOBID_WILDCARD &&
+        value2->jobid != OPAL_JOBID_WILDCARD) {
+        if (value1->jobid < value2->jobid) {
+            return OPAL_VALUE2_GREATER;
+        } else if (value1->jobid > value2->jobid) {
+            return OPAL_VALUE1_GREATER;
+        }
+    }
+
+    /** check the vpids - if one of them is WILDCARD, then ignore
+    * this field since anything is okay
+    */
+    if (value1->vpid != OPAL_VPID_WILDCARD &&
+        value2->vpid != OPAL_VPID_WILDCARD) {
+        if (value1->vpid < value2->vpid) {
+            return OPAL_VALUE2_GREATER;
+        } else if (value1->vpid > value2->vpid) {
+            return OPAL_VALUE1_GREATER;
+        }
+    }
+
+    /** only way to get here is if all fields are equal or WILDCARD */
+    return OPAL_EQUAL;
+}
+
+int opal_dss_compare_vpid(opal_vpid_t *value1,
+                          opal_vpid_t *value2,
+                          opal_data_type_t type)
+{
+    /** if either value is WILDCARD, then return equal */
+    if (*value1 == OPAL_VPID_WILDCARD ||
+        *value2 == OPAL_VPID_WILDCARD) return OPAL_EQUAL;
+
+    if (*value1 > *value2) return OPAL_VALUE1_GREATER;
+
+    if (*value2 > *value1) return OPAL_VALUE2_GREATER;
+
+    return OPAL_EQUAL;
+}
+
+int opal_dss_compare_jobid(opal_jobid_t *value1,
+                           opal_jobid_t *value2,
+                           opal_data_type_t type)
+{
+    /** if either value is WILDCARD, then return equal */
+    if (*value1 == OPAL_JOBID_WILDCARD ||
+        *value2 == OPAL_JOBID_WILDCARD) return OPAL_EQUAL;
+
+    if (*value1 > *value2) return OPAL_VALUE1_GREATER;
+
+    if (*value2 > *value1) return OPAL_VALUE2_GREATER;
+
+    return OPAL_EQUAL;
+}
+

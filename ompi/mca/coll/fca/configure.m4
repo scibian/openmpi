@@ -13,17 +13,15 @@
 # MCA_coll_fca_CONFIG([action-if-can-compile],
 #                      [action-if-cant-compile])
 # ------------------------------------------------
-AC_DEFUN([MCA_coll_fca_CONFIG],[
+AC_DEFUN([MCA_ompi_coll_fca_CONFIG],[
+    AC_CONFIG_FILES([ompi/mca/coll/fca/Makefile])
+
     OMPI_CHECK_FCA([coll_fca],
                      [coll_fca_happy="yes"],
                      [coll_fca_happy="no"])
 
     AS_IF([test "$coll_fca_happy" = "yes"],
-          [coll_fca_WRAPPER_EXTRA_LDFLAGS="$coll_fca_LDFLAGS"
-           coll_fca_CPPFLAGS="$coll_fca_CPPFLAGS"
-           coll_fca_WRAPPER_EXTRA_CPPFLAGS="$coll_fca_CPPFLAGS"
-           coll_fca_WRAPPER_EXTRA_LIBS="$coll_fca_LIBS"
-           $1],
+          [$1],
           [$2])
 
     # substitute in the things needed to build fca
@@ -31,6 +29,5 @@ AC_DEFUN([MCA_coll_fca_CONFIG],[
     AC_SUBST([coll_fca_CPPFLAGS])
     AC_SUBST([coll_fca_LDFLAGS])
     AC_SUBST([coll_fca_LIBS])
-	AC_SUBST(coll_fca_HOME, "$ompi_check_fca_dir")
 ])dnl
 

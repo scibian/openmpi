@@ -9,6 +9,10 @@
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
+ * Copyright (c) 2009      Cisco Systems, Inc.  All rights reserved.
+ *
+ * Copyright (c) 2014-2015 Intel, Inc.  All rights reserved.
+ *
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -27,38 +31,57 @@
 #include "orte_config.h"
 
 #include "opal/class/opal_list.h"
-#include "opal/mca/mca.h"
+#include "opal/mca/base/base.h"
+#include "opal/mca/event/event.h"
 
 #include "orte/mca/notifier/notifier.h"
 
-
-/*
- * Global functions for MCA overall collective open and close
- */
 BEGIN_C_DECLS
 
 /*
- * function definitions
+ * MCA Framework
  */
-ORTE_DECLSPEC    int orte_notifier_base_open(void);
-ORTE_DECLSPEC    int orte_notifier_base_select(void);
-ORTE_DECLSPEC    int orte_notifier_base_close(void);
+ORTE_DECLSPEC extern mca_base_framework_t orte_notifier_base_framework;
+
+typedef struct {
+    opal_event_base_t *ev_base;
+    bool ev_base_active;
+    opal_list_t modules;
+    orte_notifier_severity_t severity_level;
+    char *default_actions;
+    char *emerg_actions;
+    char *alert_actions;
+    char *crit_actions;
+    char *warn_actions;
+    char *notice_actions;
+    char *info_actions;
+    char *debug_actions;
+    char *error_actions;
+} orte_notifier_base_t;
 
 /*
- * globals that might be needed
+ * Type for holding selected module / component pairs
  */
+typedef struct {
+    opal_list_item_t super;
+    /* Component */
+    orte_notifier_base_component_t *component;
+    /* Module */
+    orte_notifier_base_module_t *module;
+} orte_notifier_active_module_t;
+OBJ_CLASS_DECLARATION(orte_notifier_active_module_t);
 
-ORTE_DECLSPEC extern int orte_notifier_base_output;
-ORTE_DECLSPEC extern int orte_notifier_threshold_severity;
-ORTE_DECLSPEC extern bool mca_notifier_base_selected;
-ORTE_DECLSPEC extern opal_list_t mca_notifier_base_components_available;
-ORTE_DECLSPEC extern orte_notifier_base_component_t mca_notifier_base_selected_component;
+ORTE_DECLSPEC extern orte_notifier_base_t orte_notifier_base;
 
-#if !ORTE_DISABLE_FULL_SUPPORT
+/* select a component */
+ORTE_DECLSPEC int orte_notifier_base_select(void);
 
-/* no base functions to protect at this time */
+/* base functions */
+ORTE_DECLSPEC void orte_notifier_base_log(int sd, short args, void *cbdata);
+ORTE_DECLSPEC void orte_notifier_base_event(int sd, short args, void *cbdata);
+ORTE_DECLSPEC void orte_notifier_base_report(int sd, short args, void *cbdata);
 
-#endif /* ORTE_DISABLE_FULL_SUPPORT */
-
+/* severity to string */
+ORTE_DECLSPEC const char* orte_notifier_base_sev2str(orte_notifier_severity_t severity);
 END_C_DECLS
 #endif

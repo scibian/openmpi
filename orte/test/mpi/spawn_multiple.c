@@ -1,3 +1,5 @@
+#include "orte_config.h"
+
 #include <stdio.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -9,7 +11,7 @@ int main(int argc, char* argv[])
     int msg;
     MPI_Comm parent, child;
     int rank, size;
-    char hostname[512];
+    char hostname[OPAL_MAXHOSTNAMELEN];
     pid_t pid;
     int i;
     char *cmds[2];
@@ -31,7 +33,7 @@ int main(int argc, char* argv[])
     if (MPI_COMM_NULL == parent) {
         pid = getpid();
         printf("Parent [pid %ld] about to spawn!\n", (long)pid);
-        MPI_Comm_spawn_multiple(2, cmds, spawn_argv, maxprocs, 
+        MPI_Comm_spawn_multiple(2, cmds, spawn_argv, maxprocs,
                                 info, 0, MPI_COMM_WORLD,
                                 &child, MPI_ERRCODES_IGNORE);
         printf("Parent done with spawn\n");
@@ -43,18 +45,16 @@ int main(int argc, char* argv[])
         }
         MPI_Comm_disconnect(&child);
         printf("Parent disconnected\n");
-    } 
+    }
     /* Otherwise, we're the child */
     else {
         MPI_Comm_rank(MPI_COMM_WORLD, &rank);
         MPI_Comm_size(MPI_COMM_WORLD, &size);
-        gethostname(hostname, 512);
+        gethostname(hostname, sizeof(hostname));
         pid = getpid();
         printf("Hello from the child %d of %d on host %s pid %ld: argv[1] = %s\n", rank, size, hostname, (long)pid, argv[1]);
-        if (0 == rank) {
-            MPI_Recv(&msg, 1, MPI_INT, 0, 1, parent, MPI_STATUS_IGNORE);
-            printf("Child %d received msg: %d\n", rank, msg);
-        }
+        MPI_Recv(&msg, 1, MPI_INT, 0, 1, parent, MPI_STATUS_IGNORE);
+        printf("Child %d received msg: %d\n", rank, msg);
         MPI_Comm_disconnect(&parent);
         printf("Child %d disconnected\n", rank);
     }

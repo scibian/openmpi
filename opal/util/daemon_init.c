@@ -5,14 +5,16 @@
  * Copyright (c) 2004-2005 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
+ * Copyright (c) 2015      Research Organization for Information Science
+ *                         and Technology (RIST). All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -35,12 +37,6 @@
 int opal_daemon_init(char *working_dir)
 {
 #if defined(HAVE_FORK)
-#ifndef __WINDOWS__
-    /* it seems that there is an entirely different way to write daemons in 
-       WINDOWS land. Firstly, they are called services and the way to 
-       go about it is to get a service handle annd then call CreateService()
-       So, I am guessing that this piece of code is called only by UNIX versions */
-
     pid_t pid;
     int fd;
 
@@ -49,7 +45,7 @@ int opal_daemon_init(char *working_dir)
     } else if (pid != 0) {
         exit(0);   /* parent goes bye-bye */
     }
-    
+
     /* child continues */
 #if defined(HAVE_SETSID)
     setsid();  /* become session leader */
@@ -61,8 +57,11 @@ int opal_daemon_init(char *working_dir)
 
     /* connect input to /dev/null */
     fd = open("/dev/null", O_RDONLY);
-    if(fd > STDIN_FILENO) {
-        dup2(fd, STDIN_FILENO);
+    if (0 > fd) {
+        return OPAL_ERR_FATAL;
+    }
+    dup2(fd, STDIN_FILENO);
+    if(fd != STDIN_FILENO) {
         close(fd);
     }
 
@@ -85,10 +84,6 @@ int opal_daemon_init(char *working_dir)
     }
 
     return OPAL_SUCCESS;
-#else
-    printf ("This function has not been implemented in windows yet, file %s line %d\n", __FILE__, __LINE__);
-    abort();
-#endif
 
 #else /* HAVE_FORK */
     return OPAL_ERR_NOT_SUPPORTED;

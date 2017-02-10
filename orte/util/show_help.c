@@ -5,15 +5,17 @@
  * Copyright (c) 2004-2006 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
  * Copyright (c) 2008-2011 Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2012-2013 Los Alamos National Security, LLC.
+ *                         All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 #include "orte_config.h"
@@ -27,6 +29,7 @@
 #include "opal/util/show_help.h"
 #include "opal/util/output.h"
 #include "opal/dss/dss.h"
+#include "opal/mca/event/event.h"
 
 #include "orte/mca/errmgr/errmgr.h"
 #include "orte/mca/rml/rml.h"
@@ -42,7 +45,7 @@ bool orte_help_want_aggregate = false;
 
 /*
  * Local variable to know whether aggregated show_help is available or
- * not 
+ * not
  */
 static bool ready = false;
 
@@ -56,51 +59,6 @@ bool orte_show_help_is_available(void)
 
     return ready;
 }
-
-/************************************************************************/
-
-/* Section for systems without RML and/or HNP support (e.g., Cray) --
-   just output directly; don't do any fancy RML sending to the HNP. */
-#if ORTE_DISABLE_FULL_SUPPORT
-
-int orte_show_help_init(void)
-{
-    ready = true;
-    return ORTE_SUCCESS;
-}
-
-void orte_show_help_finalize(void)
-{
-    ready = false;
-    return;
-}
-
-int orte_show_help(const char *filename, const char *topic, 
-                   bool want_error_header, ...)
-{
-    va_list arglist;
-    char *output;
-    
-    va_start(arglist, want_error_header);
-    output = opal_show_help_vstring(filename, topic, want_error_header, 
-                                    arglist);
-    va_end(arglist);
-    
-    /* If nothing came back, there's nothing to do */
-    if (NULL == output) {
-        return ORTE_SUCCESS;
-    }
-    
-    opal_output(0, output);
-    return ORTE_SUCCESS;
-}
-
-
-#else
-
-/************************************************************************/
-
-/* Section for systems that have full RML/HNP support */
 
 /* List items for holding (filename, topic) tuples */
 typedef struct {
@@ -116,6 +74,8 @@ typedef struct {
     /* Count of processes since last display (i.e., "new" processes
        that have showed this message that have not yet been output) */
     int tli_count_since_last_display;
+    /* Do we want to display these? */
+    bool tli_display;
 } tuple_list_item_t;
 
 static void tuple_list_item_constructor(tuple_list_item_t *obj);
@@ -145,6 +105,7 @@ static void tuple_list_item_constructor(tuple_list_item_t *obj)
     OBJ_CONSTRUCT(&(obj->tli_processes), opal_list_t);
     obj->tli_time_displayed = time(NULL);
     obj->tli_count_since_last_display = 0;
+    obj->tli_display = true;
 }
 
 static void tuple_list_item_destructor(tuple_list_item_t *obj)
@@ -157,7 +118,7 @@ static void tuple_list_item_destructor(tuple_list_item_t *obj)
     if (NULL != obj->tli_topic) {
         free(obj->tli_topic);
     }
-    for (item = opal_list_get_first(&(obj->tli_processes)); 
+    for (item = opal_list_get_first(&(obj->tli_processes));
          opal_list_get_end(&(obj->tli_processes)) != item;
          item = next) {
         next = opal_list_get_next(item);
@@ -175,7 +136,7 @@ static char* xml_format(unsigned char *input)
     char *starttag="<stderr>";
     int endtaglen, starttaglen;
     bool endtagged = false;
-    
+
     len = strlen((char*)input);
     /* add some arbitrary size padding */
     output = (char*)malloc((len+1024)*sizeof(char));
@@ -187,14 +148,14 @@ static char* xml_format(unsigned char *input)
     outlen = len+1023;
     endtaglen = strlen(endtag);
     starttaglen = strlen(starttag);
-    
+
     /* start at the beginning */
     k=0;
-    
+
     /* start with the tag */
     for (j=0; j < starttaglen && k < outlen; j++) {
         output[k++] = starttag[j];
-    }        
+    }
 
     for (i=0; i < len; i++) {
         if ('&' == input[i]) {
@@ -254,7 +215,7 @@ static char* xml_format(unsigned char *input)
             }
         } else {
             output[k++] = input[i];
-        }    
+        }
     }
 
     if (!endtagged) {
@@ -264,9 +225,9 @@ static char* xml_format(unsigned char *input)
         }
         output[k++] = '\n';
     }
-    
+
     return output;
-    
+
 error:
     /* if we couldn't complete the processing for
      * some reason, return the unprocessed input
@@ -276,6 +237,53 @@ error:
     return (char*)input;
 }
 
+
+/*
+ * Returns ORTE_SUCCESS if the strings match; ORTE_ERROR otherwise.
+ */
+static int match(const char *a, const char *b)
+{
+    int rc = ORTE_ERROR;
+    char *p1, *p2, *tmp1 = NULL, *tmp2 = NULL;
+    size_t min;
+
+    /* Check straight string match first */
+    if (0 == strcmp(a, b)) return ORTE_SUCCESS;
+
+    if (NULL != strchr(a, '*') || NULL != strchr(b, '*')) {
+        tmp1 = strdup(a);
+        if (NULL == tmp1) {
+            return ORTE_ERR_OUT_OF_RESOURCE;
+        }
+        tmp2 = strdup(b);
+        if (NULL == tmp2) {
+            free(tmp1);
+            return ORTE_ERR_OUT_OF_RESOURCE;
+        }
+        p1 = strchr(tmp1, '*');
+        p2 = strchr(tmp2, '*');
+
+        if (NULL != p1) {
+            *p1 = '\0';
+        }
+        if (NULL != p2) {
+            *p2 = '\0';
+        }
+        min = strlen(tmp1);
+        if (strlen(tmp2) < min) {
+            min = strlen(tmp2);
+        }
+        if (0 == min || 0 == strncmp(tmp1, tmp2, min)) {
+            rc = ORTE_SUCCESS;
+        }
+        free(tmp1);
+        free(tmp2);
+        return rc;
+    }
+
+    /* No match */
+    return ORTE_ERROR;
+}
 
 /*
  * Check to see if a given (filename, topic) tuple has been displayed
@@ -297,12 +305,12 @@ static int get_tli(const char *filename, const char *topic,
     opal_list_item_t *item;
 
     /* Search the list for a duplicate. */
-    for (item = opal_list_get_first(&abd_tuples); 
+    for (item = opal_list_get_first(&abd_tuples);
          opal_list_get_end(&abd_tuples) != item;
          item = opal_list_get_next(item)) {
         (*tli) = (tuple_list_item_t*) item;
-        if (0 == strcmp((*tli)->tli_filename, filename) &&
-            0 == strcmp((*tli)->tli_topic, topic)) {
+        if (ORTE_SUCCESS == match((*tli)->tli_filename, filename) &&
+            ORTE_SUCCESS == match((*tli)->tli_topic, topic)) {
             return ORTE_SUCCESS;
         }
     }
@@ -329,11 +337,12 @@ static void show_accumulated_duplicates(int fd, short event, void *context)
     /* Loop through all the messages we've displayed and see if any
        processes have sent duplicates that have not yet been displayed
        yet */
-    for (item = opal_list_get_first(&abd_tuples); 
+    for (item = opal_list_get_first(&abd_tuples);
          opal_list_get_end(&abd_tuples) != item;
          item = opal_list_get_next(item)) {
         tli = (tuple_list_item_t*) item;
-        if (tli->tli_count_since_last_display > 0) {
+        if (tli->tli_display &&
+            tli->tli_count_since_last_display > 0) {
             static bool first = true;
             if (orte_xml_output) {
                 asprintf(&tmp, "%d more process%s sent help message %s / %s",
@@ -384,6 +393,13 @@ static int show_help(const char *filename, const char *topic,
         rc = ORTE_ERR_NOT_FOUND;
     }
 
+    /* If there's no output string (i.e., this is a control message
+       asking us to suppress), then skip to the end. */
+    if (NULL == output) {
+        tli->tli_display = false;
+        goto after_output;
+    }
+
     /* Was it already displayed? */
     if (ORTE_SUCCESS == rc) {
         /* Yes.  But do we want to print anything?  That's complicated.
@@ -410,17 +426,17 @@ static int show_help(const char *filename, const char *topic,
              - else if a timer was not set, set the timer for T+5
              - else if a timer was set, do nothing (just wait)
            - set T=now when the timer expires
-        */           
+        */
         ++tli->tli_count_since_last_display;
         if (now > show_help_time_last_displayed + 5 && !show_help_timer_set) {
             show_accumulated_duplicates(0, 0, NULL);
         } else if (!show_help_timer_set) {
-            opal_evtimer_set(&show_help_timer_event,
-                             show_accumulated_duplicates, NULL);
-            opal_evtimer_add(&show_help_timer_event, &show_help_interval);
+            opal_event_evtimer_set(orte_event_base, &show_help_timer_event,
+                                   show_accumulated_duplicates, NULL);
+            opal_event_evtimer_add(&show_help_timer_event, &show_help_interval);
             show_help_timer_set = true;
         }
-    } 
+    }
     /* Not already displayed */
     else if (ORTE_ERR_NOT_FOUND == rc) {
         if (orte_xml_output) {
@@ -430,7 +446,7 @@ static int show_help(const char *filename, const char *topic,
             fflush(orte_xml_fp);
             free(tmp);
         } else {
-            fprintf(stderr, "%s", output);
+            opal_output(orte_clean_output, "%s", output);
         }
         if (!show_help_timer_set) {
             show_help_time_last_displayed = now;
@@ -442,6 +458,7 @@ static int show_help(const char *filename, const char *topic,
         return rc;
     }
 
+ after_output:
     /* If we're aggregating, add this process name to the list */
     if (orte_help_want_aggregate) {
         pnli = OBJ_NEW(orte_namelist_t);
@@ -451,7 +468,7 @@ static int show_help(const char *filename, const char *topic,
             return rc;
         }
         pnli->name = *sender;
-        opal_list_append(&(tli->tli_processes), &(pnli->item));
+        opal_list_append(&(tli->tli_processes), &(pnli->super));
     }
     return ORTE_SUCCESS;
 }
@@ -466,13 +483,14 @@ void orte_show_help_recv(int status, orte_process_name_t* sender,
     char *output=NULL;
     char *filename=NULL, *topic=NULL;
     int32_t n;
+    int8_t have_output;
     int rc;
-    
+
     OPAL_OUTPUT_VERBOSE((5, orte_debug_output,
                          "%s got show_help from %s",
                          ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
                          ORTE_NAME_PRINT(sender)));
-    
+
     /* unpack the filename of the show_help text file */
     n = 1;
     if (ORTE_SUCCESS != (rc = opal_dss.unpack(buffer, &filename, &n, OPAL_STRING))) {
@@ -485,16 +503,25 @@ void orte_show_help_recv(int status, orte_process_name_t* sender,
         ORTE_ERROR_LOG(rc);
         goto cleanup;
     }
-    /* unpack the resulting string */
+    /* unpack the flag */
     n = 1;
-    if (ORTE_SUCCESS != (rc = opal_dss.unpack(buffer, &output, &n, OPAL_STRING))) {
+    if (ORTE_SUCCESS != (rc = opal_dss.unpack(buffer, &have_output, &n, OPAL_INT8))) {
         ORTE_ERROR_LOG(rc);
         goto cleanup;
     }
-    
+
+    /* If we have an output string, unpack it */
+    if (have_output) {
+        n = 1;
+        if (ORTE_SUCCESS != (rc = opal_dss.unpack(buffer, &output, &n, OPAL_STRING))) {
+            ORTE_ERROR_LOG(rc);
+            goto cleanup;
+        }
+    }
+
     /* Send it to show_help */
     rc = show_help(filename, topic, output, sender);
-    
+
 cleanup:
     if (NULL != output) {
         free(output);
@@ -505,13 +532,7 @@ cleanup:
     if (NULL != topic) {
         free(topic);
     }
-    /* reissue the recv */
-    rc = orte_rml.recv_buffer_nb(ORTE_NAME_WILDCARD, ORTE_RML_TAG_SHOW_HELP,
-                                 ORTE_RML_NON_PERSISTENT, orte_show_help_recv, NULL);
-    if (rc != ORTE_SUCCESS && rc != ORTE_ERR_NOT_IMPLEMENTED) {
-        ORTE_ERROR_LOG(rc);
-    }
-}
+ }
 
 int orte_show_help_init(void)
 {
@@ -523,7 +544,7 @@ int orte_show_help_init(void)
     }
 
     OBJ_CONSTRUCT(&abd_tuples, opal_list_t);
-    
+
     save_help = opal_show_help;
     opal_show_help = orte_show_help;
     ready = true;
@@ -546,24 +567,28 @@ void orte_show_help_finalize(void)
         show_accumulated_duplicates(0, 0, NULL);
         OBJ_DESTRUCT(&abd_tuples);
         if (show_help_timer_set) {
-            opal_evtimer_del(&show_help_timer_event);
+            opal_event_evtimer_del(&show_help_timer_event);
         }
-        
+
         /* cancel the recv */
         orte_rml.recv_cancel(ORTE_NAME_WILDCARD, ORTE_RML_TAG_SHOW_HELP);
         return;
     }
 }
 
-int orte_show_help(const char *filename, const char *topic, 
+int orte_show_help(const char *filename, const char *topic,
                    bool want_error_header, ...)
 {
     int rc = ORTE_SUCCESS;
     va_list arglist;
     char *output;
-    
+
+    if (orte_execute_quiet) {
+        return ORTE_SUCCESS;
+    }
+
     va_start(arglist, want_error_header);
-    output = opal_show_help_vstring(filename, topic, want_error_header, 
+    output = opal_show_help_vstring(filename, topic, want_error_header,
                                     arglist);
     va_end(arglist);
 
@@ -571,6 +596,17 @@ int orte_show_help(const char *filename, const char *topic,
     if (NULL == output) {
         return ORTE_SUCCESS;
     }
+
+    rc = orte_show_help_norender(filename, topic, want_error_header, output);
+    free(output);
+    return rc;
+}
+
+int orte_show_help_norender(const char *filename, const char *topic,
+                            bool want_error_header, const char *output)
+{
+    int rc = ORTE_SUCCESS;
+    int8_t have_output = 1;
 
     if (!ready) {
         /* if we are finalizing, then we have no way to process
@@ -585,24 +621,25 @@ int orte_show_help(const char *filename, const char *topic,
         fprintf(stderr, "%s", output);
         goto CLEANUP;
     }
-    
+
     /* if we are the HNP, or the RML has not yet been setup,
      * or ROUTED has not been setup,
-     * or we weren't given an HNP, then all we can do
-     * is process this locally
+     * or we weren't given an HNP, or we are running in standalone
+     * mode, then all we can do is process this locally
      */
-    if (ORTE_PROC_IS_HNP ||
-        NULL == orte_rml.send_buffer ||
+    if (ORTE_PROC_IS_HNP || ORTE_PROC_IS_TOOL ||
+        orte_standalone_operation ||
+        NULL == orte_rml.send_buffer_nb ||
         NULL == orte_routed.get_route ||
         NULL == orte_process_info.my_hnp_uri) {
         rc = show_help(filename, topic, output, ORTE_PROC_MY_NAME);
     }
-    
+
     /* otherwise, we relay the output message to
      * the HNP for processing
      */
     else {
-        opal_buffer_t buf;
+        opal_buffer_t *buf;
         static bool am_inside = false;
 
         /* JMS Note that we *may* have a recursion situation here where
@@ -613,28 +650,97 @@ int orte_show_help(const char *filename, const char *topic,
             rc = show_help(filename, topic, output, ORTE_PROC_MY_NAME);
         } else {
             am_inside = true;
-        
+
             /* build the message to the HNP */
-            OBJ_CONSTRUCT(&buf, opal_buffer_t);
+            buf = OBJ_NEW(opal_buffer_t);
             /* pack the filename of the show_help text file */
-            opal_dss.pack(&buf, &filename, 1, OPAL_STRING);
+            opal_dss.pack(buf, &filename, 1, OPAL_STRING);
             /* pack the topic tag */
-            opal_dss.pack(&buf, &topic, 1, OPAL_STRING);
+            opal_dss.pack(buf, &topic, 1, OPAL_STRING);
+            /* pack the flag that we have a string */
+            opal_dss.pack(buf, &have_output, 1, OPAL_INT8);
             /* pack the resulting string */
-            opal_dss.pack(&buf, &output, 1, OPAL_STRING);
+            opal_dss.pack(buf, &output, 1, OPAL_STRING);
             /* send it to the HNP */
-            if (0 > (rc = orte_rml.send_buffer(ORTE_PROC_MY_HNP, &buf, ORTE_RML_TAG_SHOW_HELP, 0))) {
+            if (ORTE_SUCCESS != (rc = orte_rml.send_buffer_nb(ORTE_PROC_MY_HNP, buf,
+                                                              ORTE_RML_TAG_SHOW_HELP,
+                                                              orte_rml_send_callback, NULL))) {
                 ORTE_ERROR_LOG(rc);
+                OBJ_RELEASE(buf);
+                /* okay, that didn't work, just process locally error, just ignore return  */
+                show_help(filename, topic, NULL, ORTE_PROC_MY_NAME);
+            } else {
+                rc = ORTE_SUCCESS;
             }
-            OBJ_DESTRUCT(&buf);
             am_inside = false;
         }
     }
-    
+
 CLEANUP:
-    free(output);
     return rc;
 }
 
-#endif /* ORTE_DISABLE_FULL_SUPPORT */
+int orte_show_help_suppress(const char *filename, const char *topic)
+{
+    int rc = ORTE_SUCCESS;
+    int8_t have_output = 0;
 
+    if (orte_execute_quiet) {
+        return ORTE_SUCCESS;
+    }
+
+    if (!ready) {
+        /* If we are finalizing, then we have no way to process this
+           through the orte_show_help system - just drop it. */
+        return ORTE_SUCCESS;
+    }
+
+    /* If we are the HNP, or the RML has not yet been setup, or ROUTED
+       has not been setup, or we weren't given an HNP, then all we can
+       do is process this locally. */
+    if (ORTE_PROC_IS_HNP ||
+        NULL == orte_rml.send_buffer_nb ||
+        NULL == orte_routed.get_route ||
+        NULL == orte_process_info.my_hnp_uri) {
+        rc = show_help(filename, topic, NULL, ORTE_PROC_MY_NAME);
+    }
+
+    /* otherwise, we relay the output message to
+     * the HNP for processing
+     */
+    else {
+        opal_buffer_t *buf;
+        static bool am_inside = false;
+
+        /* JMS Note that we *may* have a recursion situation here where
+           the RML could call show_help.  Need to think about this
+           properly, but put a safeguard in here for sure for the time
+           being. */
+        if (am_inside) {
+            rc = show_help(filename, topic, NULL, ORTE_PROC_MY_NAME);
+        } else {
+            am_inside = true;
+
+            /* build the message to the HNP */
+            buf = OBJ_NEW(opal_buffer_t);
+            /* pack the filename of the show_help text file */
+            opal_dss.pack(buf, &filename, 1, OPAL_STRING);
+            /* pack the topic tag */
+            opal_dss.pack(buf, &topic, 1, OPAL_STRING);
+            /* pack the flag that we DO NOT have a string */
+            opal_dss.pack(buf, &have_output, 1, OPAL_INT8);
+            /* send it to the HNP */
+            if (ORTE_SUCCESS != (rc = orte_rml.send_buffer_nb(ORTE_PROC_MY_HNP, buf,
+                                                              ORTE_RML_TAG_SHOW_HELP,
+                                                              orte_rml_send_callback, NULL))) {
+                ORTE_ERROR_LOG(rc);
+                OBJ_RELEASE(buf);
+                /* okay, that didn't work, just process locally error, just ignore return  */
+                show_help(filename, topic, NULL, ORTE_PROC_MY_NAME);
+            }
+            am_inside = false;
+        }
+    }
+
+    return ORTE_SUCCESS;
+}
