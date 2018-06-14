@@ -1,3 +1,9 @@
+openmpi (2.0.2-2sci9+opa10.6u1) unstable; urgency=medium
+
+  * Add psm2 support (manual backport from the Debian unstable patch).
+
+ -- Lucas Nussbaum <lucas@debian.org>  Thu, 14 Jun 2018 17:38:18 +0200
+
 openmpi (2.0.2-2) unstable; urgency=medium
 
   * Move to unstable. Closes: #8487574
