@@ -1,4 +1,6 @@
 #define _GNU_SOURCE
+#include "orte_config.h"
+
 #include <stdio.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -13,7 +15,7 @@ int main(int argc, char* argv[])
     int msg;
     MPI_Comm parent, children[NUM_CHILDREN];
     int rank, size, i;
-    char hostname[512];
+    char hostname[OPAL_MAXHOSTNAMELEN];
     pid_t pid;
     char *child_argv[2] = { "", NULL };
 
@@ -28,10 +30,10 @@ int main(int argc, char* argv[])
         /* First, spawn all the children.  Give them an argv
            identifying which child they are */
         for (i = 0; i < NUM_CHILDREN; ++i) {
-            printf("Parent [pid %ld] about to spawn child #%d\n", 
+            printf("Parent [pid %ld] about to spawn child #%d\n",
                    (long)pid, i);
             asprintf(&(child_argv[0]), "%d", i);
-            MPI_Comm_spawn(argv[0], child_argv, 1, MPI_INFO_NULL, 
+            MPI_Comm_spawn(argv[0], child_argv, 1, MPI_INFO_NULL,
                            0, MPI_COMM_WORLD, &children[i],
                            MPI_ERRCODES_IGNORE);
             printf("Parent done with spawn of child %d\n", i);
@@ -51,10 +53,10 @@ int main(int argc, char* argv[])
             MPI_Comm_disconnect(&children[i]);
             printf("Parent disconnected from child %d\n", i);
         }
-    } 
+    }
     /* Otherwise, we're the child */
     else {
-        gethostname(hostname, 512);
+        gethostname(hostname, sizeof(hostname));
         if (argc == 1) {
             printf("ERROR: child did not receive exepcted argv!\n");
             i = -1;

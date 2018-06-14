@@ -5,17 +5,21 @@
  * Copyright (c) 2004-2005 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
  * Copyright (c) 2007-2008 Sun Microsystems, Inc.  All rights reserved.
- * Copyright (c) 2007      Los Alamos National Security, LLC.  All rights
- *                         reserved. 
+ * Copyright (c) 2007-2015 Los Alamos National Security, LLC.  All rights
+ *                         reserved.
+ * Copyright (c) 2011-2013 Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2015      Research Organization for Information Science
+ *                         and Technology (RIST). All rights reserved.
+ * Copyright (c) 2015      Intel, Inc. All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 #include "orte_config.h"
@@ -26,9 +30,7 @@
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
 #endif  /* HAVE_UNISTD_H */
-#ifdef HAVE_STDLIB_H
 #include <stdlib.h>
-#endif  /*  HAVE_STDLIB_H */
 #ifdef HAVE_SYS_STAT_H
 #include <sys/stat.h>
 #endif  /* HAVE_SYS_STAT_H */
@@ -41,9 +43,7 @@
 #ifdef HAVE_SYS_PARAM_H
 #include <sys/param.h>
 #endif  /* HAVE_SYS_PARAM_H */
-#ifdef HAVE_STRING_H
 #include <string.h>
-#endif  /* HAVE_STRING_H */
 #ifdef HAVE_DIRENT_H
 #include <dirent.h>
 #endif  /* HAVE_DIRENT_H */
@@ -56,25 +56,21 @@
 #include "opal/util/opal_environ.h"
 #include "opal/util/os_dirpath.h"
 #include "opal/util/basename.h"
+#include "opal/util/error.h"
 #include "opal/mca/base/base.h"
-#include "opal/mca/base/mca_base_param.h"
+#include "opal/util/show_help.h"
 
-#include "orte/util/show_help.h"
 #include "orte/util/proc_info.h"
+#include "orte/util/show_help.h"
 
 #include "opal/runtime/opal.h"
-#if OPAL_ENABLE_FT_CR == 1
-#include "opal/runtime/opal_cr.h"
-#endif
 #include "orte/runtime/runtime.h"
 
 /******************
  * Local Functions
  ******************/
 static int parse_args(int argc, char *argv[]);
-#if !defined(__WINDOWS__)
 static void kill_procs(void);
-#endif  /* !defined(__WINDOWS__) */
 
 /*****************************************
  * Global Vars for Command line Arguments
@@ -85,30 +81,30 @@ typedef struct {
     bool debug;
 } orte_clean_globals_t;
 
-orte_clean_globals_t orte_clean_globals;
+orte_clean_globals_t orte_clean_globals = {0};
 
 opal_cmd_line_init_t cmd_line_opts[] = {
-    { NULL, NULL, NULL, 
-      'h', NULL, "help", 
+    { NULL,
+      'h', NULL, "help",
       0,
       &orte_clean_globals.help, OPAL_CMD_LINE_TYPE_BOOL,
       "This help message" },
 
-    { NULL, NULL, NULL, 
-      'v', NULL, "verbose", 
+    { NULL,
+      'v', NULL, "verbose",
       0,
       &orte_clean_globals.verbose, OPAL_CMD_LINE_TYPE_BOOL,
       "Generate verbose output" },
 
-    { NULL, NULL, NULL, 
-      'd', NULL, "debug", 
+    { NULL,
+      'd', NULL, "debug",
       0,
       &orte_clean_globals.debug, OPAL_CMD_LINE_TYPE_BOOL,
       "Extra debug output for developers to ensure that orte-clean is working" },
 
     /* End of list */
-    { NULL, NULL, NULL, 
-      '\0', NULL, NULL, 
+    { NULL,
+      '\0', NULL, NULL,
       0,
       NULL, OPAL_CMD_LINE_TYPE_NULL,
       NULL }
@@ -124,7 +120,6 @@ int
 main(int argc, char *argv[])
 {
     int ret = ORTE_SUCCESS;
-    char *tmp_env_var;
 
     /* This is needed so we can print the help message */
     if (ORTE_SUCCESS != (ret = opal_init_util(&argc, &argv))) {
@@ -134,29 +129,6 @@ main(int argc, char *argv[])
     if (ORTE_SUCCESS != (ret = parse_args(argc, argv))) {
         return ret;
     }
-
-#if OPAL_ENABLE_FT_CR == 1
-    /* Disable the checkpoint notification routine for this
-     * tool. As we will never need to checkpoint this tool.
-     * Note: This must happen before opal_init().
-     */
-    opal_cr_set_enabled(false);
-    
-    /* Select the none component, since we don't actually use a checkpointer */
-    tmp_env_var = mca_base_param_env_var("crs");
-    opal_setenv(tmp_env_var,
-                "none",
-                true, &environ);
-    free(tmp_env_var);
-    tmp_env_var = NULL;
-
-    tmp_env_var = mca_base_param_env_var("opal_cr_is_tool");
-    opal_setenv(tmp_env_var,
-                "1", true, NULL);
-    free(tmp_env_var);
-#else
-    tmp_env_var = NULL; /* Silence compiler warning */
-#endif
 
     if (ORTE_SUCCESS != (ret = orte_init(&argc, &argv, ORTE_PROC_TOOL))) {
         return ret;
@@ -168,15 +140,13 @@ main(int argc, char *argv[])
      * didn't create one!
      */
     if (orte_clean_globals.verbose) {
-        fprintf(stderr, "orte-clean: cleaning session dir tree %s\n", 
+        fprintf(stderr, "orte-clean: cleaning session dir tree %s\n",
                 orte_process_info.top_session_dir);
     }
     opal_os_dirpath_destroy(orte_process_info.top_session_dir, true, NULL);
-    
+
     /* now kill any lingering procs, if we can */
-#if !defined(__WINDOWS__)
     kill_procs();
-#endif  /* !defined(__WINDOWS__) */
 
     orte_finalize();
 
@@ -200,19 +170,31 @@ static int parse_args(int argc, char *argv[]) {
      * Initialize list of available command line options.
      */
     opal_cmd_line_create(&cmd_line, cmd_line_opts);
-    ret = opal_cmd_line_parse(&cmd_line, true, argc, argv);
+    ret = opal_cmd_line_parse(&cmd_line, false, argc, argv);
+
+    if (OPAL_SUCCESS != ret) {
+        if (OPAL_ERR_SILENT != ret) {
+            fprintf(stderr, "%s: command line error (%s)\n", argv[0],
+                    opal_strerror(ret));
+        }
+        return ret;
+    }
 
     /**
      * Now start parsing our specific arguments
      */
-    if (OPAL_SUCCESS != ret || 
-        orte_clean_globals.help) {
-        char *args = NULL;
+    if (orte_clean_globals.help) {
+        char *str, *args = NULL;
         args = opal_cmd_line_get_usage_msg(&cmd_line);
-        orte_show_help("help-orte-clean.txt", "usage", true,
-                       args);
+        str = opal_show_help_string("help-orte-clean.txt", "usage", true,
+                                    args);
+        if (NULL != str) {
+            printf("%s", str);
+            free(str);
+        }
         free(args);
-        return ORTE_ERROR;
+        /* If we show the help message, that should be all we do */
+        exit(0);
     }
 
     OBJ_DESTRUCT(&cmd_line);
@@ -220,13 +202,12 @@ static int parse_args(int argc, char *argv[]) {
     return ORTE_SUCCESS;
 }
 
-#if !defined(__WINDOWS__)
 static char *orte_getline(FILE *fp)
 {
     char *ret, *buff;
     char input[1024];
     int i;
-    
+
     ret = fgets(input, 1024, fp);
     if (NULL != ret) {
         /* remove trailing spaces */
@@ -239,12 +220,12 @@ static char *orte_getline(FILE *fp)
         buff = strdup(input);
         return buff;
     }
-    
+
     return NULL;
 }
 
 /*
- * This function makes a call to "ps" to find out the processes that 
+ * This function makes a call to "ps" to find out the processes that
  * are running on this node.  It then attempts to kill off any orteds
  * and orteruns that are not related to this job.
  */
@@ -260,9 +241,8 @@ void kill_procs(void) {
     char *inputline;
     char *this_user;
     int uid;
-    struct passwd *pwdent;
     char *separator = " \t";  /* output can be delimited by space or tab */
-    
+
     /*
      * This is the command that is used to get the information about
      * all the processes that are running.  The output looks like the
@@ -295,19 +275,8 @@ void kill_procs(void) {
 
     /* get the name of the user */
     uid = getuid();
-#ifdef HAVE_GETPWUID
-    pwdent = getpwuid(uid);
-#else
-    pwdent = NULL;
-#endif
-    if (NULL != pwdent) {
-        this_user = strdup(pwdent->pw_name);
-    } else {
-        if (0 > asprintf(&this_user, "%d", uid)) {
-            return;
-        }
-    }
-    
+    asprintf(&this_user, "%d", uid);
+
     /*
      * There is a race condition here.  The problem is that we are looking
      * for any processes named orted.  However, one may erroneously find more
@@ -330,10 +299,11 @@ void kill_procs(void) {
      */
     if (NULL == (inputline = orte_getline(psfile))) {
         free(this_user);
+        pclose(psfile);
         return;
-    } 
+    }
     free(inputline);  /* dump the header line */
-    
+
     while (NULL != (inputline = orte_getline(psfile))) {
 
         /* The three fields are typically seperated by spaces */
@@ -342,7 +312,7 @@ void kill_procs(void) {
         user = strtok(NULL, separator);
 
         if (orte_clean_globals.debug) {
-            fprintf(stdout, "\norte-clean: user(pid)=%s, me=%s\n", 
+            fprintf(stdout, "\norte-clean: user(pid)=%s, me=%s\n",
                     user, this_user);
         }
 
@@ -358,7 +328,7 @@ void kill_procs(void) {
         procpid = atoi(pidstr);
         procname = opal_basename(fullprocname);
         if (orte_clean_globals.debug) {
-            fprintf(stdout, "orte-clean: fullname=%s, basename=%s, pid=%d\n", 
+            fprintf(stdout, "orte-clean: fullname=%s, basename=%s, pid=%d\n",
                     fullprocname, procname, procpid);
         }
 
@@ -377,7 +347,7 @@ void kill_procs(void) {
             if (procpid != ortedpid) {
                 if (orte_clean_globals.verbose) {
                     fprintf(stderr, "orte-clean: found potential rogue orted process"
-                            " (pid=%d,user=%s), sending SIGKILL...\n", 
+                            " (pid=%d,user=%s), sending SIGKILL...\n",
                             procpid, user);
                 }
                 /*
@@ -399,9 +369,9 @@ void kill_procs(void) {
             if (procpid != ortedpid) {
                 if (orte_clean_globals.verbose) {
                     fprintf(stderr, "orte-clean: found potential rogue orterun process"
-                            " (pid=%d,user=%s), sending SIGKILL...\n", 
+                            " (pid=%d,user=%s), sending SIGKILL...\n",
                             procpid, user);
-                    
+
                 }
                 /* if we are a singleton, check the hnp_pid as well */
                 if (ORTE_PROC_IS_SINGLETON) {
@@ -420,6 +390,6 @@ void kill_procs(void) {
 	free(procname);
     }
     free(this_user);
+    pclose(psfile);
     return;
 }
-#endif  /* !defined(__WINDOWS__) */

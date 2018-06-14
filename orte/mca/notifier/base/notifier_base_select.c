@@ -5,82 +5,123 @@
  * Copyright (c) 2004-2005 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
- * Copyright (c) 2013 Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2009      Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2014-2015 Intel, Inc. All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
 
 #include "orte_config.h"
 
-#include "opal/mca/mca.h"
+#include <string.h>
+
+#include "orte/mca/mca.h"
 #include "opal/mca/base/base.h"
+#include "opal/util/argv.h"
+#include "opal/util/output.h"
+#include "opal/class/opal_pointer_array.h"
 
 #include "orte/mca/notifier/base/base.h"
 
+/* Global variables */
+/*
+ * orte_notifier_base_selected is set to true if at least 1 module has
+ * been selected for the notifier log API interface.
+ */
+static bool orte_notifier_base_selected = false;
 
 /**
- * Function for selecting one component from all those that are
- * available.
+ * Function for weeding out notifier components that don't want to run.
+ *
+ * Call the init function on all available compoenent to find out if
+ * they want to run. Select all components that don't fail. Failing
+ * Components will be closed and unloaded. The selected modules will
+ * be returned to the called in a opal_list_t.
  */
+
 int orte_notifier_base_select(void)
 {
-    int ret, exit_status = ORTE_SUCCESS;
-    orte_notifier_base_component_t *best_component = NULL;
-    orte_notifier_base_module_t *best_module = NULL;
-    char *include_list = NULL;
+    mca_base_component_list_item_t *cli = NULL;
+    orte_notifier_base_component_t *component = NULL;
+    mca_base_module_t *module = NULL;
+    int priority;
+    orte_notifier_active_module_t *tmp_module;
+    orte_notifier_base_module_t *bmod;
+
+    if (orte_notifier_base_selected) {
+        return ORTE_SUCCESS;
+    }
+    orte_notifier_base_selected = true;
+
+    opal_output_verbose(10, orte_notifier_base_framework.framework_output,
+                        "notifier:base:select: Auto-selecting components");
 
     /*
-     * Register the framework MCA param and look up include list
+     * Traverse the list of available components.
+     * For each call their 'query' functions to see if they are available.
      */
-    mca_base_param_reg_string_name("notifier", NULL,
-                                   "Which notifier component to use (empty = none)",
-                                   false, false,
-                                   NULL, &include_list);
-    
-    /* If we do not have any components to select this is ok. Just use the default
-     * "no-op" component and move on.
-     */
-    if( 0 >= opal_list_get_size(&mca_notifier_base_components_available) || NULL == include_list) { 
-        /* Close all components since none will be used */
-        mca_base_components_close(orte_notifier_base_output,
-                                  &mca_notifier_base_components_available,
-                                  NULL, false);
-        goto cleanup;
-    }
-    
-    /*
-     * Select the best component
-     */
-    if( OPAL_SUCCESS != mca_base_select("notifier", orte_notifier_base_output,
-                                        &mca_notifier_base_components_available,
-                                        (mca_base_module_t **) &best_module,
-                                        (mca_base_component_t **) &best_component) ) {
-        /* It is okay if no component was selected - we just leave
-         * the orte_notifier module as the default
+    OPAL_LIST_FOREACH(cli, &orte_notifier_base_framework.framework_components, mca_base_component_list_item_t) {
+        component = (orte_notifier_base_component_t *) cli->cli_component;
+
+        /*
+         * If there is a query function then use it.
          */
-        exit_status = ORTE_SUCCESS;
-        goto cleanup;
-    }
-
-    if (NULL != orte_notifier.init) {
-        /* if an init function is provided, use it */
-        if (ORTE_SUCCESS != (ret = orte_notifier.init()) ) {
-            exit_status = ret;
-            goto cleanup;
+        if (NULL == component->base_version.mca_query_component) {
+            opal_output_verbose(5, orte_notifier_base_framework.framework_output,
+                                "notifier:base:select Skipping component [%s]. It does not implement a query function",
+                                component->base_version.mca_component_name );
+            continue;
         }
+
+        /*
+         * Query this component for the module and priority
+         */
+        opal_output_verbose(5, orte_notifier_base_framework.framework_output,
+                            "notifier:base:select Querying component [%s]",
+                            component->base_version.mca_component_name);
+
+        component->base_version.mca_query_component(&module, &priority);
+
+        /*
+         * If no module was returned or negative priority, then skip component
+         */
+        if (NULL == module || priority < 0) {
+            opal_output_verbose(5, orte_notifier_base_framework.framework_output,
+                                "notifier:base:select Skipping component [%s]. Query failed to return a module",
+                                component->base_version.mca_component_name );
+            continue;
+        }
+        bmod = (orte_notifier_base_module_t*)module;
+
+        /* see if it can be init'd */
+        if (NULL != bmod->init) {
+            opal_output_verbose(5, orte_notifier_base_framework.framework_output,
+                                "notifier:base:init module called with priority [%s] %d",
+                                component->base_version.mca_component_name, priority);
+            if (ORTE_SUCCESS != bmod->init()) {
+                continue;
+            }
+        }
+        /*
+         * Append them to the list
+         */
+        opal_output_verbose(5, orte_notifier_base_framework.framework_output,
+                            "notifier:base:select adding component [%s]",
+                            component->base_version.mca_component_name);
+        tmp_module = OBJ_NEW(orte_notifier_active_module_t);
+        tmp_module->component = component;
+        tmp_module->module    = (orte_notifier_base_module_t*)module;
+
+        opal_list_append(&orte_notifier_base.modules, (void*)tmp_module);
     }
 
-    /* Save the winner */
-    orte_notifier = *best_module;
-
- cleanup:
-    return exit_status;
+    return ORTE_SUCCESS;
 }

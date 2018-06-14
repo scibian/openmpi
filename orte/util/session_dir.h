@@ -5,14 +5,14 @@
  * Copyright (c) 2004-2006 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 /** @file:
@@ -120,7 +120,7 @@ BEGIN_C_DECLS
  * @retval OMPI_ERROR The directory cannot be found (if create is
  *                "false") or created (if create is "true").
  */
-ORTE_DECLSPEC int orte_session_dir(bool create, char *prefix, char *hostid, 
+ORTE_DECLSPEC int orte_session_dir(bool create, char *prefix, char *hostid,
                      char *batchid, orte_process_name_t *proc);
 
 /*
@@ -131,7 +131,7 @@ ORTE_DECLSPEC int orte_session_dir_get_name(char **fulldirpath,
                                             char **prfx,
                                             char **frontend,
                                             char *hostid,
-                                            char *batchid, 
+                                            char *batchid,
                                             orte_process_name_t *proc);
 
 /** The orte_session_dir_finalize() function performs a cleanup of the
@@ -161,6 +161,10 @@ ORTE_DECLSPEC int orte_session_dir_finalize(orte_process_name_t *proc);
  *                properly cleaned up.
  */
 ORTE_DECLSPEC int orte_session_dir_cleanup(orte_jobid_t jobid);
+
+ORTE_DECLSPEC char *orte_build_job_session_dir(char *top_dir,
+                                               orte_process_name_t *proc,
+                                               orte_jobid_t jobid);
 
 END_C_DECLS
 

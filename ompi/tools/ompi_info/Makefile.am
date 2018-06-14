@@ -5,23 +5,25 @@
 # Copyright (c) 2004-2005 The University of Tennessee and The University
 #                         of Tennessee Research Foundation.  All rights
 #                         reserved.
-# Copyright (c) 2004-2009 High Performance Computing Center Stuttgart, 
+# Copyright (c) 2004-2009 High Performance Computing Center Stuttgart,
 #                         University of Stuttgart.  All rights reserved.
 # Copyright (c) 2004-2005 The Regents of the University of California.
 #                         All rights reserved.
-# Copyright (c) 2008      Cisco Systems, Inc.  All rights reserved.
+# Copyright (c) 2008-2014 Cisco Systems, Inc.  All rights reserved.
 # Copyright (c) 2008      Sun Microsystems, Inc.  All rights reserved.
+# Copyright (c) 2012      Los Alamos National Security, LLC.
+#                         All rights reserved.
 # $COPYRIGHT$
-# 
+#
 # Additional copyrights may follow
-# 
+#
 # $HEADER$
 #
 
 AM_CFLAGS = \
-            -DOMPI_CONFIGURE_USER="\"@OMPI_CONFIGURE_USER@\"" \
-            -DOMPI_CONFIGURE_HOST="\"@OMPI_CONFIGURE_HOST@\"" \
-            -DOMPI_CONFIGURE_DATE="\"@OMPI_CONFIGURE_DATE@\"" \
+            -DOPAL_CONFIGURE_USER="\"@OPAL_CONFIGURE_USER@\"" \
+            -DOPAL_CONFIGURE_HOST="\"@OPAL_CONFIGURE_HOST@\"" \
+            -DOPAL_CONFIGURE_DATE="\"@OPAL_CONFIGURE_DATE@\"" \
             -DOMPI_BUILD_USER="\"$$USER\"" \
             -DOMPI_BUILD_HOST="\"`hostname`\"" \
             -DOMPI_BUILD_DATE="\"`date`\"" \
@@ -34,21 +36,16 @@ AM_CFLAGS = \
             -DOMPI_BUILD_LDFLAGS="\"@LDFLAGS@\"" \
             -DOMPI_BUILD_LIBS="\"@LIBS@\"" \
             -DOPAL_CC_ABSOLUTE="\"@OPAL_CC_ABSOLUTE@\"" \
-            -DOMPI_CXX_ABSOLUTE="\"@OMPI_CXX_ABSOLUTE@\"" \
-            -DOMPI_F77_ABSOLUTE="\"@OMPI_F77_ABSOLUTE@\"" \
-            -DOMPI_F90_ABSOLUTE="\"@OMPI_F90_ABSOLUTE@\"" \
-            -DOMPI_F90_BUILD_SIZE="\"@OMPI_F90_BUILD_SIZE@\""
+            -DOMPI_CXX_ABSOLUTE="\"@OMPI_CXX_ABSOLUTE@\""
 
-include $(top_srcdir)/Makefile.man-page-rules
+include $(top_srcdir)/Makefile.ompi-rules
 
 man_pages = ompi_info.1
-EXTRA_DIST = $(man_pages:.1=.1in) CMakeLists.txt
+EXTRA_DIST = $(man_pages:.1=.1in)
 
-if OMPI_INSTALL_BINARIES
+if OPAL_INSTALL_BINARIES
 
 bin_PROGRAMS = ompi_info
-
-dist_pkgdata_DATA = help-ompi_info.txt
 
 nodist_man_MANS = $(man_pages)
 
@@ -62,12 +59,13 @@ endif
 ompi_info_SOURCES = \
         ompi_info.h \
         ompi_info.c \
-        output.c \
-        param.c \
-        components.c \
-        version.c
+        param.c
 
 ompi_info_LDADD = $(top_builddir)/ompi/libmpi.la
+if OMPI_RTE_ORTE
+ompi_info_LDADD +=  $(top_builddir)/orte/lib@ORTE_LIB_PREFIX@open-rte.la
+endif
+ompi_info_LDADD += $(top_builddir)/opal/lib@OPAL_LIB_PREFIX@open-pal.la
 
 clean-local:
 	test -z "$(OMPI_CXX_TEMPLATE_REPOSITORY)" || rm -rf $(OMPI_CXX_TEMPLATE_REPOSITORY)

@@ -1,29 +1,36 @@
+/* -*- Mode: C; c-basic-offset:4 ; indent-tabs-mode:nil -*- */
 /*
  * Copyright (c) 2004-2005 The Trustees of Indiana University and Indiana
  *                         University Research and Technology
  *                         Corporation.  All rights reserved.
- * Copyright (c) 2004-2007 The University of Tennessee and The University
+ * Copyright (c) 2004-2016 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
+ * Copyright (c) 2010      Oracle and/or its affiliates.  All rights reserved
+ * Copyright (c) 2011      Sandia National Laboratories. All rights reserved.
+ * Copyright (c) 2012-2016 Los Alamos National Security, LLC. All rights
+ *                         reserved.
+ * Copyright (c) 2015      Research Organization for Information Science
+ *                         and Technology (RIST). All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 /**
- *  @file 
+ *  @file
  */
 
 #ifndef MCA_PML_OB1_H
 #define MCA_PML_OB1_H
 
 #include "ompi_config.h"
-#include "ompi/class/ompi_free_list.h"
+#include "opal/class/opal_free_list.h"
 #include "ompi/request/request.h"
 #include "ompi/mca/pml/pml.h"
 #include "ompi/mca/pml/base/pml_base_request.h"
@@ -33,7 +40,7 @@
 #include "pml_ob1_hdr.h"
 #include "ompi/mca/bml/base/base.h"
 #include "ompi/proc/proc.h"
-#include "ompi/mca/allocator/base/base.h"
+#include "opal/mca/allocator/base/base.h"
 
 BEGIN_C_DECLS
 
@@ -42,7 +49,7 @@ BEGIN_C_DECLS
  */
 
 struct mca_pml_ob1_t {
-    mca_pml_base_module_t super; 
+    mca_pml_base_module_t super;
 
     int priority;
     int free_list_num;      /* initial size of free list */
@@ -50,21 +57,22 @@ struct mca_pml_ob1_t {
     int free_list_inc;      /* number of elements to grow free list */
     size_t send_pipeline_depth;
     size_t recv_pipeline_depth;
-    size_t rdma_put_retries_limit;
+    size_t rdma_retries_limit;
     int max_rdma_per_request;
     int max_send_per_range;
-    bool leave_pinned; 
+    bool leave_pinned;
+    bool use_all_rdma;
     int leave_pinned_pipeline;
-    
+
     /* lock queue access */
     opal_mutex_t lock;
 
     /* free lists */
-    ompi_free_list_t rdma_frags;
-    ompi_free_list_t recv_frags;
-    ompi_free_list_t pending_pckts;
-    ompi_free_list_t buffers;
-    ompi_free_list_t send_ranges;
+    opal_free_list_t rdma_frags;
+    opal_free_list_t recv_frags;
+    opal_free_list_t pending_pckts;
+    opal_free_list_t buffers;
+    opal_free_list_t send_ranges;
 
     /* list of pending operations */
     opal_list_t pckt_pending;
@@ -73,15 +81,16 @@ struct mca_pml_ob1_t {
     opal_list_t rdma_pending;
     /* List of pending fragments without a matching communicator */
     opal_list_t non_existing_communicator_pending;
-    bool enabled; 
+    bool enabled;
     char* allocator_name;
-    mca_allocator_base_module_t* allocator; 
-    uint32_t unexpected_limit;
+    mca_allocator_base_module_t* allocator;
+    unsigned int unexpected_limit;
 };
-typedef struct mca_pml_ob1_t mca_pml_ob1_t; 
+typedef struct mca_pml_ob1_t mca_pml_ob1_t;
 
 extern mca_pml_ob1_t mca_pml_ob1;
-
+extern int mca_pml_ob1_output;
+extern bool mca_pml_ob1_matching_protection;
 /*
  * PML interface functions.
  */
@@ -119,7 +128,20 @@ extern int mca_pml_ob1_probe( int dst,
                               struct ompi_communicator_t* comm,
                               ompi_status_public_t* status );
 
-extern int mca_pml_ob1_isend_init( void *buf,
+extern int mca_pml_ob1_improbe( int dst,
+                               int tag,
+                               struct ompi_communicator_t* comm,
+                               int *matched,
+                               struct ompi_message_t **message,
+                               ompi_status_public_t* status );
+
+extern int mca_pml_ob1_mprobe( int dst,
+                              int tag,
+                              struct ompi_communicator_t* comm,
+                              struct ompi_message_t **message,
+                              ompi_status_public_t* status );
+
+extern int mca_pml_ob1_isend_init( const void *buf,
                                    size_t count,
                                    ompi_datatype_t *datatype,
                                    int dst,
@@ -128,7 +150,7 @@ extern int mca_pml_ob1_isend_init( void *buf,
                                    struct ompi_communicator_t* comm,
                                    struct ompi_request_t **request );
 
-extern int mca_pml_ob1_isend( void *buf,
+extern int mca_pml_ob1_isend( const void *buf,
                               size_t count,
                               ompi_datatype_t *datatype,
                               int dst,
@@ -137,7 +159,7 @@ extern int mca_pml_ob1_isend( void *buf,
                               struct ompi_communicator_t* comm,
                               struct ompi_request_t **request );
 
-extern int mca_pml_ob1_send( void *buf,
+extern int mca_pml_ob1_send( const void *buf,
                              size_t count,
                              ompi_datatype_t *datatype,
                              int dst,
@@ -169,61 +191,96 @@ extern int mca_pml_ob1_recv( void *buf,
                              struct ompi_communicator_t* comm,
                              ompi_status_public_t* status );
 
+extern int mca_pml_ob1_imrecv( void *buf,
+                               size_t count,
+                               ompi_datatype_t *datatype,
+                               struct ompi_message_t **message,
+                               struct ompi_request_t **request );
+
+extern int mca_pml_ob1_mrecv( void *buf,
+                              size_t count,
+                              ompi_datatype_t *datatype,
+                              struct ompi_message_t **message,
+                              ompi_status_public_t* status );
+
 extern int mca_pml_ob1_dump( struct ompi_communicator_t* comm,
                              int verbose );
 
 extern int mca_pml_ob1_start( size_t count,
                               ompi_request_t** requests );
 
-extern int mca_pml_ob1_ft_event( int state );
+/**
+ * We will use these requests to hold on a traditionally allocated
+ * requests in order to allow the parallel debugger full access to the
+ * message queues (instead of allocating the requests on the stack).
+ */
+extern struct mca_pml_ob1_recv_request_t *mca_pml_ob1_recvreq;
+extern struct mca_pml_ob1_send_request_t *mca_pml_ob1_sendreq;
 
 END_C_DECLS
 
 struct mca_pml_ob1_pckt_pending_t {
-    ompi_free_list_item_t super;
+    opal_free_list_item_t super;
     ompi_proc_t* proc;
     mca_pml_ob1_hdr_t hdr;
     struct mca_bml_base_btl_t *bml_btl;
     uint8_t order;
+    int status;
 };
 typedef struct mca_pml_ob1_pckt_pending_t mca_pml_ob1_pckt_pending_t;
 OBJ_CLASS_DECLARATION(mca_pml_ob1_pckt_pending_t);
 
-#define MCA_PML_OB1_PCKT_PENDING_ALLOC(pckt,rc)                 \
+#define MCA_PML_OB1_PCKT_PENDING_ALLOC(pckt)                    \
 do {                                                            \
-    ompi_free_list_item_t* item;                                \
-    OMPI_FREE_LIST_WAIT(&mca_pml_ob1.pending_pckts, item, rc);  \
-    pckt = (mca_pml_ob1_pckt_pending_t*)item;                   \
+    pckt = (mca_pml_ob1_pckt_pending_t *)                       \
+        opal_free_list_get (&mca_pml_ob1.pending_pckts);        \
 } while (0)
 
 #define MCA_PML_OB1_PCKT_PENDING_RETURN(pckt)                   \
 do {                                                            \
     /* return packet */                                         \
-    OMPI_FREE_LIST_RETURN(&mca_pml_ob1.pending_pckts,           \
-        (ompi_free_list_item_t*)pckt);                          \
+    opal_free_list_return (&mca_pml_ob1.pending_pckts,          \
+        (opal_free_list_item_t*)pckt);                          \
 } while(0)
 
-#define MCA_PML_OB1_ADD_FIN_TO_PENDING(P, D, B, O, S)               \
+#define MCA_PML_OB1_ADD_FIN_TO_PENDING(P, D, Sz, B, O, S)           \
     do {                                                            \
         mca_pml_ob1_pckt_pending_t *_pckt;                          \
-        int _rc;                                                    \
                                                                     \
-        MCA_PML_OB1_PCKT_PENDING_ALLOC(_pckt,_rc);                  \
-        _pckt->hdr.hdr_common.hdr_type = MCA_PML_OB1_HDR_TYPE_FIN;  \
-        _pckt->hdr.hdr_fin.hdr_des = (D);                           \
-        _pckt->hdr.hdr_fin.hdr_fail = (S);                          \
+        MCA_PML_OB1_PCKT_PENDING_ALLOC(_pckt);                      \
+        mca_pml_ob1_fin_hdr_prepare (&_pckt->hdr.hdr_fin, 0,        \
+                                     (D).lval, (Sz));               \
         _pckt->proc = (P);                                          \
         _pckt->bml_btl = (B);                                       \
         _pckt->order = (O);                                         \
+        _pckt->status = (S);                                        \
         OPAL_THREAD_LOCK(&mca_pml_ob1.lock);                        \
         opal_list_append(&mca_pml_ob1.pckt_pending,                 \
                 (opal_list_item_t*)_pckt);                          \
         OPAL_THREAD_UNLOCK(&mca_pml_ob1.lock);                      \
     } while(0)
 
+#define OB1_MATCHING_LOCK(lock)                                  \
+    do {                                                         \
+        if( mca_pml_ob1_matching_protection ) {                  \
+            opal_mutex_lock(lock);                               \
+        }                                                        \
+        else { OPAL_THREAD_LOCK(lock); }                         \
+    } while(0)
 
-int mca_pml_ob1_send_fin(ompi_proc_t* proc, mca_bml_base_btl_t* bml_btl, 
-        ompi_ptr_t hdr_des, uint8_t order, uint32_t status);
+
+#define OB1_MATCHING_UNLOCK(lock)                                \
+    do {                                                         \
+        if( mca_pml_ob1_matching_protection ) {                  \
+            opal_mutex_unlock(lock);                             \
+        }                                                        \
+        else { OPAL_THREAD_UNLOCK(lock); }                       \
+    } while(0)
+
+
+
+int mca_pml_ob1_send_fin(ompi_proc_t* proc, mca_bml_base_btl_t* bml_btl,
+        opal_ptr_t hdr_frag, uint64_t size, uint8_t order, int status);
 
 /* This function tries to resend FIN/ACK packets from pckt_pending queue.
  * Packets are added to the queue when sending of FIN or ACK is failed due to
@@ -253,20 +310,48 @@ void mca_pml_ob1_process_pending_rdma(void);
 /*
  * Compute the total number of bytes on supplied descriptor
  */
-#define MCA_PML_OB1_COMPUTE_SEGMENT_LENGTH(segments, count, hdrlen, length) \
-do {                                                                        \
-   size_t i;                                                                \
-                                                                            \
-   for( i = 0; i < count; i++ ) {                                           \
-       length += segments[i].seg_len;                                       \
-   }                                                                        \
-   length -= hdrlen;                                                        \
-} while(0)
+static inline size_t
+mca_pml_ob1_compute_segment_length_base(mca_btl_base_segment_t *segments,
+                                        size_t count, size_t hdrlen)
+{
+    size_t i, length = 0;
+
+    for (i = 0; i < count ; ++i) {
+        length += segments[i].seg_len;
+    }
+    return (length - hdrlen);
+}
+
+static inline size_t
+mca_pml_ob1_compute_segment_length_remote (size_t seg_size, void *segments,
+                                           size_t count, ompi_proc_t *rem_proc)
+{
+    mca_btl_base_segment_t *segment = (mca_btl_base_segment_t *) segments;
+#if OPAL_ENABLE_HETEROGENEOUS_SUPPORT
+    ompi_proc_t *local_proc = ompi_proc_local();
+#endif
+    size_t i, length = 0;
+
+    for (i = 0 ; i < count ; ++i) {
+#if OPAL_ENABLE_HETEROGENEOUS_SUPPORT
+        if ((rem_proc->super.proc_arch & OPAL_ARCH_ISBIGENDIAN) !=
+            (local_proc->super.proc_arch & OPAL_ARCH_ISBIGENDIAN))
+            /* NTH: seg_len is always 64-bit so use swap_bytes8 */
+            length += opal_swap_bytes8(segment->seg_len);
+        else
+#endif
+            length += segment->seg_len;
+
+        segment = (mca_btl_base_segment_t *)((char *)segment + seg_size);
+    }
+
+    return length;
+}
 
 /* represent BTL chosen for sending request */
 struct mca_pml_ob1_com_btl_t {
     mca_bml_base_btl_t *bml_btl;
-    struct mca_mpool_base_registration_t* btl_reg;
+    struct mca_btl_base_registration_handle_t *btl_reg;
     size_t length;
 };
 typedef struct mca_pml_ob1_com_btl_t mca_pml_ob1_com_btl_t;

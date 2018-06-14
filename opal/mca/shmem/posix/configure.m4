@@ -10,9 +10,11 @@
 #                         University of Stuttgart.  All rights reserved.
 # Copyright (c) 2004-2005 The Regents of the University of California.
 #                         All rights reserved.
-# Copyright (c) 2010      Cisco Systems, Inc.  All rights reserved.
+# Copyright (c) 2010-2014 Cisco Systems, Inc.  All rights reserved.
 # Copyright (c) 2010-2011 Los Alamos National Security, LLC.
 #                         All rights reserved.
+# Copyright (c) 2015      Research Organization for Information Science
+#                         and Technology (RIST). All rights reserved.
 # $COPYRIGHT$
 #
 # Additional copyrights may follow
@@ -20,10 +22,12 @@
 # $HEADER$
 #
 
-# MCA_shmem_posix_CONFIG(action-if-can-compile,
+# MCA_opal_shmem_posix_CONFIG(action-if-can-compile,
 #                        [action-if-cant-compile])
 # ------------------------------------------------
-AC_DEFUN([MCA_shmem_posix_CONFIG],[
+AC_DEFUN([MCA_opal_shmem_posix_CONFIG],[
+    AC_CONFIG_FILES([opal/mca/shmem/posix/Makefile])
+
     # do we have the posix shm stuff?
     AC_MSG_CHECKING([if want POSIX shared memory support])
     AC_ARG_ENABLE(posix-shmem,
@@ -33,10 +37,10 @@ AC_DEFUN([MCA_shmem_posix_CONFIG],[
           [AC_MSG_RESULT([no])
            shmem_posix_sm_build_posix=0],
           [AC_MSG_RESULT([yes])
-           AC_SEARCH_LIBS([shm_open], [rt],
+           OPAL_SEARCH_LIBS_COMPONENT([shmem_posix], [shm_open], [rt],
                   [shmem_posix_sm_build_posix=1],
                   [shmem_posix_sm_build_posix=0])])
-    AS_IF([test "$enable_posix_shmem" = "yes" -a "$shmem_posix_sm_build_posix" = "0"],
+    AS_IF([test "$enable_posix_shmem" = "yes" && test "$shmem_posix_sm_build_posix" = "0"],
           [AC_MSG_WARN([POSIX shared memory support requested but not found])
            AC_MSG_ERROR([Cannot continue])])
 

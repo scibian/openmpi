@@ -1,5 +1,8 @@
+.\" -*- nroff -*-
+.\" Copyright 2010 Cisco Systems, Inc.  All rights reserved.
 .\" Copyright 2006-2008 Sun Microsystems, Inc.
 .\" Copyright (c) 1996 Thinking Machines
+.\" $COPYRIGHT$
 .TH MPI_Type_create_f90_integer 3 "#OMPI_DATE#" "#PACKAGE_VERSION#" "#PACKAGE_NAME#"
 
 .SH NAME
@@ -42,7 +45,7 @@ newtype
 New data type (handle).
 .TP 1i
 IERROR
-Fortran only: Error status (integer). 
+Fortran only: Error status (integer).
 
 .SH DESCRIPTION
 .ft R
@@ -106,14 +109,14 @@ Almost all MPI routines return an error value; C routines as
 the value of the function and Fortran routines in the last argument. C++
 functions do not return errors. If the default error handler is set to
 MPI::ERRORS_THROW_EXCEPTIONS, then on error the C++ exception mechanism
-will be used to throw an MPI:Exception object.
+will be used to throw an MPI::Exception object.
 .sp
 Before the error value is returned, the current MPI error handler is
 called. By default, this error handler aborts the MPI job, except for
 I/O function errors. The error handler may be changed with
 MPI_Comm_set_errhandler; the predefined error handler MPI_ERRORS_RETURN
 may be used to cause error values to be returned. Note that MPI does not
-guarantee that an MPI program can continue past an error. 
+guarantee that an MPI program can continue past an error.
 .sp
 See the MPI man page for a full list of MPI error codes.
 

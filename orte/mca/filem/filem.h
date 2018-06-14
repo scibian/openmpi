@@ -1,3 +1,4 @@
+/* -*- Mode: C; c-basic-offset:4 ; indent-tabs-mode:nil -*- */
 /*
  * Copyright (c) 2004-2009 The Trustees of Indiana University and Indiana
  *                         University Research and Technology
@@ -5,14 +6,16 @@
  * Copyright (c) 2004-2005 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
+ * Copyright (c) 2012-2015 Los Alamos National Security, LLC. All rights
+ *                         reserved
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 /**
@@ -29,11 +32,12 @@
 #include "orte/constants.h"
 #include "orte/types.h"
 
-#include "opal/mca/mca.h"
+#include "orte/mca/mca.h"
 #include "opal/mca/base/base.h"
 
 #include "opal/class/opal_object.h"
 
+#include "orte/runtime/orte_globals.h"
 BEGIN_C_DECLS
 
 /**
@@ -43,9 +47,13 @@ BEGIN_C_DECLS
 #define ORTE_FILEM_TYPE_FILE      0
 #define ORTE_FILEM_TYPE_DIR       1
 #define ORTE_FILEM_TYPE_UNKNOWN   2
+#define ORTE_FILEM_TYPE_TAR       3
+#define ORTE_FILEM_TYPE_BZIP      4
+#define ORTE_FILEM_TYPE_GZIP      5
+#define ORTE_FILEM_TYPE_EXE       6
 
 /**
- * Type of moment
+ * Type of movement
  */
 #define ORTE_FILEM_MOVE_TYPE_PUT       0
 #define ORTE_FILEM_MOVE_TYPE_GET       1
@@ -86,13 +94,16 @@ ORTE_DECLSPEC OBJ_CLASS_DECLARATION(orte_filem_base_process_set_t);
  * Local: Local file reference
  * Remove: Remote file reference
  *
- * Note: If multiple process sinks are used it is assumed that the 
+ * Note: If multiple process sinks are used it is assumed that the
  * file reference is the same for each of the sinks. If this is not
  * true then more than one filem request needs to be created.
  */
 struct orte_filem_base_file_set_1_0_0_t {
     /** This is an object, so must have a super */
     opal_list_item_t super;
+
+    /* the app_index this pertains to, if applicable */
+    orte_app_idx_t app_idx;
 
     /* Local file reference */
     char * local_target;
@@ -122,14 +133,23 @@ ORTE_DECLSPEC OBJ_CLASS_DECLARATION(orte_filem_base_file_set_t);
  * in a single call of the API function. Allowing the implementation
  * to optimize the sending/receiving of data.
  * Used for the following:
- * 
+ *
  */
 struct orte_filem_base_request_1_0_0_t {
     /** This is an object, so must have a super */
     opal_list_item_t super;
 
     /*
-     * A list of process sets
+     * A list of process sets - use WILDCARD to
+     * indicate all procs of a given vpid/jobid,
+     * INVALID to indicate not-applicable. For
+     * example, if you need to move a file at time
+     * of job start to each node that has a proc
+     * on it, then the process set would have a
+     * source proc with vpid=INVALID and a sink proc
+     * with vpid=WILDCARD, and a remote hint of "shared"
+     * in the file sets so we don't copy them over
+     * multiple times
      */
     opal_list_t process_sets;
 
@@ -194,9 +214,9 @@ typedef int (*orte_filem_base_module_finalize_fn_t)
  *       component will negotiate the correct absolute path for that file/directory
  *       for the remote machine.
  *
- * @param request FileM request describing the files/directories to send, 
+ * @param request FileM request describing the files/directories to send,
  *        the remote files/directories to use, and the processes to see the change.
- * 
+ *
  * @return ORTE_SUCCESS on successful file transer
  * @return ORTE_ERROR on failed file transfer
  */
@@ -210,9 +230,9 @@ typedef int (*orte_filem_base_put_fn_t)
  *       component will negotiate the correct absolute path for that file/directory
  *       for the remote machine.
  *
- * @param request FileM request describing the files/directories to send, 
+ * @param request FileM request describing the files/directories to send,
  *        the remote files/directories to use, and the processes to see the change.
- * 
+ *
  * @return ORTE_SUCCESS on successful file transer
  * @return ORTE_ERROR on failed file transfer
  */
@@ -226,9 +246,9 @@ typedef int (*orte_filem_base_put_nb_fn_t)
  *       component will negotiate the correct absolute path for that file/directory
  *       for the remote machine.
  *
- * @param request FileM request describing the files/directories to receive, 
+ * @param request FileM request describing the files/directories to receive,
  *        the remote files/directories to use, and the processes to see the change.
- * 
+ *
  * @return ORTE_SUCCESS on successful file transer
  * @return ORTE_ERROR on failed file transfer
  */
@@ -242,9 +262,9 @@ typedef int (*orte_filem_base_get_fn_t)
  *       component will negotiate the correct absolute path for that file/directory
  *       for the remote machine.
  *
- * @param request FileM request describing the files/directories to receive, 
+ * @param request FileM request describing the files/directories to receive,
  *        the remote files/directories to use, and the processes to see the change.
- * 
+ *
  * @return ORTE_SUCCESS on successful file transer
  * @return ORTE_ERROR on failed file transfer
  */
@@ -253,12 +273,12 @@ typedef int (*orte_filem_base_get_nb_fn_t)
 
 /**
  * Remove a file from the remote machine
- * 
+ *
  * Note: By using a relative path for the remote file/directory, the filem
  *       component will negotiate the correct absolute path for that file/directory
  *       for the remote machine.
  *
- * @param request FileM request describing the remote files/directories to remove, 
+ * @param request FileM request describing the remote files/directories to remove,
  *        the processes to see the change.
  *
  * @return ORTE_SUCCESS on success
@@ -269,12 +289,12 @@ typedef int (*orte_filem_base_rm_fn_t)
 
 /**
  * Remove a file from the remote machine (Async)
- * 
+ *
  * Note: By using a relative path for the remote file/directory, the filem
  *       component will negotiate the correct absolute path for that file/directory
  *       for the remote machine.
  *
- * @param request FileM request describing the remote files/directories to remove, 
+ * @param request FileM request describing the remote files/directories to remove,
  *        the processes to see the change.
  *
  * @return ORTE_SUCCESS on success
@@ -311,6 +331,18 @@ typedef int (*orte_filem_base_wait_fn_t)
 typedef int (*orte_filem_base_wait_all_fn_t)
      (opal_list_t *request_list);
 
+typedef void (*orte_filem_completion_cbfunc_t)(int status, void *cbdata);
+
+/* Pre-position files
+ */
+typedef int (*orte_filem_base_preposition_files_fn_t)(orte_job_t *jdata,
+                                                      orte_filem_completion_cbfunc_t cbfunc,
+                                                      void *cbdata);
+
+/* link local files */
+typedef int (*orte_filem_base_link_local_files_fn_t)(orte_job_t *jdata,
+                                                     orte_app_context_t *app);
+
 /**
  * Structure for FILEM components.
  */
@@ -319,13 +351,6 @@ struct orte_filem_base_component_2_0_0_t {
     mca_base_component_t base_version;
     /** MCA base data */
     mca_base_component_data_t base_data;
-
-    /** Verbosity Level */
-    int verbose;
-    /** Output Handle for opal_output */
-    int output_handle;
-    /** Default Priority */
-    int priority;
 };
 typedef struct orte_filem_base_component_2_0_0_t orte_filem_base_component_2_0_0_t;
 typedef struct orte_filem_base_component_2_0_0_t orte_filem_base_component_t;
@@ -354,6 +379,11 @@ struct orte_filem_base_module_1_0_0_t {
     orte_filem_base_wait_fn_t                  wait;
     orte_filem_base_wait_all_fn_t              wait_all;
 
+    /* pre-position files to every node */
+    orte_filem_base_preposition_files_fn_t     preposition_files;
+    /* create local links for all shared files */
+    orte_filem_base_link_local_files_fn_t      link_local_files;
+
 };
 typedef struct orte_filem_base_module_1_0_0_t orte_filem_base_module_1_0_0_t;
 typedef struct orte_filem_base_module_1_0_0_t orte_filem_base_module_t;
@@ -364,8 +394,7 @@ ORTE_DECLSPEC extern orte_filem_base_module_t orte_filem;
  * Macro for use in components that are of type FILEM
  */
 #define ORTE_FILEM_BASE_VERSION_2_0_0 \
-    MCA_BASE_VERSION_2_0_0, \
-    "filem", 2, 0, 0
+    ORTE_MCA_BASE_VERSION_2_1_0("filem", 2, 0, 0)
 
 END_C_DECLS
 

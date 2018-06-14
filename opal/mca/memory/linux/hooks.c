@@ -1,5 +1,8 @@
+/* -*- Mode: C; c-basic-offset:4 ; indent-tabs-mode:nil -*- */
 /*
  * Copyright (c) 2009-2010 Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2012-2013 Los Alamos National Security, LLC. All rights
+ *                         reserved.
  *
  * Additional copyrights may follow.
  */
@@ -28,10 +31,9 @@
 #include "opal_config.h"
 
 #include "opal/mca/mca.h"
-#include "opal/mca/base/mca_base_param.h"
 #include "opal/mca/memory/memory.h"
-#include "opal/util/show_help.h"
 #include "opal/constants.h"
+#include "opal/memoryhooks/memory.h"
 
 #include "opal/mca/memory/linux/memory_linux.h"
 
@@ -43,6 +45,8 @@
 #include <sys/stat.h>  /* for stat */
 #endif  /* HAVE_SYS_STAT_H */
 
+/* Defined in memory_linux_component.c */
+extern bool opal_memory_linux_disable;
 
 /* What to do if the standard debugging hooks are in place and a
    corrupt pointer is detected: do nothing (0), print an error message
@@ -204,8 +208,8 @@ mem2chunk_check(mem) Void_t* mem;
     int contig = contiguous(&main_arena);
     sz = chunksize(p);
     if((contig &&
-	((char*)p<mp_.sbrk_base ||
-	 ((char*)p + sz)>=(mp_.sbrk_base+main_arena.system_mem) )) ||
+        ((char*)p<mp_.sbrk_base ||
+         ((char*)p + sz)>=(mp_.sbrk_base+main_arena.system_mem) )) ||
        sz<MINSIZE || sz&MALLOC_ALIGN_MASK || !inuse(p) ||
        ( !prev_inuse(p) && (p->prev_size&MALLOC_ALIGN_MASK ||
                             (contig && (char*)prev_chunk(p)<mp_.sbrk_base) ||
@@ -261,7 +265,7 @@ top_check()
        chunksize(t)>=MINSIZE &&
        prev_inuse(t) &&
        (!contiguous(&main_arena) ||
-	(char*)t + chunksize(t) == mp_.sbrk_base + main_arena.system_mem)))
+        (char*)t + chunksize(t) == mp_.sbrk_base + main_arena.system_mem)))
     return 0;
 
   if(check_action & 1)
@@ -377,11 +381,11 @@ realloc_check(oldmem, bytes, caller)
     {
       /* Note the extra SIZE_SZ overhead. */
       if(oldsize - SIZE_SZ >= nb)
-	newmem = oldmem; /* do nothing */
+        newmem = oldmem; /* do nothing */
       else {
         /* Must alloc, copy, free. */
         if (top_check() >= 0)
-	  newmem = _int_malloc(&main_arena, bytes+1);
+          newmem = _int_malloc(&main_arena, bytes+1);
         if (newmem) {
           MALLOC_COPY(BOUNDED_N(newmem, bytes+1), oldmem, oldsize - 2*SIZE_SZ);
           munmap_chunk(oldp);
@@ -401,7 +405,7 @@ realloc_check(oldmem, bytes, caller)
              oldsize - (2*sizeof(mbinptr)+2*SIZE_SZ+1));
     } else if(nb > oldsize+SIZE_SZ) {
       memset((char*)BOUNDED_N(chunk2mem(newp), bytes) + oldsize,
-	     0, nb - (oldsize+SIZE_SZ));
+             0, nb - (oldsize+SIZE_SZ));
     }
 #endif
 #if HAVE_MMAP
@@ -609,23 +613,23 @@ public_sET_STATe(Void_t* msptr)
       first(b) = last(b) = b;
     } else {
       if(i<(int)NSMALLBINS || ((int)largebin_index(chunksize(ms->av[2*i+2]))==i &&
-			  (int)largebin_index(chunksize(ms->av[2*i+3]))==i)) {
-	first(b) = ms->av[2*i+2];
-	last(b) = ms->av[2*i+3];
-	/* Make sure the links to the bins within the heap are correct.  */
-	first(b)->bk = b;
-	last(b)->fd = b;
-	/* Set bit in binblocks.  */
-	mark_bin(&main_arena, i);
+                          (int)largebin_index(chunksize(ms->av[2*i+3]))==i)) {
+        first(b) = ms->av[2*i+2];
+        last(b) = ms->av[2*i+3];
+        /* Make sure the links to the bins within the heap are correct.  */
+        first(b)->bk = b;
+        last(b)->fd = b;
+        /* Set bit in binblocks.  */
+        mark_bin(&main_arena, i);
       } else {
-	/* Oops, index computation from chunksize must have changed.
+        /* Oops, index computation from chunksize must have changed.
            Link the whole list into unsorted_chunks.  */
-	first(b) = last(b) = b;
-	b = unsorted_chunks(&main_arena);
-	ms->av[2*i+2]->bk = b;
-	ms->av[2*i+3]->fd = b->fd;
-	b->fd->bk = ms->av[2*i+3];
-	b->fd = ms->av[2*i+2];
+        first(b) = last(b) = b;
+        b = unsorted_chunks(&main_arena);
+        ms->av[2*i+2]->bk = b;
+        ms->av[2*i+3]->fd = b->fd;
+        b->fd->bk = ms->av[2*i+3];
+        b->fd = ms->av[2*i+2];
       }
     }
   }
@@ -681,19 +685,19 @@ public_sET_STATe(Void_t* msptr)
    So we can basically have some hard-coded tests for things to see if
    we want to setup to use our internal ptmalloc2 or not. */
 
-static void *opal_memory_linux_malloc_hook(size_t sz, 
+static void *opal_memory_linux_malloc_hook(size_t sz,
                                            const __malloc_ptr_t caller)
 {
     return public_mALLOc(sz);
 }
 
-static void *opal_memory_linux_realloc_hook(Void_t* ptr, size_t sz, 
+static void *opal_memory_linux_realloc_hook(Void_t* ptr, size_t sz,
                                             const __malloc_ptr_t caller)
 {
     return public_rEALLOc(ptr, sz);
 }
 
-static void *opal_memory_linux_memalign_hook(size_t alignment, size_t sz, 
+static void *opal_memory_linux_memalign_hook(size_t alignment, size_t sz,
                                              const __malloc_ptr_t caller)
 {
     return public_mEMALIGn(alignment, sz);
@@ -731,11 +735,18 @@ static check_result_t check(const char *name)
     }
 }
 
-/* OMPI's init function */
-static void opal_memory_linux_malloc_init_hook(void)
+
+/* This function is called on loading libmpi in case system has Memory Allocation Hooks
+ * (see ompi/runtime/ompi_mpi_init.c for details)
+ */
+void opal_memory_linux_malloc_init_hook(void)
 {
     check_result_t r1, lp, lpp;
     bool want_rcache = false, found_driver = false;
+
+    if (!opal_memory_linux_opened) {
+        return;
+    }
 
     /* First, check for a FAKEROOT environment.  If we're in a
        fakeroot, then access() (and likely others) have been replaced
@@ -747,20 +758,28 @@ static void opal_memory_linux_malloc_init_hook(void)
        "fakeroot" build environment that allocates memory during
        stat() (see http://bugs.debian.org/531522).  It may not be
        necessary any more since we're using access(), not stat().  But
-       we'll leave the check, anyway. */
+       we'll leave the check, anyway.
+
+       This is also an issue when using Gentoo's version of
+       'fakeroot', sandbox v2.5.  Sandbox environments can also be
+       detected fairly easily by looking for SANDBOX_ON. */
     if (getenv("FAKEROOTKEY") != NULL ||
-        getenv("FAKED_MODE") != NULL) {
+        getenv("FAKED_MODE") != NULL ||
+        getenv("SANDBOX_ON") != NULL ) {
         return;
     }
 
+#if MEMORY_LINUX_UMMUNOTIFY
     /* Next, check if ummunotify is present on the system. If it is,
-       then we don't need to do the following ptmalloc2 hacks.
-       open/mmap on the device may fail during init, but if /dev/ummunotify
-       exists, we assume that the user/administrator *wants* to use
+       and if we were compile with ummunotify support, then we don't
+       need to do the following ptmalloc2 hacks.  open/mmap on the
+       device may fail during init, but if /dev/ummunotify exists, we
+       assume that the user/administrator *wants* to use
        ummunotify. */
     if (access("/dev/ummunotify", F_OK) == 0) {
         return;
     }
+#endif
 
     /* Yes, checking for an MPI MCA parameter here is an abstraction
        violation.  Cope.  Yes, even checking for *any* MCA parameter
@@ -768,11 +787,13 @@ static void opal_memory_linux_malloc_init_hook(void)
        abstraction violation.  Fricken' cope, will ya?
        (unfortunately, there's really no good way to do this other
        than this abstraction violation :-( ) */
-    lp = check("OMPI_MCA_mpi_leave_pinned");
-    lpp = check("OMPI_MCA_mpi_leave_pinned_pipeline");
+    lp = check("OPAL_MCA_leave_pinned");
+    if( RESULT_NOT_FOUND == lp ) lp = check(OPAL_MCA_PREFIX"mpi_leave_pinned");
+    lpp = check("OPAL_MCA_leave_pinned_pipeline");
+    if( RESULT_NOT_FOUND == lpp ) lpp = check(OPAL_MCA_PREFIX"mpi_leave_pinned_pipeline");
 
     /* See if we want to disable this component.  */
-    r1 = check("OMPI_MCA_memory_linux_disable");
+    r1 = check(OPAL_MCA_PREFIX"memory_linux_disable");
     if (RESULT_NOT_FOUND != r1 && RESULT_NO != r1) {
         return;
     }
@@ -800,15 +821,17 @@ static void opal_memory_linux_malloc_init_hook(void)
         0 == access("/dev/myri8", F_OK) ||
         0 == access("/dev/myri9", F_OK) ||
         0 == access("/dev/ipath", F_OK) ||
-        0 == access("/dev/kgni0", F_OK)) {
+        0 == access("/dev/kgni0", F_OK) ||
+        0 == access("/dev/mic/scif", F_OK) ||
+        0 == access("/dev/scif", F_OK)) {
         found_driver = true;
     }
-    
+
     /* Simple combination of the results of these two environment
        variables (if both "yes" and "no" are specified, then be
        conservative and assume "yes"):
 
-       lp / lpp   yes   no   runtime   not found       
+       lp / lpp   yes   no   runtime   not found
        yes        yes   yes  yes       yes
        no         yes   no   no        no
        runtime    yes   no   runtime   runtime
@@ -856,8 +879,6 @@ void opal_memory_linux_hook_pull(bool *want_hooks);
    glibc, ....etc.). */
 void opal_memory_linux_hook_pull(bool *want_hooks)
 {
-    int val;
-
     /* Make this slightly less than a dummy function -- register the
        MCA parameter here (that way we keep the name of this MCA
        parameter here within this one, single file).  Register solely
@@ -866,36 +887,10 @@ void opal_memory_linux_hook_pull(bool *want_hooks)
        whatever value was set via normal MCA mechanisms likely won't
        be see if it wasn't already see by the getenv() in the
        _malloc_init_hook(). */
-    mca_base_param_source_t source;
-    char *file;
-    int p = mca_base_param_reg_int(&mca_memory_linux_component.super.memoryc_version,
-                                   "disable",
-                                   "If this MCA parameter is set to 1 **VIA ENVIRONMENT VARIABLE ONLY*** (this MCA parameter *CANNOT* be set in a file or on the mpirun command line!), this component will be disabled and will not attempt to use either ummunotify or memory hook support",
-                                   false, false, 0, &val);
-
-    /* We can at least warn if someone tried to set this in a file */
-    if (p >= 0) {
-        if (OPAL_SUCCESS == mca_base_param_lookup_source(p, &source, &file) &&
-            (MCA_BASE_PARAM_SOURCE_DEFAULT != source &&
-             MCA_BASE_PARAM_SOURCE_ENV != source)) {
-            opal_show_help("help-opal-memory-linux.txt",
-                           "disable incorrectly set", true,
-                           "opal_linux_disable",
-                           "opal_linux_disable", val,
-                           MCA_BASE_PARAM_SOURCE_FILE == source ?
-                           file : "override");
-        } else {
-            *want_hooks = OPAL_INT_TO_BOOL(!val);
-        }
-    }
+    *want_hooks = !opal_memory_linux_disable;
 }
 
 
-
-/* OMPI change: This is the symbol to override to make the above
-   function get fired during malloc initialization time. */
-void (*__malloc_initialize_hook) (void) = 
-    opal_memory_linux_malloc_init_hook;
 
 /*
  * Local variables:

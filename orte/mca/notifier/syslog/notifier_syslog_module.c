@@ -10,6 +10,7 @@
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
  * Copyright (c) 2007      Sun Microsystems, Inc.  All rights reserved.
+ * Copyright (c) 2014-2015 Intel, Inc.  All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -27,15 +28,13 @@
 #ifdef HAVE_SYSLOG_H
 #include <syslog.h>
 #endif
-#ifdef HAVE_STDARG_H
 #include <stdarg.h>
-#endif
 
 #include "opal/util/show_help.h"
 
-#include "orte/mca/ess/ess.h"
+#include "orte/util/error_strings.h"
 #include "orte/util/name_fns.h"
-#include "orte/runtime/orte_globals.h"
+
 #include "orte/mca/notifier/base/base.h"
 #include "notifier_syslog.h"
 
@@ -43,126 +42,92 @@
 /* Static API's */
 static int init(void);
 static void finalize(void);
-static void mylog(int severity, int errcode, const char *msg, ...);
-static void myhelplog(int severity, int errcode, const char *filename, const char *topic, ...);
-static void mypeerlog(int severity, int errcode, orte_process_name_t *peer_proc, const char *msg, ...);
+static void mylog(orte_notifier_request_t *req);
+static void myevent(orte_notifier_request_t *req);
+static void myreport(orte_notifier_request_t *req);
 
 /* Module def */
 orte_notifier_base_module_t orte_notifier_syslog_module = {
     init,
     finalize,
     mylog,
-    myhelplog,
-    mypeerlog
+    myevent,
+    myreport
 };
 
 
-static int init(void) {
+static int init(void)
+{
     int opts;
-    
-    opts = LOG_CONS | LOG_PID | LOG_SYSLOG;
-    openlog("Open MPI Error Report:", opts, LOG_USER);
-    
+
+    opts = LOG_CONS | LOG_PID;
+    openlog("OpenRTE Error Report:", opts, LOG_USER);
+
     return ORTE_SUCCESS;
 }
 
-static void finalize(void) {
+static void finalize(void)
+{
     closelog();
 }
 
-static void mylog(int severity, int errcode, const char *msg, ...)
+static void mylog(orte_notifier_request_t *req)
 {
-    va_list arglist;
-    
-    /* is the severity value above the threshold - I know
-     * this seems backward, but lower severity values are
-     * considered "more severe"
-     */
-    if (severity > orte_notifier_threshold_severity) {
-        return;
-    }
+    char tod[48];
 
+    opal_output_verbose(5, orte_notifier_base_framework.framework_output,
+                           "notifier:syslog:mylog function called with severity %d errcode %d and messg %s",
+                           (int)req->severity, req->errcode, req->msg);
     /* If there was a message, output it */
-    va_start(arglist, msg);
-    vsyslog(severity, msg, arglist);
-    va_end(arglist);
+    (void)ctime_r(&req->t, tod);
+    /* trim the newline */
+    tod[strlen(tod)] = '\0';
+
+    syslog(req->severity, "[%s]%s %s: JOBID %s REPORTS ERROR %s: %s", tod,
+           ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+           orte_notifier_base_sev2str(req->severity),
+           ORTE_JOBID_PRINT((NULL == req->jdata) ?
+                            ORTE_JOBID_INVALID : req->jdata->jobid),
+           orte_job_state_to_str(req->state),
+           (NULL == req->msg) ? "<N/A>" : req->msg);
 }
 
-static void myhelplog(int severity, int errcode, const char *filename, const char *topic, ...)
+static void myevent(orte_notifier_request_t *req)
 {
-    va_list arglist;
-    char *output;
-    
-    /* is the severity value above the threshold - I know
-     * this seems backward, but lower severity values are
-     * considered "more severe"
-     */
-    if (severity > orte_notifier_threshold_severity) {
-        return;
-    }
+    char tod[48];
 
-    va_start(arglist, topic);
-    output = opal_show_help_vstring(filename, topic, false, arglist);
-    va_end(arglist);
-    
-    /* if nothing came  back, then nothing to do */
-    if (NULL == output) {
-        return;
-    }
-    
-    /* go ahead and output it */
-    syslog(severity, output, NULL);
-    free(output);
+    opal_output_verbose(5, orte_notifier_base_framework.framework_output,
+                           "notifier:syslog:myevent function called with severity %d and messg %s",
+                           (int)req->severity, req->msg);
+    /* If there was a message, output it */
+    (void)ctime_r(&req->t, tod);
+    /* trim the newline */
+    tod[strlen(tod)] = '\0';
+
+    syslog(req->severity, "[%s]%s %s SYSTEM EVENT : %s", tod,
+           ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+           orte_notifier_base_sev2str(req->severity),
+           (NULL == req->msg) ? "<N/A>" : req->msg);
 }
 
-static void mypeerlog(int severity, int errcode, orte_process_name_t *peer_proc, const char *msg, ...)
+static void myreport(orte_notifier_request_t *req)
 {
-    va_list arglist;
-    char buf[ORTE_NOTIFIER_MAX_BUF + 1];
-    char *peer_host = NULL, *peer_name = NULL;
-    char *pos = buf;
-    char *errstr = (char*)orte_err2str(errcode);
-    int len, space = ORTE_NOTIFIER_MAX_BUF;
+    char tod[48];
 
-    /* is the severity value above the threshold - I know
-     * this seems backward, but lower severity values are
-     * considered "more severe"
-     */
-    if (severity > orte_notifier_threshold_severity) {
-        return;
-    }
+    opal_output_verbose(5, orte_notifier_base_framework.framework_output,
+                           "notifier:syslog:myreport function called with severity %d state %s and messg %s",
+                           (int)req->severity, orte_job_state_to_str(req->state),
+                           req->msg);
+    /* If there was a message, output it */
+    (void)ctime_r(&req->t, tod);
+    /* trim the newline */
+    tod[strlen(tod)] = '\0';
 
-    if (peer_proc) {
-        peer_host = orte_ess.proc_get_hostname(peer_proc);
-        peer_name = ORTE_NAME_PRINT(peer_proc);
-    }
-
-    len = snprintf(pos, space,
-                   "While communicating to proc %s on node %s,"
-                   " proc %s on node %s encountered an error ",
-                   peer_name ? peer_name : "UNKNOWN",
-                   peer_host ? peer_host : "UNKNOWN",
-                   ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
-                   orte_process_info.nodename);
-    space -= len;
-    pos += len;
-    
-    if (0 < space) {
-        if (errstr) {
-            len = snprintf(pos, space, "'%s':", errstr);
-        } else {
-            len = snprintf(pos, space, "(%d):", errcode);
-        }
-        space -= len;
-        pos += len;
-    }
-
-    if (0 < space) {
-        va_start(arglist, msg);
-        vsnprintf(pos, space, msg, arglist);
-        va_end(arglist);
-    }
-
-    buf[ORTE_NOTIFIER_MAX_BUF] = '\0'; /* not needed? */
-    syslog(severity, buf, NULL);
+    syslog(req->severity, "[%s]%s JOBID %s REPORTS STATE %s: %s", tod,
+           ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+           ORTE_JOBID_PRINT((NULL == req->jdata) ?
+                            ORTE_JOBID_INVALID : req->jdata->jobid),
+           orte_job_state_to_str(req->state),
+           (NULL == req->msg) ? "<N/A>" : req->msg);
 }
+

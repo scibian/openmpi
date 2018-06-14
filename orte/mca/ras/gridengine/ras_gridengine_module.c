@@ -5,15 +5,15 @@
  * Copyright (c) 2004-2005 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
- * Copyright (c) 2006-2009 Sun Microsystems, Inc.  All rights reserved.
+ * Copyright (c) 2006-2010 Oracle and/or its affiliates.  All rights reserved
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 /**
@@ -37,7 +37,7 @@
 /*
  * Local functions
  */
-static int orte_ras_gridengine_allocate(opal_list_t *nodes);
+static int orte_ras_gridengine_allocate(orte_job_t *jdata, opal_list_t *nodes);
 static int orte_ras_gridengine_finalize(void);
 #if 0
 static int get_slot_count(char* node_name, int* slot_cnt);
@@ -47,16 +47,18 @@ static int get_slot_count(char* node_name, int* slot_cnt);
  * Global variable
  */
 orte_ras_base_module_t orte_ras_gridengine_module = {
+    NULL,
     orte_ras_gridengine_allocate,
+    NULL,
     orte_ras_gridengine_finalize
 };
 
 /**
  *  Discover available (pre-allocated) nodes. Allocate the
  *  requested number of nodes/process slots to the job.
- *  
+ *
  */
-static int orte_ras_gridengine_allocate(opal_list_t *nodelist)
+static int orte_ras_gridengine_allocate(orte_job_t *jdata, opal_list_t *nodelist)
 {
     char *pe_hostfile = getenv("PE_HOSTFILE");
     char *job_id = getenv("JOB_ID");
@@ -72,7 +74,7 @@ static int orte_ras_gridengine_allocate(opal_list_t *nodelist)
         mca_ras_gridengine_component.verbose != -1) {
         opal_output(0, "ras:gridengine: JOB_ID: %s", job_id);
     }
-   
+
     /* check the PE_HOSTFILE before continuing on */
     if (!(fp = fopen(pe_hostfile, "r"))) {
         orte_show_help("help-ras-gridengine.txt", "cannot-read-pe-hostfile",
@@ -85,7 +87,7 @@ static int orte_ras_gridengine_allocate(opal_list_t *nodelist)
     /* parse the pe_hostfile for hostname, slots, etc, then compare the
      * current node with a list of hosts in the nodelist, if the current
      * node is not found in nodelist, add it in */
-    opal_output(mca_ras_gridengine_component.verbose, 
+    opal_output(mca_ras_gridengine_component.verbose,
 		"ras:gridengine: PE_HOSTFILE: %s", pe_hostfile);
 
     while (fgets(buf, sizeof(buf), fp)) {
@@ -104,9 +106,6 @@ static int orte_ras_gridengine_allocate(opal_list_t *nodelist)
                 /* just add the slots */
                 node->slots += (int)strtol(num, (char **)NULL, 10);
                 found = true;
-                opal_output(mca_ras_gridengine_component.verbose,
-                            "ras:gridengine: %s: PE_HOSTFILE increased to slots=%d",
-                            node->name, node->slots);
                 break;
             }
         }
@@ -143,7 +142,7 @@ cleanup:
     }
 
     return ORTE_SUCCESS;
-    
+
 }
 
 #if 0
@@ -153,11 +152,11 @@ cleanup:
  * slots/processors available on the node.
  */
 static int get_slot_count(char* node_name, int* slot_cnt)
-{   
+{
     char buf[1024], *tok, *name, *num, *queue, *arch;
     char *pe_hostfile = getenv("PE_HOSTFILE");
     FILE *fp;
-    
+
     /* check the PE_HOSTFILE before continuing on */
     if (!(fp = fopen(pe_hostfile, "r"))) {
         orte_show_help("help-ras-gridengine.txt", "cannot-read-pe-hostfile",
@@ -165,13 +164,13 @@ static int get_slot_count(char* node_name, int* slot_cnt)
         ORTE_ERROR_LOG(ORTE_ERROR);
         return(ORTE_ERROR);
     }
-        
+
     while (fgets(buf, sizeof(buf), fp)) {
         name = strtok_r(buf, " \n", &tok);
         num = strtok_r(NULL, " \n", &tok);
         queue = strtok_r(NULL, " \n", &tok);
         arch = strtok_r(NULL, " \n", &tok);
-        
+
         if(strcmp(node_name,name) == 0) {
             *slot_cnt = (int) strtol(num, (char **)NULL, 10);
             opal_output(mca_ras_gridengine_component.verbose,

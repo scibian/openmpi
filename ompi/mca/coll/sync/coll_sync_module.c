@@ -5,15 +5,15 @@
  * Copyright (c) 2004-2006 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
  * Copyright (c) 2009      Cisco Systems, Inc.  All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -65,7 +65,7 @@ static void mca_coll_sync_module_destruct(mca_coll_sync_module_t *module)
 }
 
 OBJ_CLASS_INSTANCE(mca_coll_sync_module_t, mca_coll_base_module_t,
-                   mca_coll_sync_module_construct, 
+                   mca_coll_sync_module_construct,
                    mca_coll_sync_module_destruct);
 
 
@@ -78,7 +78,6 @@ int mca_coll_sync_init_query(bool enable_progress_threads,
                              bool enable_mpi_threads)
 {
     /* Nothing to do */
-
     return OMPI_SUCCESS;
 }
 
@@ -89,7 +88,7 @@ int mca_coll_sync_init_query(bool enable_progress_threads,
  * priority we want to return.
  */
 mca_coll_base_module_t *
-mca_coll_sync_comm_query(struct ompi_communicator_t *comm, 
+mca_coll_sync_comm_query(struct ompi_communicator_t *comm,
                          int *priority)
 {
     mca_coll_sync_module_t *sync_module;
@@ -108,7 +107,6 @@ mca_coll_sync_comm_query(struct ompi_communicator_t *comm,
 
     /* Choose whether to use [intra|inter] */
     sync_module->super.coll_module_enable = mca_coll_sync_module_enable;
-    sync_module->super.ft_event = mca_coll_sync_ft_event;
 
     /* The "all" versions are already synchronous.  So no need for an
        additional barrier there. */
@@ -172,30 +170,9 @@ int mca_coll_sync_module_enable(mca_coll_base_module_t *module,
         return OMPI_SUCCESS;
     } else {
         orte_show_help("help-coll-sync.txt", "missing collective", true,
-                       orte_process_info.nodename, 
+                       orte_process_info.nodename,
                        mca_coll_sync_component.priority, msg);
         return OMPI_ERR_NOT_FOUND;
     }
 }
 
-
-int mca_coll_sync_ft_event(int state) 
-{
-    if (OPAL_CRS_CHECKPOINT == state) {
-        ;
-    }
-    else if (OPAL_CRS_CONTINUE == state) {
-        ;
-    }
-    else if (OPAL_CRS_RESTART == state) {
-        ;
-    }
-    else if (OPAL_CRS_TERM == state ) {
-        ;
-    }
-    else {
-        ;
-    }
-
-    return OMPI_SUCCESS;
-}

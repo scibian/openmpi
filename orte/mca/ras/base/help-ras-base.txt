@@ -6,14 +6,14 @@
 # Copyright (c) 2004-2005 The University of Tennessee and The University
 #                         of Tennessee Research Foundation.  All rights
 #                         reserved.
-# Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+# Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
 #                         University of Stuttgart.  All rights reserved.
 # Copyright (c) 2004-2005 The Regents of the University of California.
 #                         All rights reserved.
 # $COPYRIGHT$
-# 
+#
 # Additional copyrights may follow
-# 
+#
 # $HEADER$
 #
 # This is the US/English general help file for the RAS base.
@@ -31,5 +31,8 @@ please check that none of the following exist:
 MCA param file: orte_allocation_required = 1
 Environment: OMPI_MCA_orte_allocation_required=1
 Cmd line: -mca orte_allocation_required 1
-
-
+#
+[ras-sim:mismatch]
+The number of topology files and the list of number of nodes
+must match - i.e., a number of nodes must be given for each
+topology.

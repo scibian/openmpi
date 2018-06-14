@@ -5,14 +5,17 @@
  * Copyright (c) 2004-2006 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
+ * Copyright (c) 2013      Los Alamos National Security, LLC.
+ *                         All rights reserved.
+ * Copyright (c) 2014      Intel, Inc. All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -41,11 +44,17 @@ typedef struct opal_sys_limits_t {
  * values in the following locations - provide access here
  */
 OPAL_DECLSPEC extern opal_sys_limits_t opal_sys_limits;
-    
+
 /* Get the system resource limits and, if requested, set
- * them to the max allowed
+ * them to the specified limit
  */
-OPAL_DECLSPEC int opal_util_init_sys_limits(void);
+OPAL_DECLSPEC int opal_util_init_sys_limits(char **errmsg);
+
+/**
+ * Get pagesize
+ */
+OPAL_DECLSPEC int opal_getpagesize(void);
+
 
 END_C_DECLS
 

@@ -1,3 +1,4 @@
+/* -*- Mode: C; c-basic-offset:4 ; indent-tabs-mode:nil -*- */
 /*
  * Copyright (c) 2004-2008 The Trustees of Indiana University and Indiana
  *                         University Research and Technology
@@ -5,19 +6,21 @@
  * Copyright (c) 2004-2005 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
- * Copyright (c) 2008      Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2008-2012 Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2015      Los Alamos National Security, LLC. All rights
+ *                         reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
-/** 
- * @file 
+/**
+ * @file
  *
  * Top-level interface for \em all MCA components.
  *
@@ -40,7 +43,7 @@
  *   the change).  If we need to add more space to the struct, we'll
  *   increment the major version number.
  * - The MCA base component struct now has a version number in it
- *   (starting with Open MPI v1.3, it is 2.0.0). 
+ *   (starting with Open MPI v1.3, it is 2.0.0).
  * - As was an unstated assumption in prior versions of Open MPI, the
  *   unversioned versions of struct names (both in the MCA base and in
  *   individual framework bases) are intended for components who want
@@ -50,7 +53,7 @@
  *   struct version name.  Please note, however, the Open MPI
  *   developers may not generally provide older versions of framework
  *   interface structs unless they know if someone outside of the Open
- *   MPI community needs it.  
+ *   MPI community needs it.
  *
  *   ***IF YOU NEED BACKWARDS SOURCE OR BINARY COMPATIBILITY, you must
  *   let us know!***
@@ -110,8 +113,7 @@ typedef struct mca_base_module_2_0_0_t mca_base_module_2_0_0_t;
 /**
  * MCA component open function.
  *
- * @retval MCA_SUCCESS (or OPAL_SUCCESS or ORTE_SUCCESS or
- * OMPI_SUCCESS) This component can be used in the process.
+ * @retval OPAL_SUCCESS This component can be used in the process.
  *
  * @retval OPAL_ERR_NOT_AVAILABLE Silently ignore this component for
  * the duration of the process (it may even be unloaded from the
@@ -122,19 +124,19 @@ typedef struct mca_base_module_2_0_0_t mca_base_module_2_0_0_t;
  * be unloaded from the process).
  *
  * All MCA components can have an "open" function that is invoked once
- * per process, when the component is located and loaded.  This function
- * should register any MCA parameters (using
- * mca_base_param_register_int() and mca_base_param_register_string())
- * that will be used by the component.  Parameter registrations should
- * occur in this function because the ompi_info command can be used by
- * users to display all available MCA parameters (and their default
- * values).  However, the ompi_info command \em only invokes this open
- * function on all components (i.e., no other component API methods).
+ * per process, when the component is located and loaded.
+ *
+ * This function should avoid registering MCA parameters (use the
+ * component "register" function for that; i.e.,
+ * mca_base_register_component_params_2_0_0_fn_t for that).  Legacy
+ * components still register MCA params in their component "open"
+ * function, but their authors should update them to use the component
+ * "register" function.
  *
  * This function can also be used to allocate any resources necessary
  * for the component (e.g., heap memory).
  *
- * This function should return MCA_SUCCESS if it wishes to remain
+ * This function should return OPAL_SUCCESS if it wishes to remain
  * loaded in the process.  Any other return value will cause the MCA
  * base to unload the component.  Although most components do not use
  * this mechanism to force themselves to be unloaded (because if they
@@ -145,14 +147,14 @@ typedef struct mca_base_module_2_0_0_t mca_base_module_2_0_0_t;
  * resources to allocate, and c) can always be used in a process
  * (albiet perhaps not selected), it may provide NULL for this
  * function.  In this cause, the MCA will act as if it called the open
- * function and it returned MCA_SUCCESS.
+ * function and it returned OPAL_SUCCESS.
  */
 typedef int (*mca_base_open_component_1_0_0_fn_t)(void);
 
-/** 
+/**
  * MCA component close function.
  *
- * @retval MCA_SUCCESS The component successfully shut down.
+ * @retval OPAL_SUCCESS The component successfully shut down.
  *
  * @retval any_other_value Some error occurred, but is likely to be
  * ignored.
@@ -168,11 +170,11 @@ typedef int (*mca_base_open_component_1_0_0_fn_t)(void);
  *
  * If the component has no resources to free, it may provide NULL for
  * this function.  In this case, the MCA will act as if it called the
- * close function and it returned MCA_SUCCESS.
+ * close function and it returned OPAL_SUCCESS.
  */
 typedef int (*mca_base_close_component_1_0_0_fn_t)(void);
 
-/** 
+/**
  * MCA component query function.
  *
  * @retval OPAL_SUCCESS The component successfully queried.
@@ -194,8 +196,10 @@ typedef int (*mca_base_query_component_2_0_0_fn_t)(mca_base_module_2_0_0_t **mod
 /**
  * MCA component parameter registration function.
  *
- * @retval MCA_SUCCESS This component successfully registered its
+ * @retval OPAL_SUCCESS This component successfully registered its
  * parameters and can be used in this process.
+ * @retval OPAL_ERR_BAD_PARAM Indicates that the register function
+ * failed because an MCA parameter got an invalid/incorrect value.
  *
  * @retval anything_else The MCA will ignore this component for the
  * duration of the process.
@@ -214,22 +218,35 @@ typedef int (*mca_base_query_component_2_0_0_fn_t)(mca_base_module_2_0_0_t **mod
  * function invoked on a component; component authors should take care
  * that no resources are leaked in this case.
  *
- * This function should return MCA_SUCCESS if it wishes to remain
+ * This function should return OPAL_SUCCESS if it wishes to remain
  * loaded in the process.  Any other return value will cause the MCA
  * base to unload the component.  Although most components do not use
  * this mechanism to force themselves to be unloaded (because if they
  * are immediately unloaded, ompi_info will not display them), the
  * mechanism is available should the need arise.
  *
+ * Note that if the function returns OPAL_ERR_BAD_PARAM, it is
+ * possible (likely?) that the component didn't register all of its
+ * parameters.  When this happens, ompi_info (and friends) will stop
+ * execution and print out all existing registered parameters from the
+ * entire framework (since ompi_info doesn't track individual
+ * component register failures).  This allows a user to know exactly
+ * what value is incorrect, and from where it was set (e.g., via an
+ * MCA params file).
+ *
  * If the component a) has no MCA parameters to register, b) no
  * resources to allocate, and c) can always be used in a process
  * (albiet perhaps not selected), it may provide NULL for this
  * function.  In this cause, the MCA will act as if it called the
- * registration function and it returned MCA_SUCCESS.
+ * registration function and it returned OPAL_SUCCESS.
  */
 typedef int (*mca_base_register_component_params_2_0_0_fn_t)(void);
 
 
+/**
+ * Maximum length of MCA project string names.
+ */
+#define MCA_BASE_MAX_PROJECT_NAME_LEN 15
 /**
  * Maximum length of MCA framework string names.
  */
@@ -247,14 +264,26 @@ typedef int (*mca_base_register_component_params_2_0_0_fn_t)(void);
  * particular version of a specific framework, and to publish its own
  * name and version.
  */
-struct mca_base_component_2_0_0_t {
+struct mca_base_component_2_1_0_t {
 
-  int mca_major_version; 
+  int mca_major_version;
   /**< Major number of the MCA. */
   int mca_minor_version;
   /**< Minor number of the MCA. */
   int mca_release_version;
   /**< Release number of the MCA. */
+
+  char mca_project_name[MCA_BASE_MAX_PROJECT_NAME_LEN + 1];
+  /**< String name of the project that this component belongs to. */
+  int mca_project_major_version;
+  /**< Major version number of the project that this component
+     belongs to. */
+  int mca_project_minor_version;
+  /**< Minor version number of the project that this component
+     belongs to. */
+  int mca_project_release_version;
+  /**< Release version number of the project that this component
+     belongs to. */
 
   char mca_type_name[MCA_BASE_MAX_TYPE_NAME_LEN + 1];
   /**< String name of the framework that this component belongs to. */
@@ -276,7 +305,7 @@ struct mca_base_component_2_0_0_t {
   /**< This component's minor version number. */
   int mca_component_release_version;
   /**< This component's release version number. */
-  
+
   mca_base_open_component_1_0_0_fn_t mca_open_component;
   /**< Method for opening this component. */
   mca_base_close_component_1_0_0_fn_t mca_close_component;
@@ -292,9 +321,9 @@ struct mca_base_component_2_0_0_t {
 };
 /** Unversioned convenience typedef; use this name in
     frameworks/components to stay forward source-compatible */
-typedef struct mca_base_component_2_0_0_t mca_base_component_t;
+typedef struct mca_base_component_2_1_0_t mca_base_component_t;
 /** Versioned convenience typedef */
-typedef struct mca_base_component_2_0_0_t mca_base_component_2_0_0_t;
+typedef struct mca_base_component_2_1_0_t mca_base_component_2_1_0_t;
 
 /*
  * Metadata Bit field parameters
@@ -322,40 +351,32 @@ typedef struct mca_base_component_data_2_0_0_t mca_base_component_data_t;
 typedef struct mca_base_component_data_2_0_0_t mca_base_component_data_2_0_0_t;
 
 /**
- * Macro for framework author convenience.  
+ * Macro for framework author convenience.
  *
  * This macro is used by frameworks defining their component types,
  * indicating that they subscribe to the MCA version 2.0.0.  See
  * component header files (e.g., coll.h) for examples of its usage.
  */
 #define MCA_BASE_VERSION_MAJOR 2
-#define MCA_BASE_VERSION_MINOR 0
+#define MCA_BASE_VERSION_MINOR 1
 #define MCA_BASE_VERSION_RELEASE 0
-#define MCA_BASE_VERSION_2_0_0 MCA_BASE_VERSION_MAJOR, MCA_BASE_VERSION_MINOR, MCA_BASE_VERSION_RELEASE
+
+#define MCA_BASE_MAKE_VERSION(level, MAJOR, MINOR, RELEASE) \
+    .mca_## level ##_major_version = MAJOR,                 \
+    .mca_## level ##_minor_version = MINOR,                 \
+    .mca_## level ##_release_version = RELEASE
 
 
-/**
- * MCA return codes.
- */
-enum {
-  MCA_SUCCESS = 0,
-  /**< Success. */
-  MCA_ERROR = -1,
-  /**< General error. */
-  MCA_ERR_OUT_OF_RESOURCE = -2,
-  /**< Out of resources; a fatal error. */
-  MCA_ERR_TEMP_OUT_OF_RESOURCE = -3,
-  /**< Out of resources; try again later. */
-  MCA_ERR_BAD_PARAM = -5,
-  /**< Equivalent to MPI_ERR_ARG error code. */
-  MCA_ERR_NOT_IMPLEMENTED = -10,
-  /**< Returned by functions or functionality that has not yet been
-     implemented */
-  MCA_ERR_NOT_SUPPORTED = -11,
-  /**< Returned by functionality that is not supported. */
+#define MCA_BASE_VERSION_2_1_0(PROJECT, project_major, project_minor, project_release, TYPE, type_major, type_minor, type_release) \
+    .mca_major_version = MCA_BASE_VERSION_MAJOR,                        \
+    .mca_minor_version = MCA_BASE_VERSION_MINOR,                        \
+    .mca_release_version = MCA_BASE_VERSION_RELEASE,                    \
+    .mca_project_name = PROJECT,                                        \
+    MCA_BASE_MAKE_VERSION(project, project_major, project_minor, project_release), \
+    .mca_type_name = TYPE,                                              \
+    MCA_BASE_MAKE_VERSION(type, type_major, type_minor, type_release)
 
-  MCA_MAX_ERROR = -20
-  /**< Maximum error code. */
-};
+#define OPAL_MCA_BASE_VERSION_2_1_0(type, type_major, type_minor, type_release) \
+    MCA_BASE_VERSION_2_1_0("opal", OPAL_MAJOR_VERSION, OPAL_MINOR_VERSION, OPAL_RELEASE_VERSION, type, type_major, type_minor, type_release)
 
 #endif /* OPAL_MCA_H */

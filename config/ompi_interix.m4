@@ -4,9 +4,9 @@ dnl Copyright (c)      2008 The University of Tennessee and The University
 dnl                         of Tennessee Research Foundation.  All rights
 dnl                         reserved.
 dnl $COPYRIGHT$
-dnl 
+dnl
 dnl Additional copyrights may follow
-dnl 
+dnl
 dnl $HEADER$
 dnl
 
@@ -33,7 +33,7 @@ AC_DEFUN([OMPI_INTERIX],[
     AC_MSG_RESULT([$is_interix])
     if test "$is_interix" = "yes"; then
 
-        ompi_show_subtitle "Interix detection"
+        opal_show_subtitle "Interix detection"
 
         if ! test -d /usr/include/port; then
             AC_MSG_WARN([Compiling Open MPI under Interix require an up-to-date])

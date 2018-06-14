@@ -1,11 +1,16 @@
 /*
  * Copyright (c) 2004-2008 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
- * Copyright (c) 2010      The University of Tennessee and The University
+ * Copyright (c) 2010-2013 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
  * Copyright (c) 2009      Oak Ridge National Labs.  All rights reserved.
+ * Copyright (c) 2012-2013 Inria.  All rights reserved.
+ * Copyright (c) 2014-2015 Research Organization for Information Science
+ *                         and Technology (RIST). All rights reserved.
+ * Copyright (c) 2014      Intel, Inc. All rights reserved.
  *
+ * Copyright (c) 2016 Cisco Systems, Inc.  All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -30,13 +35,13 @@
 #include "opal/mca/memchecker/base/base.h"
 
 
-#if OMPI_WANT_MEMCHECKER
+#if OPAL_WANT_MEMCHECKER
 #  define MEMCHECKER(x) do {       \
             x;                     \
    } while(0)
 #else
 #  define MEMCHECKER(x)
-#endif /* OMPI_WANT_MEMCHECKER */
+#endif /* OPAL_WANT_MEMCHECKER */
 
 
 static inline int memchecker_convertor_call (int (*f)(void *, size_t), opal_convertor_t* pConvertor)
@@ -89,16 +94,20 @@ static inline int memchecker_convertor_call (int (*f)(void *, size_t), opal_conv
  * Set the corresponding memory area of count elements of type ty
  *
  */
-static inline int memchecker_call (int (*f)(void *, size_t), void * addr,
+static inline int memchecker_call (int (*f)(void *, size_t), const void * addr,
                                    size_t count, struct ompi_datatype_t * datatype)
 {
     if (!opal_memchecker_base_runindebugger()) {
         return OMPI_SUCCESS;
     }
 
+    if ((0 == count) || (0 == datatype->super.size)) {
+        return OMPI_SUCCESS;
+    }
+
     if( datatype->super.size == (size_t) (datatype->super.true_ub - datatype->super.true_lb) ) {
         /*  We have a contiguous type. */
-        f( addr , datatype->super.size * count );
+        f( (void*)addr , datatype->super.size * count );
     } else {
         /* Now we got a noncontigous type. */
         uint32_t         elem_pos = 0, i;
@@ -163,7 +172,7 @@ static inline int memchecker_comm(MPI_Comm comm)
     }
 
     /*
-     * We should not check unterlying objects in this way -- either another opal/include/memchecker.h
+     * We should not check underlying objects in this way -- either another opal/include/memchecker.h
      * However, let us assume, that underlying objects are initialized correctly
      */
 #if 0
@@ -183,7 +192,6 @@ static inline int memchecker_comm(MPI_Comm comm)
     opal_memchecker_base_isdefined (&comm->c_lock.super.cls_init_file_name, sizeof(const char *));
     opal_memchecker_base_isdefined (&comm->c_lock.super.cls_init_lineno, sizeof(int));
 #endif
-#if OPAL_HAVE_POSIX_THREADS
 /*
   opal_memchecker_base_isdefined (&comm->c_lock.m_lock_pthread.__m_reserved, sizeof(int));
   opal_memchecker_base_isdefined (&comm->c_lock.m_lock_pthread.__m_count, sizeof(int));
@@ -192,10 +200,6 @@ static inline int memchecker_comm(MPI_Comm comm)
   opal_memchecker_base_isdefined (&comm->c_lock.m_lock_pthread.__m_lock.__status, sizeof(long int));
   opal_memchecker_base_isdefined (&comm->c_lock.m_lock_pthread.__m_lock.__spinlock, sizeof(int));
 */
-#endif
-#if OPAL_HAVE_SOLARIS_THREADS
-    opal_memchecker_base_isdefined (&comm->c_lock.m_lock_solaris, sizeof(mutex_t));
-#endif
     /*
      * The storage of a union has the size of the initialized member.
      * Here we check the whole union.
@@ -211,10 +215,7 @@ static inline int memchecker_comm(MPI_Comm comm)
     opal_memchecker_base_isdefined (&comm->c_remote_group, sizeof(ompi_group_t *));
     opal_memchecker_base_isdefined (&comm->c_keyhash, sizeof(struct opal_hash_table_t *));
     opal_memchecker_base_isdefined (&comm->c_cube_dim, sizeof(int));
-    opal_memchecker_base_isdefined (&comm->c_topo_component, sizeof(mca_base_component_t *));
-    opal_memchecker_base_isdefined (&comm->c_topo, sizeof(const struct mca_topo_base_module_1_0_0_t *));
-    opal_memchecker_base_isdefined (&comm->c_topo_comm, sizeof(struct mca_topo_base_comm_1_0_0_t *));
-    opal_memchecker_base_isdefined (&comm->c_topo_module, sizeof(struct mca_topo_base_module_comm_t *));
+    opal_memchecker_base_isdefined (&comm->c_topo, sizeof(const struct mca_topo_base_module_t *));
     opal_memchecker_base_isdefined (&comm->c_f_to_c_index, sizeof(int));
 #ifdef OMPI_WANT_PERUSE
     opal_memchecker_base_isdefined (&comm->c_peruse_handles, sizeof(struct ompi_peruse_handle_t **));
@@ -379,6 +380,29 @@ static inline int memchecker_datatype(MPI_Datatype type)
 #else
 #define memchecker_datatype(type)
 #endif /* OMPI_WANT_MEMCHECKER_MPI_OBJECTS */
+
+/*
+ * Check every member of the message, whether their memory areas are defined.
+ */
+#ifdef OMPI_WANT_MEMCHECKER_MPI_OBJECTS
+static inline int memchecker_message(MPI_Message *message)
+{
+    if (!opal_memchecker_base_runindebugger()) {
+        return OMPI_SUCCESS;
+    }
+
+    opal_memchecker_base_isdefined (&message->m_f_to_c_index, sizeof(int));
+    opal_memchecker_base_isdefined (&message->comm, sizeof(ompi_communicator_t *));
+    opal_memchecker_base_isdefined (&message->req_ptr, sizeof(void *));
+    opal_memchecker_base_isdefined (&message->peer, sizeof(int));
+    opal_memchecker_base_isdefined (&message->count, sizeof(sizeof_t));
+
+    return OMPI_SUCCESS;
+}
+#else
+#define memchecker_message(message)
+#endif /* OMPI_WANT_MEMCHECKER_MPI_OBJECTS */
+
 
 #endif /* OMPI_MEMCHECKER_H */
 

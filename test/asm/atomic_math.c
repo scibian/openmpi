@@ -2,18 +2,20 @@
  * Copyright (c) 2004-2005 The Trustees of Indiana University and Indiana
  *                         University Research and Technology
  *                         Corporation.  All rights reserved.
- * Copyright (c) 2004-2005 The University of Tennessee and The University
+ * Copyright (c) 2004-2014 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
  * Copyright (c) 2010      Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2015      Research Organization for Information Science
+ *                         and Technology (RIST). All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -42,11 +44,11 @@ static void* atomic_math_test(void* arg)
     int i;
 
     for (i = 0 ; i < count ; ++i) {
-        opal_atomic_add_32(&val32, 5);
+        (void)opal_atomic_add_32(&val32, 5);
 #if OPAL_HAVE_ATOMIC_MATH_64
-        opal_atomic_add_64(&val64, 6);
+        (void)opal_atomic_add_64(&val64, 6);
 #endif
-        opal_atomic_add(&valint, 4);
+        (void)opal_atomic_add(&valint, 4);
     }
 
     return NULL;
@@ -57,14 +59,13 @@ static int
 atomic_math_test_th(int count, int thr_count)
 {
     int value;
-#if OPAL_HAVE_POSIX_THREADS
     pthread_t *th;
-    int tid, ret = 0;
+    int tid;
 
     th = (pthread_t *) malloc(thr_count * sizeof(pthread_t));
-    if (!th) { 
-        perror("malloc"); 
-        exit(EXIT_FAILURE); 
+    if (!th) {
+        perror("malloc");
+        exit(EXIT_FAILURE);
     }
 
     /* Ok to use a single instance of ip_union_t from the stack here
@@ -74,7 +75,7 @@ atomic_math_test_th(int count, int thr_count)
        disappearing before the threads start. */
     value = count;
     for (tid = 0; tid < thr_count; tid++) {
-        if (pthread_create(&th[tid], NULL, atomic_math_test, 
+        if (pthread_create(&th[tid], NULL, atomic_math_test,
                            (void*) &value) != 0) {
             perror("pthread_create");
             exit(EXIT_FAILURE);
@@ -91,16 +92,6 @@ atomic_math_test_th(int count, int thr_count)
         }
     }
     free(th);
-
-    return ret;
-#else
-    value = count;
-    if (thr_count == 1) {
-        atomic_math_test((void*) &value);
-    } else {
-        return 77;
-    }
-#endif
 
     return 0;
 }

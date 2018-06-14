@@ -5,19 +5,21 @@
  * Copyright (c) 2004-2006 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
  * Copyright (c) 2007      Voltaire All rights reserved.
+ * Copyright (c) 2013      Los Alamos National Security, LLC. All rights
+ *                         reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 /**
- * @file 
+ * @file
  *
  * The opal_list_t interface is used to provide a generic
  * doubly-linked list container for Open MPI.  It was inspired by (but
@@ -92,7 +94,7 @@ OPAL_DECLSPEC OBJ_CLASS_DECLARATION(opal_list_item_t);
 
 /**
  * \internal
- * 
+ *
  * Struct of an opal_list_item_t
  */
 struct opal_list_item_t
@@ -158,6 +160,127 @@ struct opal_list_t
  */
 typedef struct opal_list_t opal_list_t;
 
+/** Cleanly destruct a list
+ *
+ * The opal_list_t destructor doesn't release the items on the
+ * list - so provide two convenience macros that do so and then
+ * destruct/release the list object itself
+ *
+ * @param[in] list List to destruct or release
+ */
+#define OPAL_LIST_DESTRUCT(list)                                \
+    do {                                                        \
+        opal_list_item_t *it;                                   \
+        while (NULL != (it = opal_list_remove_first(list))) {   \
+            OBJ_RELEASE(it);                                    \
+        }                                                       \
+        OBJ_DESTRUCT(list);                                     \
+    } while(0);
+
+#define OPAL_LIST_RELEASE(list)                                 \
+    do {                                                        \
+        opal_list_item_t *it;                                   \
+        while (NULL != (it = opal_list_remove_first(list))) {   \
+            OBJ_RELEASE(it);                                    \
+        }                                                       \
+        OBJ_RELEASE(list);                                      \
+    } while(0);
+
+
+/**
+ * Loop over a list.
+ *
+ * @param[in] item Storage for each item
+ * @param[in] list List to iterate over
+ * @param[in] type Type of each list item
+ *
+ * This macro provides a simple way to loop over the items in an opal_list_t. It
+ * is not safe to call opal_list_remove_item from within the loop.
+ *
+ * Example Usage:
+ *
+ * class_foo_t *foo;
+ * opal_list_foreach(foo, list, class_foo_t) {
+ *    do something;
+ * }
+ */
+#define OPAL_LIST_FOREACH(item, list, type)                             \
+  for (item = (type *) (list)->opal_list_sentinel.opal_list_next ;      \
+       item != (type *) &(list)->opal_list_sentinel ;                   \
+       item = (type *) ((opal_list_item_t *) (item))->opal_list_next)
+
+/**
+ * Loop over a list in reverse.
+ *
+ * @param[in] item Storage for each item
+ * @param[in] list List to iterate over
+ * @param[in] type Type of each list item
+ *
+ * This macro provides a simple way to loop over the items in an opal_list_t. It
+ * is not safe to call opal_list_remove_item from within the loop.
+ *
+ * Example Usage:
+ *
+ * class_foo_t *foo;
+ * opal_list_foreach(foo, list, class_foo_t) {
+ *    do something;
+ * }
+ */
+#define OPAL_LIST_FOREACH_REV(item, list, type)                         \
+  for (item = (type *) (list)->opal_list_sentinel.opal_list_prev ;      \
+       item != (type *) &(list)->opal_list_sentinel ;                   \
+       item = (type *) ((opal_list_item_t *) (item))->opal_list_prev)
+
+/**
+ * Loop over a list in a *safe* way
+ *
+ * @param[in] item Storage for each item
+ * @param[in] next Storage for next item
+ * @param[in] list List to iterate over
+ * @param[in] type Type of each list item
+ *
+ * This macro provides a simple way to loop over the items in an opal_list_t. It
+ * is safe to call opal_list_remove_item(list, item) from within the loop.
+ *
+ * Example Usage:
+ *
+ * class_foo_t *foo, *next;
+ * opal_list_foreach_safe(foo, next, list, class_foo_t) {
+ *    do something;
+ *    opal_list_remove_item (list, (opal_list_item_t *) foo);
+ * }
+ */
+#define OPAL_LIST_FOREACH_SAFE(item, next, list, type)                  \
+  for (item = (type *) (list)->opal_list_sentinel.opal_list_next,       \
+         next = (type *) ((opal_list_item_t *) (item))->opal_list_next ;\
+       item != (type *) &(list)->opal_list_sentinel ;                   \
+       item = next, next = (type *) ((opal_list_item_t *) (item))->opal_list_next)
+
+/**
+ * Loop over a list in a *safe* way
+ *
+ * @param[in] item Storage for each item
+ * @param[in] next Storage for next item
+ * @param[in] list List to iterate over
+ * @param[in] type Type of each list item
+ *
+ * This macro provides a simple way to loop over the items in an opal_list_t. If
+ * is safe to call opal_list_remove_item(list, item) from within the loop.
+ *
+ * Example Usage:
+ *
+ * class_foo_t *foo, *next;
+ * opal_list_foreach_safe(foo, next, list, class_foo_t) {
+ *    do something;
+ *    opal_list_remove_item (list, (opal_list_item_t *) foo);
+ * }
+ */
+#define OPAL_LIST_FOREACH_SAFE_REV(item, prev, list, type)              \
+  for (item = (type *) (list)->opal_list_sentinel.opal_list_prev,       \
+         prev = (type *) ((opal_list_item_t *) (item))->opal_list_prev ;\
+       item != (type *) &(list)->opal_list_sentinel ;                   \
+       item = prev, prev = (type *) ((opal_list_item_t *) (item))->opal_list_prev)
+
 
 /**
  * Check for empty list
@@ -173,7 +296,7 @@ typedef struct opal_list_t opal_list_t;
  */
 static inline bool opal_list_is_empty(opal_list_t* list)
 {
-    return (list->opal_list_sentinel.opal_list_next == 
+    return (list->opal_list_sentinel.opal_list_next ==
         &(list->opal_list_sentinel) ? true : false);
 }
 
@@ -284,7 +407,7 @@ static inline opal_list_item_t* opal_list_get_end(opal_list_t* list)
  *
  * @returns The size of the list (size_t)
  *
- * This is an O(1) lookup to return the size of the list.  
+ * This is an O(1) lookup to return the size of the list.
  *
  * This is an inlined function in compilers that support inlining, so
  * it's usually a cheap operation.
@@ -301,7 +424,7 @@ static inline size_t opal_list_get_size(opal_list_t* list)
 #if OPAL_ENABLE_DEBUG && 0
     /* not sure if we really want this running in devel, as it does
      * slow things down.  Wanted for development of splice / join to
-     * make sure length was reset properly 
+     * make sure length was reset properly
      */
     size_t check_len = 0;
     opal_list_item_t *item;
@@ -466,8 +589,8 @@ static inline void _opal_list_append(opal_list_t *list, opal_list_item_t *item
  * This is an inlined function in compilers that support inlining, so
  * it's usually a cheap operation.
  */
-static inline void opal_list_prepend(opal_list_t *list, 
-                                     opal_list_item_t *item) 
+static inline void opal_list_prepend(opal_list_t *list,
+                                     opal_list_item_t *item)
 {
     opal_list_item_t* sentinel = &(list->opal_list_sentinel);
 #if OPAL_ENABLE_DEBUG
@@ -479,16 +602,16 @@ static inline void opal_list_prepend(opal_list_t *list,
 
   /* reset item's next pointer */
   item->opal_list_next = sentinel->opal_list_next;
-  
+
   /* reset item's previous pointer */
   item->opal_list_prev = sentinel;
-  
+
   /* reset previous first element's previous poiner */
   sentinel->opal_list_next->opal_list_prev = item;
-  
+
   /* reset head's next pointer */
   sentinel->opal_list_next = item;
-  
+
   /* increment list element counter */
   list->opal_list_length++;
 
@@ -529,7 +652,7 @@ static inline opal_list_item_t *opal_list_remove_first(opal_list_t *list)
   if ( 0 == list->opal_list_length ) {
     return (opal_list_item_t *)NULL;
   }
-  
+
 #if OPAL_ENABLE_DEBUG
   /* Spot check: ensure that the first item is only on this list */
 
@@ -538,16 +661,16 @@ static inline opal_list_item_t *opal_list_remove_first(opal_list_t *list)
 
   /* reset list length counter */
   list->opal_list_length--;
-  
+
   /* get pointer to first element on the list */
   item = list->opal_list_sentinel.opal_list_next;
-  
+
   /* reset previous pointer of next item on the list */
   item->opal_list_next->opal_list_prev = item->opal_list_prev;
-  
+
   /* reset the head next pointer */
   list->opal_list_sentinel.opal_list_next = item->opal_list_next;
-  
+
 #if OPAL_ENABLE_DEBUG
   assert( list == item->opal_list_item_belong_to );
   item->opal_list_item_belong_to = NULL;
@@ -591,7 +714,7 @@ static inline opal_list_item_t *opal_list_remove_last(opal_list_t *list)
   if ( 0 == list->opal_list_length ) {
       return (opal_list_item_t *)NULL;
   }
-  
+
 #if OPAL_ENABLE_DEBUG
   /* Spot check: ensure that the first item is only on this list */
 
@@ -600,16 +723,16 @@ static inline opal_list_item_t *opal_list_remove_last(opal_list_t *list)
 
   /* reset list length counter */
   list->opal_list_length--;
-  
+
   /* get item */
   item = list->opal_list_sentinel.opal_list_prev;
-  
+
   /* reset previous pointer on next to last pointer */
   item->opal_list_prev->opal_list_next = item->opal_list_next;
-  
+
   /* reset tail's previous pointer */
   list->opal_list_sentinel.opal_list_prev = item->opal_list_prev;
-  
+
 #if OPAL_ENABLE_DEBUG
   assert( list == item->opal_list_item_belong_to );
   item->opal_list_next = item->opal_list_prev = (opal_list_item_t *)NULL;
@@ -684,7 +807,7 @@ static inline void opal_list_insert_pos(opal_list_t *list, opal_list_item_t *pos
    * If index is greater than the length of the list, no action is
    * performed and false is returned.
    */
-  OPAL_DECLSPEC bool opal_list_insert(opal_list_t *list, opal_list_item_t *item, 
+  OPAL_DECLSPEC bool opal_list_insert(opal_list_t *list, opal_list_item_t *item,
                                       long long idx);
 
 
@@ -697,7 +820,7 @@ static inline void opal_list_insert_pos(opal_list_t *list, opal_list_item_t *pos
      * @param xlist List container for list being spliced from
      *
      * Join a list into another list.  All of the elements of \c xlist
-     * are inserted before \c pos and removed from \c xlist.  
+     * are inserted before \c pos and removed from \c xlist.
      *
      * This operation is an O(1) operation.  Both \c thislist and \c
      * xlist must be valid list containsers.  \c xlist will be empty
@@ -705,7 +828,7 @@ static inline void opal_list_insert_pos(opal_list_t *list, opal_list_item_t *pos
      * containers remain valid, including those that point to elements
      * in \c xlist.
      */
-    OPAL_DECLSPEC void opal_list_join(opal_list_t *thislist, opal_list_item_t *pos, 
+    OPAL_DECLSPEC void opal_list_join(opal_list_t *thislist, opal_list_item_t *pos,
                                       opal_list_t *xlist);
 
 
@@ -716,7 +839,7 @@ static inline void opal_list_insert_pos(opal_list_t *list, opal_list_item_t *pos
      * @param pos List item in \c thislist marking the position before
      *             which items are inserted
      * @param xlist List container for list being spliced from
-     * @param first List item in \c xlist marking the start of elements 
+     * @param first List item in \c xlist marking the start of elements
      *             to be copied into \c thislist
      * @param last List item in \c xlist marking the end of elements
      * to be copied into \c thislist
@@ -755,22 +878,6 @@ static inline void opal_list_insert_pos(opal_list_t *list, opal_list_item_t *pos
      * The important thing to realize here is that a and b will be \em
      * double pointers to the items that you need to compare.  Here's
      * a sample compare function to illustrate this point:
-     *
-     * \verb
-     * static int compare(opal_list_item_t **a, opal_list_item_t **b)
-     * {
-     *     orte_pls_base_cmp_t *aa = *((orte_pls_base_cmp_t **) a);
-     *     orte_pls_base_cmp_t *bb = *((orte_pls_base_cmp_t **) b);
-     *
-     *     if (bb->priority > aa->priority) {
-     *         return 1;
-     *     } else if (bb->priority == aa->priority) {
-     *         return 0;
-     *     } else {
-     *         return -1;
-     *     }
-     * }
-     * \endverb
      */
     typedef int (*opal_list_item_compare_fn_t)(opal_list_item_t **a,
                                                opal_list_item_t **b);

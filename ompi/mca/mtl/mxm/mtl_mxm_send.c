@@ -9,14 +9,14 @@
 #include "ompi_config.h"
 #include "ompi/mca/pml/pml.h"
 #include "opal/datatype/opal_convertor.h"
-#include "orte/util/show_help.h"
+#include "opal/util/show_help.h"
 
 #include "mtl_mxm.h"
 #include "mtl_mxm_types.h"
 #include "mtl_mxm_request.h"
 #include "ompi/mca/mtl/base/mtl_base_datatype.h"
 
-static inline  __opal_attribute_always_inline__ 
+static inline  __opal_attribute_always_inline__
               size_t ompi_mtl_mxm_stream_pack(opal_convertor_t *convertor, void *buffer,
                                               size_t length, size_t offset)
 {
@@ -56,6 +56,17 @@ static inline __opal_attribute_always_inline__ int
     uint32_t iov_count = 1;
 
     size_t *buffer_len = &mxm_send_req->base.data.buffer.length;
+
+#if !(OPAL_ENABLE_HETEROGENEOUS_SUPPORT)
+    if (convertor->pDesc &&
+	opal_datatype_is_contiguous_memory_layout(convertor->pDesc,
+						  convertor->count)) {
+	    mxm_send_req->base.data.buffer.ptr = convertor->pBaseBuf;
+	    mxm_send_req->base.data.buffer.length = convertor->local_size;
+	    mxm_send_req->base.data_type = MXM_REQ_DATA_BUFFER;
+	    return OMPI_SUCCESS;
+    }
+#endif
 
     opal_convertor_get_packed_size(convertor, buffer_len);
     if (0 == *buffer_len) {
@@ -121,14 +132,10 @@ int ompi_mtl_mxm_send(struct mca_mtl_base_module_t* mtl,
         return ret;
     }
 
-#if MXM_API < MXM_VERSION(1,5)
-    mxm_send_req.base.data.buffer.mkey   = MXM_MKEY_NONE;
-#else
     mxm_send_req.base.data.buffer.memh   = MXM_INVALID_MEM_HANDLE;
-#endif
-
     mxm_send_req.op.send.tag             = tag;
     mxm_send_req.op.send.imm_data        = ompi_comm_rank(comm);
+
 #if MXM_API < MXM_VERSION(2,0)
     mxm_send_req.base.flags              = MXM_REQ_FLAG_BLOCKING;
     mxm_send_req.opcode                  = MXM_REQ_OP_SEND;
@@ -147,7 +154,7 @@ int ompi_mtl_mxm_send(struct mca_mtl_base_module_t* mtl,
     /* post-send */
     err = mxm_req_send(&mxm_send_req);
     if (MXM_OK != err) {
-        orte_show_help("help-mtl-mxm.txt", "error posting send", true, 0, mxm_error_string(err));
+        opal_show_help("help-mtl-mxm.txt", "error posting send", true, 0, mxm_error_string(err));
         return OMPI_ERROR;
     }
 
@@ -195,11 +202,7 @@ int ompi_mtl_mxm_isend(struct mca_mtl_base_module_t* mtl,
     mtl_mxm_request->buf    = mxm_send_req->base.data.buffer.ptr;
     mtl_mxm_request->length = mxm_send_req->base.data.buffer.length;
 
-#if MXM_API < MXM_VERSION(1,5)
-    mxm_send_req->base.data.buffer.mkey    = MXM_MKEY_NONE;
-#else
     mxm_send_req->base.data.buffer.memh    = MXM_INVALID_MEM_HANDLE;
-#endif
     mxm_send_req->base.context             = mtl_mxm_request;
     mxm_send_req->base.completed_cb        = ompi_mtl_mxm_send_completion_cb;
 
@@ -208,10 +211,13 @@ int ompi_mtl_mxm_isend(struct mca_mtl_base_module_t* mtl,
     mxm_send_req->opcode                   = MXM_REQ_OP_SEND;
     if (mode == MCA_PML_BASE_SEND_SYNCHRONOUS) {
         mxm_send_req->base.flags           |= MXM_REQ_FLAG_SEND_SYNC;
-    } else {
     }
 #else
+#if defined(MXM_REQ_SEND_FLAG_REENTRANT)
+    mxm_send_req->flags                    = MXM_REQ_SEND_FLAG_REENTRANT;
+#else
     mxm_send_req->flags                    = 0;
+#endif
     if (mode == MCA_PML_BASE_SEND_SYNCHRONOUS) {
         mxm_send_req->opcode               = MXM_REQ_OP_SEND_SYNC;
     } else {
@@ -224,7 +230,7 @@ int ompi_mtl_mxm_isend(struct mca_mtl_base_module_t* mtl,
     /* post-send */
     err = mxm_req_send(mxm_send_req);
     if (MXM_OK != err) {
-        orte_show_help("help-mtl-mxm.txt", "error posting send", true, 1, mxm_error_string(err));
+        opal_show_help("help-mtl-mxm.txt", "error posting send", true, 1, mxm_error_string(err));
         return OMPI_ERROR;
     }
 

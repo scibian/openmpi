@@ -1,19 +1,24 @@
+/* -*- Mode: C; c-basic-offset:4 ; indent-tabs-mode:nil -*- */
 /*
  * Copyright (c) 2004-2007 The Trustees of Indiana University and Indiana
  *                         University Research and Technology
  *                         Corporation.  All rights reserved.
- * Copyright (c) 2004-2005 The University of Tennessee and The University
+ * Copyright (c) 2004-2016 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2008 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2008 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
  * Copyright (c) 2006      Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2013      Los Alamos National Security, LLC.  All rights
+ *                         reserved.
+ * Copyright (c) 2015      Research Organization for Information Science
+ *                         and Technology (RIST). All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 #include "ompi_config.h"
@@ -27,20 +32,19 @@
 #include "ompi/request/request.h"
 #include "ompi/memchecker.h"
 
-#if OPAL_HAVE_WEAK_SYMBOLS && OMPI_PROFILING_DEFINES
+#if OMPI_BUILD_MPI_PROFILING
+#if OPAL_HAVE_WEAK_SYMBOLS
 #pragma weak MPI_Ssend_init = PMPI_Ssend_init
 #endif
-
-#if OMPI_PROFILING_DEFINES
-#include "ompi/mpi/c/profile/defines.h"
+#define MPI_Ssend_init PMPI_Ssend_init
 #endif
 
 static const char FUNC_NAME[] = "MPI_Ssend_init";
 
 
-int MPI_Ssend_init(void *buf, int count, MPI_Datatype type,
+int MPI_Ssend_init(const void *buf, int count, MPI_Datatype type,
                    int dest, int tag, MPI_Comm comm,
-                   MPI_Request *request) 
+                   MPI_Request *request)
 {
     int rc;
 
@@ -76,20 +80,18 @@ int MPI_Ssend_init(void *buf, int count, MPI_Datatype type,
            ompi_request_t */
         (*request)->req_type = OMPI_REQUEST_NOOP;
         (*request)->req_status = ompi_request_empty.req_status;
-        (*request)->req_complete = true;
+        (*request)->req_complete = REQUEST_COMPLETED;
         (*request)->req_state = OMPI_REQUEST_INACTIVE;
         (*request)->req_persistent = true;
         (*request)->req_free = ompi_request_persistent_proc_null_free;
         return MPI_SUCCESS;
     }
 
-    OPAL_CR_ENTER_LIBRARY();
-
     /*
      * Here, we just initialize the request -- memchecker should set the buffer in MPI_Start.
      */
-    rc = MCA_PML_CALL(isend_init(buf,count,type,dest,tag,
-                                 MCA_PML_BASE_SEND_SYNCHRONOUS,comm,request));
+    rc = MCA_PML_CALL(isend_init(buf, count, type, dest, tag,
+                                 MCA_PML_BASE_SEND_SYNCHRONOUS, comm, request));
     OMPI_ERRHANDLER_RETURN(rc, comm, rc, FUNC_NAME);
 }
 

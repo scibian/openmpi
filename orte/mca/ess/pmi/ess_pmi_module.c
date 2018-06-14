@@ -5,17 +5,18 @@
  * Copyright (c) 2004-2011 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
- * Copyright (c) 2008-2011 Cisco Systems, Inc.  All rights reserved.
- * Copyright (c) 2012      Los Alamos National Security, LLC.
+ * Copyright (c) 2008-2012 Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2012-2013 Los Alamos National Security, LLC.
  *                         All rights reserved.
+ * Copyright (c) 2013-2016 Intel, Inc.  All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  *
  */
@@ -26,9 +27,7 @@
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
 #endif  /* HAVE_UNISTD_H */
-#ifdef HAVE_STRING_H
 #include <string.h>
-#endif  /* HAVE_STRING_H */
 #include <ctype.h>
 #ifdef HAVE_NETDB_H
 #include <netdb.h>
@@ -37,24 +36,26 @@
 #include <ifaddrs.h>
 #endif
 
-#include <pmi.h>
-
 #include "opal/util/opal_environ.h"
 #include "opal/util/output.h"
-#include "opal/mca/base/mca_base_param.h"
 #include "opal/util/argv.h"
+#include "opal/runtime/opal_progress_threads.h"
 #include "opal/class/opal_pointer_array.h"
-#include "opal/mca/paffinity/paffinity.h"
+#include "opal/mca/hwloc/base/base.h"
 #include "opal/util/printf.h"
+#include "opal/util/proc.h"
+#include "opal/mca/pmix/pmix.h"
+#include "opal/mca/pmix/base/base.h"
 
+#include "orte/mca/errmgr/errmgr.h"
+#include "orte/mca/grpcomm/grpcomm.h"
+#include "orte/mca/rml/rml.h"
 #include "orte/util/proc_info.h"
 #include "orte/util/show_help.h"
-#include "orte/mca/errmgr/errmgr.h"
 #include "orte/util/name_fns.h"
-#include "orte/runtime/orte_globals.h"
-#include "orte/util/nidmap.h"
 #include "orte/util/pre_condition_transports.h"
 #include "orte/util/regex.h"
+#include "orte/runtime/orte_globals.h"
 #include "orte/runtime/orte_wait.h"
 
 #include "orte/mca/ess/ess.h"
@@ -63,367 +64,440 @@
 
 static int rte_init(void);
 static int rte_finalize(void);
-static void rte_abort(int error_code, bool report) __opal_attribute_noreturn__;
-static uint8_t proc_get_locality(orte_process_name_t *proc);
-static orte_vpid_t proc_get_daemon(orte_process_name_t *proc);
-static char* proc_get_hostname(orte_process_name_t *proc);
-static orte_local_rank_t proc_get_local_rank(orte_process_name_t *proc);
-static orte_node_rank_t proc_get_node_rank(orte_process_name_t *proc);
-static int update_pidmap(opal_byte_object_t *bo);
-static int update_nidmap(opal_byte_object_t *bo);
+static void rte_abort(int error_code, bool report);
 
 orte_ess_base_module_t orte_ess_pmi_module = {
     rte_init,
     rte_finalize,
     rte_abort,
-    proc_get_locality,
-    proc_get_daemon,
-    proc_get_hostname,
-    proc_get_local_rank,
-    proc_get_node_rank,
-    update_pidmap,
-    update_nidmap,
     NULL /* ft_event */
 };
 
-static bool app_init_complete=false;
-static int pmi_maxlen=0;
+static bool added_transport_keys=false;
+static bool added_num_procs = false;
+static bool added_app_ctx = false;
+static bool progress_thread_running = false;
 
 /****    MODULE FUNCTIONS    ****/
 
 static int rte_init(void)
 {
-    int ret, i, j;
-    char *error = NULL, *localj;
-    int32_t jobfam, stepid;
-    char *envar;
+    int ret;
+    char *error = NULL;
+    char *envar, *ev1, *ev2;
     uint64_t unique_key[2];
-    char *cs_env, *string_key;
-    char *pmi_id=NULL;
-    orte_nid_t *nid;
-    orte_jmap_t *jmap;
-    orte_pmap_t *pmap;
-    int *ranks;
+    char *string_key;
+    char *rmluri;
+    opal_value_t *kv;
+    char *val;
+    int u32, *u32ptr;
+    uint16_t u16, *u16ptr;
+    char **peers=NULL, *mycpuset, **cpusets=NULL;
+    opal_process_name_t name;
+    size_t i;
 
     /* run the prolog */
     if (ORTE_SUCCESS != (ret = orte_ess_base_std_prolog())) {
         error = "orte_ess_base_std_prolog";
         goto error;
     }
-    
-    /* get our PMI id length */
-    if (PMI_SUCCESS != (ret = PMI_Get_id_length_max(&pmi_maxlen))) {
-        error = "PMI_Get_id_length_max";
-        goto error;
-    }
-    pmi_id = malloc(pmi_maxlen);
-    if (PMI_SUCCESS != (ret = PMI_Get_kvs_domain_id(pmi_id, pmi_maxlen))) {
-        free(pmi_id);
-        error = "PMI_Get_kvs_domain_id";
-        goto error;
-    }
 
-    /* PMI is very nice to us - the domain id is an integer followed
-     * by a '.', followed by essentially a stepid. The first integer
-     * defines an overall job number. The second integer is the number of
-     * individual jobs we have run within that allocation. So we translate
-     * this as the overall job number equating to our job family, and
-     * the individual number equating to our local jobid
+    /* get an async event base - we use the opal_async one so
+     * we don't startup extra threads if not needed */
+    orte_event_base = opal_progress_thread_init(NULL);
+    progress_thread_running = true;
+
+    /* open and setup pmix */
+    if (OPAL_SUCCESS != (ret = mca_base_framework_open(&opal_pmix_base_framework, 0))) {
+        ORTE_ERROR_LOG(ret);
+        /* we cannot run */
+        error = "pmix init";
+        goto error;
+    }
+    if (OPAL_SUCCESS != (ret = opal_pmix_base_select())) {
+        /* we cannot run */
+        error = "pmix init";
+        goto error;
+    }
+    /* set the event base */
+    opal_pmix_base_set_evbase(orte_event_base);
+    /* initialize the selected module */
+    if (!opal_pmix.initialized() && (OPAL_SUCCESS != (ret = opal_pmix.init()))) {
+        /* we cannot run */
+        error = "pmix init";
+        goto error;
+    }
+    u32ptr = &u32;
+    u16ptr = &u16;
+
+    /****   THE FOLLOWING ARE REQUIRED VALUES   ***/
+    /* pmix.init set our process name down in the OPAL layer,
+     * so carry it forward here */
+    ORTE_PROC_MY_NAME->jobid = OPAL_PROC_MY_NAME.jobid;
+    ORTE_PROC_MY_NAME->vpid = OPAL_PROC_MY_NAME.vpid;
+
+    /* get our local rank from PMI */
+    OPAL_MODEX_RECV_VALUE(ret, OPAL_PMIX_LOCAL_RANK,
+                          ORTE_PROC_MY_NAME, &u16ptr, OPAL_UINT16);
+    if (OPAL_SUCCESS != ret) {
+        error = "getting local rank";
+        goto error;
+    }
+    orte_process_info.my_local_rank = u16;
+
+    /* get our node rank from PMI */
+    OPAL_MODEX_RECV_VALUE(ret, OPAL_PMIX_NODE_RANK,
+                          ORTE_PROC_MY_NAME, &u16ptr, OPAL_UINT16);
+    if (OPAL_SUCCESS != ret) {
+        error = "getting node rank";
+        goto error;
+    }
+    orte_process_info.my_node_rank = u16;
+
+    /* get universe size */
+    OPAL_MODEX_RECV_VALUE(ret, OPAL_PMIX_UNIV_SIZE,
+                          ORTE_PROC_MY_NAME, &u32ptr, OPAL_UINT32);
+    if (OPAL_SUCCESS != ret) {
+        error = "getting univ size";
+        goto error;
+    }
+    orte_process_info.max_procs = u32;
+
+    /* get job size */
+    OPAL_MODEX_RECV_VALUE(ret, OPAL_PMIX_JOB_SIZE,
+                          ORTE_PROC_MY_NAME, &u32ptr, OPAL_UINT32);
+    if (OPAL_SUCCESS != ret) {
+        error = "getting job size";
+        goto error;
+    }
+    orte_process_info.num_procs = u32;
+
+    /* push into the environ for pickup in MPI layer for
+     * MPI-3 required info key
      */
-    jobfam = strtol(pmi_id, &localj, 10);
-    if (NULL == localj) {
-        /* hmmm - no '.', so let's just use zero */
-        stepid = 0;
-    } else {
-        localj++; /* step over the '.' */
-        stepid = strtol(localj, NULL, 10) + 1; /* add one to avoid looking like a daemon */
+    if (NULL == getenv(OPAL_MCA_PREFIX"orte_ess_num_procs")) {
+        asprintf(&ev1, OPAL_MCA_PREFIX"orte_ess_num_procs=%d", orte_process_info.num_procs);
+        putenv(ev1);
+        added_num_procs = true;
     }
-    free(pmi_id);
+    if (NULL == getenv("OMPI_APP_CTX_NUM_PROCS")) {
+        asprintf(&ev2, "OMPI_APP_CTX_NUM_PROCS=%d", orte_process_info.num_procs);
+        putenv(ev2);
+        added_app_ctx = true;
+    }
 
-    /* now build the jobid */
-    ORTE_PROC_MY_NAME->jobid = ORTE_CONSTRUCT_LOCAL_JOBID(jobfam << 16, stepid);
-    /* get our rank */
-    if (PMI_SUCCESS != (ret = PMI_Get_rank(&i))) {
-        ORTE_PMI_ERROR(ret, "PMI_Get_rank");
-        error = "could not get PMI rank";
-        goto error;
+
+    /* get our app number from PMI - ok if not found */
+    OPAL_MODEX_RECV_VALUE_OPTIONAL(ret, OPAL_PMIX_APPNUM,
+                                   ORTE_PROC_MY_NAME, &u32ptr, OPAL_UINT32);
+    if (OPAL_SUCCESS == ret) {
+        orte_process_info.app_num = u32;
+    } else {
+        orte_process_info.app_num = 0;
     }
-    ORTE_PROC_MY_NAME->vpid = i;
+
+    /* get the number of local peers - required for wireup of
+     * shared memory BTL */
+    OPAL_MODEX_RECV_VALUE(ret, OPAL_PMIX_LOCAL_SIZE,
+                          ORTE_PROC_MY_NAME, &u32ptr, OPAL_UINT32);
+    if (OPAL_SUCCESS == ret) {
+        orte_process_info.num_local_peers = u32 - 1;  // want number besides ourselves
+    } else {
+        orte_process_info.num_local_peers = 0;
+    }
 
     /* setup transport keys in case the MPI layer needs them -
      * we can use the jobfam and stepid as unique keys
      * because they are unique values assigned by the RM
      */
-    unique_key[0] = (uint64_t)jobfam;
-    unique_key[1] = (uint64_t)stepid;
-    if (NULL == (string_key = orte_pre_condition_transports_print(unique_key))) {
-        ORTE_ERROR_LOG(ORTE_ERR_OUT_OF_RESOURCE);
-        return ORTE_ERR_OUT_OF_RESOURCE;
-    }
-    if (NULL == (cs_env = mca_base_param_environ_variable("orte_precondition_transports",NULL,NULL))) {
-        ORTE_ERROR_LOG(ORTE_ERR_OUT_OF_RESOURCE);
-        return ORTE_ERR_OUT_OF_RESOURCE;
-    }
-    asprintf(&envar, "%s=%s", cs_env, string_key);
-    putenv(envar);
-    /* cannot free the envar as that messes up our environ */
-    free(cs_env);
-    free(string_key);
-
-    /* get the number of procs */
-    if (PMI_SUCCESS != (ret = PMI_Get_universe_size(&i))) {
-        ORTE_PMI_ERROR(ret, "PMI_Get_universe_size");
-        error = "could not get PMI universe size";
-        goto error;
-    }
-    orte_process_info.num_procs = i;
-
-    /* get our app_context number */
-    if (PMI_SUCCESS != (ret = PMI_Get_appnum(&i))) {
-        ORTE_PMI_ERROR(ret, "PMI_Get_appnum");
-        error = "could not get PMI appnum";
-        goto error;
-    }
-    orte_process_info.app_num = i;
-
-    /* setup the nidmap arrays - they will be filled by the modex */
-    if (ORTE_SUCCESS != (ret = orte_util_nidmap_init(NULL))) {
-        ORTE_ERROR_LOG(ret);
-        error = "orte_util_nidmap_init";
-        goto error;
-    }
-    /* initialize our entry */
-    if (ORTE_SUCCESS != (ret = orte_util_setup_local_nidmap_entries())) {
-        ORTE_ERROR_LOG(ret);
-        error = "orte_util_setup_local_nidmap_entries";
-        goto error;
-    }
-    /* correct the daemon entry on our nidmap object - note that
-     * each proc's nidmap will be different, but the only thing that
-     * matters here (since we are not routing messages) is that
-     * we know which procs are on the same nodes
-     */
-    nid = (orte_nid_t*)opal_pointer_array_get_item(&orte_nidmap, 0);
-    nid->daemon = 0;
-    /* setup my daemon's name - arbitrary, since we don't route
-     * messages
-     */
-    ORTE_PROC_MY_DAEMON->jobid = 0;
-    ORTE_PROC_MY_DAEMON->vpid = 0;
-
-    /* get the job map for this job */
-    jmap = (orte_jmap_t*)opal_pointer_array_get_item(&orte_jobmap, 0);
-    /* update the num procs */
-    jmap->num_procs = orte_process_info.num_procs;
-    /* set the size of the pidmap storage so we minimize realloc's */
-    if (ORTE_SUCCESS != (ret = opal_pointer_array_set_size(&jmap->pmap, jmap->num_procs))) {
-        ORTE_ERROR_LOG(ret);
-        error = "could not set array size for pidmap";
-        goto error;
-    }
-
-    /* get our local proc info to find our local rank */
-    if (PMI_SUCCESS != (ret = PMI_Get_clique_size(&i))) {
-        ORTE_PMI_ERROR(ret, "PMI_Get_clique_size");
-        error = "could not get PMI clique size";
-        goto error;
-    }
-    ranks = (int*)malloc(i * sizeof(int));
-    if (PMI_SUCCESS != (ret = PMI_Get_clique_ranks(ranks, i))) {
-        ORTE_PMI_ERROR(ret, "PMI_Get_clique_ranks");
-        error = "could not get clique ranks";
-        goto error;
-    }
-    /* cycle thru the array until we find our rank */
-    for (j=0; j < i; j++) {
-        if (NULL == (pmap = (orte_pmap_t*)opal_pointer_array_get_item(&jmap->pmap, ranks[j]))) {
-            /* need to create this entry */
-            pmap = OBJ_NEW(orte_pmap_t);
-            pmap->node = nid->index;
-            opal_pointer_array_set_item(&jmap->pmap, ranks[j], pmap);
+    if (NULL == getenv(OPAL_MCA_PREFIX"orte_precondition_transports")) {
+        unique_key[0] = ORTE_JOB_FAMILY(ORTE_PROC_MY_NAME->jobid);
+        unique_key[1] = ORTE_LOCAL_JOBID(ORTE_PROC_MY_NAME->jobid);
+        if (NULL == (string_key = orte_pre_condition_transports_print(unique_key))) {
+            ORTE_ERROR_LOG(ORTE_ERR_OUT_OF_RESOURCE);
+            return ORTE_ERR_OUT_OF_RESOURCE;
         }
-        pmap->local_rank = j;
-        pmap->node_rank = j;
+        opal_output_verbose(2, orte_ess_base_framework.framework_output,
+                            "%s transport key %s",
+                            ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), string_key);
+        asprintf(&envar, OPAL_MCA_PREFIX"orte_precondition_transports=%s", string_key);
+        putenv(envar);
+        added_transport_keys = true;
+        /* cannot free the envar as that messes up our environ */
+        free(string_key);
     }
-    free(ranks);
 
-    /* ensure we pick the correct critical components */
-    putenv("OMPI_MCA_grpcomm=pmi");
-    putenv("OMPI_MCA_routed=direct");
-    
-    /* now use the default procedure to finish my setup */
-    if (ORTE_SUCCESS != (ret = orte_ess_base_app_setup())) {
+    /* retrieve our topology */
+    val = NULL;
+    OPAL_MODEX_RECV_VALUE_OPTIONAL(ret, OPAL_PMIX_LOCAL_TOPO,
+                                   ORTE_PROC_MY_NAME, &val, OPAL_STRING);
+    if (OPAL_SUCCESS == ret && NULL != val) {
+        /* load the topology */
+        if (0 != hwloc_topology_init(&opal_hwloc_topology)) {
+            ret = OPAL_ERROR;
+            free(val);
+            error = "setting topology";
+            goto error;
+        }
+        if (0 != hwloc_topology_set_xmlbuffer(opal_hwloc_topology, val, strlen(val))) {
+            ret = OPAL_ERROR;
+            free(val);
+            hwloc_topology_destroy(opal_hwloc_topology);
+            error = "setting topology";
+            goto error;
+        }
+        /* since we are loading this from an external source, we have to
+         * explicitly set a flag so hwloc sets things up correctly
+         */
+        if (0 != hwloc_topology_set_flags(opal_hwloc_topology,
+                                         (HWLOC_TOPOLOGY_FLAG_IS_THISSYSTEM |
+                                          HWLOC_TOPOLOGY_FLAG_WHOLE_SYSTEM |
+                                          HWLOC_TOPOLOGY_FLAG_IO_DEVICES))) {
+            ret = OPAL_ERROR;
+            hwloc_topology_destroy(opal_hwloc_topology);
+            free(val);
+            error = "setting topology";
+            goto error;
+        }
+        /* now load the topology */
+        if (0 != hwloc_topology_load(opal_hwloc_topology)) {
+            ret = OPAL_ERROR;
+            hwloc_topology_destroy(opal_hwloc_topology);
+            free(val);
+            error = "setting topology";
+            goto error;
+        }
+        free(val);
+        /* filter the cpus thru any default cpu set */
+        if (OPAL_SUCCESS != (ret = opal_hwloc_base_filter_cpus(opal_hwloc_topology))) {
+            error = "filtering topology";
+            goto error;
+        }
+    } else {
+        /* it wasn't passed down to us, so go get it */
+        if (OPAL_SUCCESS != (ret = opal_hwloc_base_get_topology())) {
+            error = "topology discovery";
+            goto error;
+        }
+        /* push it into the PMIx database in case someone
+         * tries to retrieve it so we avoid an attempt to
+         * get it again */
+        kv = OBJ_NEW(opal_value_t);
+        kv->key = strdup(OPAL_PMIX_LOCAL_TOPO);
+        kv->type = OPAL_STRING;
+        if (0 != (ret = hwloc_topology_export_xmlbuffer(opal_hwloc_topology, &kv->data.string, &u32))) {
+            error = "topology export";
+            goto error;
+        }
+        if (OPAL_SUCCESS != (ret = opal_pmix.store_local(ORTE_PROC_MY_NAME, kv))) {
+            error = "topology store";
+            goto error;
+        }
+        OBJ_RELEASE(kv);
+    }
+
+    /* get our local peers */
+    if (0 < orte_process_info.num_local_peers) {
+        /* if my local rank if too high, then that's an error */
+        if (orte_process_info.num_local_peers < orte_process_info.my_local_rank) {
+            ret = ORTE_ERR_BAD_PARAM;
+            error = "num local peers";
+            goto error;
+        }
+        /* retrieve the local peers */
+        OPAL_MODEX_RECV_VALUE(ret, OPAL_PMIX_LOCAL_PEERS,
+                              ORTE_PROC_MY_NAME, &val, OPAL_STRING);
+        if (OPAL_SUCCESS == ret && NULL != val) {
+            peers = opal_argv_split(val, ',');
+            free(val);
+            /* and their cpusets, if available */
+            OPAL_MODEX_RECV_VALUE_OPTIONAL(ret, OPAL_PMIX_LOCAL_CPUSETS, ORTE_PROC_MY_NAME, &val, OPAL_STRING);
+            if (OPAL_SUCCESS == ret && NULL != val) {
+                cpusets = opal_argv_split(val, ':');
+                free(val);
+            } else {
+                cpusets = NULL;
+            }
+        } else {
+            peers = NULL;
+            cpusets = NULL;
+        }
+    } else {
+        peers = NULL;
+        cpusets = NULL;
+    }
+
+    /* set the locality */
+    if (NULL != peers) {
+        /* indentify our cpuset */
+        if (NULL != cpusets) {
+            mycpuset = cpusets[orte_process_info.my_local_rank];
+        } else {
+            mycpuset = NULL;
+        }
+        name.jobid = ORTE_PROC_MY_NAME->jobid;
+        for (i=0; NULL != peers[i]; i++) {
+            kv = OBJ_NEW(opal_value_t);
+            kv->key = strdup(OPAL_PMIX_LOCALITY);
+            kv->type = OPAL_UINT16;
+            name.vpid = strtoul(peers[i], NULL, 10);
+            if (name.vpid == ORTE_PROC_MY_NAME->vpid) {
+                /* we are fully local to ourselves */
+                u16 = OPAL_PROC_ALL_LOCAL;
+            } else if (NULL == mycpuset || NULL == cpusets[i] ||
+                       0 == strcmp(cpusets[i], "UNBOUND")) {
+                /* all we can say is that it shares our node */
+                u16 = OPAL_PROC_ON_CLUSTER | OPAL_PROC_ON_CU | OPAL_PROC_ON_NODE;
+            } else {
+                /* we have it, so compute the locality */
+                u16 = opal_hwloc_base_get_relative_locality(opal_hwloc_topology, mycpuset, cpusets[i]);
+            }
+            OPAL_OUTPUT_VERBOSE((1, orte_ess_base_framework.framework_output,
+                                 "%s ess:pmi:locality: proc %s locality %x",
+                                 ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+                                 ORTE_NAME_PRINT(&name), u16));
+            kv->data.uint16 = u16;
+            ret = opal_pmix.store_local(&name, kv);
+            if (OPAL_SUCCESS != ret) {
+                error = "local store of locality";
+                opal_argv_free(peers);
+                opal_argv_free(cpusets);
+                goto error;
+            }
+            OBJ_RELEASE(kv);
+        }
+        opal_argv_free(peers);
+        opal_argv_free(cpusets);
+    }
+
+    /* now that we have all required info, complete the setup */
+    if (ORTE_SUCCESS != (ret = orte_ess_base_app_setup(false))) {
         ORTE_ERROR_LOG(ret);
         error = "orte_ess_base_app_setup";
         goto error;
     }
-    
-    /* flag that we completed init */
-    app_init_complete = true;
-    
+
+    /* setup process binding */
+    if (ORTE_SUCCESS != (ret = orte_ess_base_proc_binding())) {
+        error = "proc_binding";
+        goto error;
+    }
+
+    /* this needs to be set to enable debugger use when direct launched */
+    if (NULL == orte_process_info.my_daemon_uri) {
+        orte_standalone_operation = true;
+    }
+
+    /* set max procs */
+    if (orte_process_info.max_procs < orte_process_info.num_procs) {
+        orte_process_info.max_procs = orte_process_info.num_procs;
+    }
+
+    /***  PUSH DATA FOR OTHERS TO FIND   ***/
+
+    /* push our RML URI in case others need to talk directly to us */
+    rmluri = orte_rml.get_contact_info();
+    /* push it out for others to use */
+    OPAL_MODEX_SEND_VALUE(ret, OPAL_PMIX_GLOBAL, OPAL_PMIX_PROC_URI, rmluri, OPAL_STRING);
+    if (ORTE_SUCCESS != ret) {
+        error = "pmix put uri";
+        goto error;
+    }
+    free(rmluri);
+
+    /* push our hostname so others can find us, if they need to */
+    OPAL_MODEX_SEND_VALUE(ret, OPAL_PMIX_GLOBAL, OPAL_PMIX_HOSTNAME, orte_process_info.nodename, OPAL_STRING);
+    if (ORTE_SUCCESS != ret) {
+        error = "db store hostname";
+        goto error;
+    }
+
+    /* if we are an ORTE app - and not an MPI app - then
+     * we need to exchange our connection info here.
+     * MPI_Init has its own modex, so we don't need to do
+     * two of them. However, if we don't do a modex at all,
+     * then processes have no way to communicate
+     *
+     * NOTE: only do this when the process originally launches.
+     * Cannot do this on a restart as the rest of the processes
+     * in the job won't be executing this step, so we would hang
+     */
+    if (ORTE_PROC_IS_NON_MPI && !orte_do_not_barrier) {
+        opal_pmix.fence(NULL, 0);
+    }
+
     return ORTE_SUCCESS;
 
-error:
-    orte_show_help("help-orte-runtime.txt",
-                   "orte_init:startup:internal-failure",
-                   true, error, ORTE_ERROR_NAME(ret), ret);
+ error:
+    if (!progress_thread_running) {
+        /* can't send the help message, so ensure it
+         * comes out locally
+         */
+        orte_show_help_finalize();
+    }
+    if (ORTE_ERR_SILENT != ret && !orte_report_silent_errors) {
+        orte_show_help("help-orte-runtime.txt",
+                       "orte_init:startup:internal-failure",
+                       true, error, ORTE_ERROR_NAME(ret), ret);
+    }
     return ret;
 }
 
 static int rte_finalize(void)
 {
-    int ret = ORTE_SUCCESS;
-   
-    if (app_init_complete) {
-        /* use the default procedure to finish */
-        if (ORTE_SUCCESS != (ret = orte_ess_base_app_finalize())) {
-            ORTE_ERROR_LOG(ret);
-        }
-    }
-    
+    int ret;
+
     /* remove the envars that we pushed into environ
      * so we leave that structure intact
      */
-    unsetenv("OMPI_MCA_grpcomm");
-    unsetenv("OMPI_MCA_routed");
-    unsetenv("OMPI_MCA_orte_precondition_transports");
-
-    /* deconstruct my nidmap and jobmap arrays - this
-     * function protects itself from being called
-     * before things were initialized
-     */
-    orte_util_nidmap_finalize();
-
-    return ret;    
-}
-
-static void rte_abort(int error_code, bool report)
-{
-    orte_ess_base_app_abort(error_code, report);
-}
-
-static uint8_t proc_get_locality(orte_process_name_t *proc)
-{
-    orte_nid_t *nid;
-    
-    if (NULL == (nid = orte_util_lookup_nid(proc))) {
-        return OPAL_PROC_NON_LOCAL;
+    if (added_transport_keys) {
+        unsetenv(OPAL_MCA_PREFIX"orte_precondition_transports");
     }
-    
-    if (nid->daemon == ORTE_PROC_MY_DAEMON->vpid) {
-        OPAL_OUTPUT_VERBOSE((2, orte_ess_base_output,
-                             "%s ess:pmi: proc %s is LOCAL",
-                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
-                             ORTE_NAME_PRINT(proc)));
-        return (OPAL_PROC_ON_NODE | OPAL_PROC_ON_CU | OPAL_PROC_ON_CLUSTER);
+    if (added_num_procs) {
+        unsetenv(OPAL_MCA_PREFIX"orte_ess_num_procs");
     }
-    
-    OPAL_OUTPUT_VERBOSE((2, orte_ess_base_output,
-                         "%s ess:pmi: proc %s is REMOTE",
-                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
-                         ORTE_NAME_PRINT(proc)));
-    
-    return OPAL_PROC_NON_LOCAL;
-    
-}
-
-static orte_vpid_t proc_get_daemon(orte_process_name_t *proc)
-{
-    orte_nid_t *nid;
-    
-    if( ORTE_JOBID_IS_DAEMON(proc->jobid) ) {
-        return proc->vpid;
+    if (added_app_ctx) {
+        unsetenv("OMPI_APP_CTX_NUM_PROCS");
     }
 
-    if (NULL == (nid = orte_util_lookup_nid(proc))) {
-        return ORTE_VPID_INVALID;
-    }
-    
-    OPAL_OUTPUT_VERBOSE((2, orte_ess_base_output,
-                         "%s ess:pmi: proc %s is hosted by daemon %s",
-                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
-                         ORTE_NAME_PRINT(proc),
-                         ORTE_VPID_PRINT(nid->daemon)));
-    
-    return nid->daemon;
-}
-
-static char* proc_get_hostname(orte_process_name_t *proc)
-{
-    orte_nid_t *nid;
-    
-    if (NULL == (nid = orte_util_lookup_nid(proc))) {
-        ORTE_ERROR_LOG(ORTE_ERR_NOT_FOUND);
-        return NULL;
-    }
-    
-    OPAL_OUTPUT_VERBOSE((2, orte_ess_base_output,
-                         "%s ess:pmi: proc %s is on host %s",
-                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
-                         ORTE_NAME_PRINT(proc),
-                         nid->name));
-    
-    return nid->name;
-}
-
-static orte_local_rank_t proc_get_local_rank(orte_process_name_t *proc)
-{
-    orte_pmap_t *pmap;
-    
-    if (NULL == (pmap = orte_util_lookup_pmap(proc))) {
-        ORTE_ERROR_LOG(ORTE_ERR_NOT_FOUND);
-        return ORTE_LOCAL_RANK_INVALID;
-    }    
-    
-    OPAL_OUTPUT_VERBOSE((2, orte_ess_base_output,
-                         "%s ess:pmi: proc %s has local rank %d",
-                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
-                         ORTE_NAME_PRINT(proc),
-                         (int)pmap->local_rank));
-    
-    return pmap->local_rank;
-}
-
-static orte_node_rank_t proc_get_node_rank(orte_process_name_t *proc)
-{
-    orte_pmap_t *pmap;
-    
-    if (NULL == (pmap = orte_util_lookup_pmap(proc))) {
-        return ORTE_NODE_RANK_INVALID;
-    }    
-    
-    OPAL_OUTPUT_VERBOSE((2, orte_ess_base_output,
-                         "%s ess:pmi: proc %s has node rank %d",
-                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
-                         ORTE_NAME_PRINT(proc),
-                         (int)pmap->node_rank));
-    
-    return pmap->node_rank;
-}
-
-static int update_pidmap(opal_byte_object_t *bo)
-{
-    int ret;
-    
-    OPAL_OUTPUT_VERBOSE((2, orte_ess_base_output,
-                         "%s ess:pmi: updating pidmap",
-                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
-    
-    /* build the pmap */
-    if (ORTE_SUCCESS != (ret = orte_util_decode_pidmap(bo))) {
+    /* use the default app procedure to finish */
+    if (ORTE_SUCCESS != (ret = orte_ess_base_app_finalize())) {
         ORTE_ERROR_LOG(ret);
+        return ret;
     }
-    
-    return ret;
+
+    /* mark us as finalized */
+    if (NULL != opal_pmix.finalize) {
+        opal_pmix.finalize();
+        (void) mca_base_framework_close(&opal_pmix_base_framework);
+    }
+
+    /* release the event base */
+    if (progress_thread_running) {
+        opal_progress_thread_finalize(NULL);
+        progress_thread_running = false;
+    }
+    return ORTE_SUCCESS;
 }
 
-static int update_nidmap(opal_byte_object_t *bo)
+static void rte_abort(int status, bool report)
 {
-    int rc;
-    /* decode the nidmap - the util will know what to do */
-    if (ORTE_SUCCESS != (rc = orte_util_decode_nodemap(bo))) {
-        ORTE_ERROR_LOG(rc);
-    }    
-    return rc;
-}
+    struct timespec tp = {0, 100000};
 
+    OPAL_OUTPUT_VERBOSE((1, orte_ess_base_framework.framework_output,
+                         "%s ess:pmi:abort: abort with status %d",
+                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
+                         status));
+
+    /* PMI doesn't like NULL messages, but our interface
+     * doesn't provide one - so rig one up here
+     */
+    opal_pmix.abort(status, "N/A", NULL);
+
+    /* provide a little delay for the PMIx thread to
+     * get the info out */
+    nanosleep(&tp, NULL);
+
+    /* Now Exit */
+    _exit(status);
+}

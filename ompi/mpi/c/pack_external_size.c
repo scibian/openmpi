@@ -1,3 +1,4 @@
+/* -*- Mode: C; c-basic-offset:4 ; indent-tabs-mode:nil -*- */
 /*
  * Copyright (c) 2004-2007 The Trustees of Indiana University and Indiana
  *                         University Research and Technology
@@ -5,15 +6,19 @@
  * Copyright (c) 2004-2005 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2008 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2008 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
  * Copyright (c) 2006      Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2013      Los Alamos National Security, LLC.  All rights
+ *                         reserved.
+ * Copyright (c) 2015      Research Organization for Information Science
+ *                         and Technology (RIST). All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 #include "ompi_config.h"
@@ -27,19 +32,18 @@
 #include "opal/datatype/opal_convertor.h"
 #include "ompi/memchecker.h"
 
-#if OPAL_HAVE_WEAK_SYMBOLS && OMPI_PROFILING_DEFINES
+#if OMPI_BUILD_MPI_PROFILING
+#if OPAL_HAVE_WEAK_SYMBOLS
 #pragma weak MPI_Pack_external_size = PMPI_Pack_external_size
 #endif
-
-#if OMPI_PROFILING_DEFINES
-#include "ompi/mpi/c/profile/defines.h"
+#define MPI_Pack_external_size PMPI_Pack_external_size
 #endif
 
 static const char FUNC_NAME[] = "MPI_Pack_external_size";
 
 
-int MPI_Pack_external_size(char *datarep, int incount,
-                           MPI_Datatype datatype, MPI_Aint *size) 
+int MPI_Pack_external_size(const char datarep[], int incount,
+                           MPI_Datatype datatype, MPI_Aint *size)
 {
     opal_convertor_t local_convertor;
     size_t length;
@@ -47,7 +51,7 @@ int MPI_Pack_external_size(char *datarep, int incount,
     MEMCHECKER(
         memchecker_datatype(datatype);
     );
-    
+
     if (MPI_PARAM_CHECK) {
         OMPI_ERR_INIT_FINALIZE(FUNC_NAME);
         if (NULL == size) {
@@ -57,20 +61,18 @@ int MPI_Pack_external_size(char *datarep, int incount,
         }
     }
 
-    OPAL_CR_ENTER_LIBRARY();
 
     OBJ_CONSTRUCT(&local_convertor, opal_convertor_t);
 
     /* the resulting convertor will be set to the position ZERO */
-    opal_convertor_copy_and_prepare_for_send( ompi_mpi_external32_convertor,
+    opal_convertor_copy_and_prepare_for_recv( ompi_mpi_external32_convertor,
                                               &(datatype->super), incount, NULL,
                                               CONVERTOR_SEND_CONVERSION,
                                               &local_convertor );
 
-    opal_convertor_get_packed_size( &local_convertor, &length );
+    opal_convertor_get_unpacked_size( &local_convertor, &length );
     *size = (MPI_Aint)length;
     OBJ_DESTRUCT( &local_convertor );
 
-    OPAL_CR_EXIT_LIBRARY();
     return OMPI_SUCCESS;
 }

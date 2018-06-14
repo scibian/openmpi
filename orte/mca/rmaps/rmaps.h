@@ -5,27 +5,30 @@
  * Copyright (c) 2004-2005 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
+ * Copyright (c) 2011 Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2011      Los Alamos National Security, LLC.
+ *                         All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 /** @file:
  *
  * The Open RTE Resource MAPping Subsystem (RMAPS)
- * 
+ *
  * The resource mapping subsystem is responsible for mapping processes
  * to specific nodes/cpus within a given job. In many systems, this
  * functionality will not be supported - the system will map processes
  * wherever it chooses and does not allow the user to specify the
  * mapping. RMAPS components, therefore, provide services for those
  * systems that do permit such mappings.
- * 
+ *
  * RMAPS checks the MCA parameters to see if a mapping algorithm has
  * been specified.  If the user selected a mapping algorithm, the
  * indicated RMAPS component will take information from the registry
@@ -35,7 +38,7 @@
  * according to its algorithm, with the results stored on the
  * appropriate job segment - the assigned nodename for each process is
  * stored in that respective process' container on the segment.
- * 
+ *
  */
 
 #ifndef ORTE_MCA_RMAPS_H
@@ -44,7 +47,7 @@
 #include "orte_config.h"
 #include "orte/types.h"
 
-#include "opal/mca/mca.h"
+#include "orte/mca/mca.h"
 
 #include "orte/runtime/orte_globals.h"
 
@@ -56,21 +59,10 @@ BEGIN_C_DECLS
  * rmaps module functions
  */
 
-/**
- * Public API
- */
-typedef int (*orte_rmaps_base_API_map_fn_t)(orte_job_t *jdata);
-
-typedef orte_job_map_t* (*orte_rmaps_base_API_get_job_map_fn_t)(orte_jobid_t job);
-
-/* global structure for accessing RMAPS API's */
-typedef struct {
-    orte_rmaps_base_API_map_fn_t            map_job;
-    orte_rmaps_base_API_get_job_map_fn_t    get_job_map;
-} orte_rmaps_t;
-
-ORTE_DECLSPEC extern orte_rmaps_t orte_rmaps;
-
+/* mapping event - the event one activates to schedule mapping
+ * of procs to nodes for pending jobs
+  */
+ORTE_DECLSPEC extern opal_event_t orte_mapping_event;
 
 /**
 * RMAPS module functions - these are not accessible to the outside world,
@@ -94,7 +86,7 @@ typedef orte_rmaps_base_module_1_3_0_t orte_rmaps_base_module_t;
 /*
  * rmaps component
  */
- 
+
 /**
  * rmaps component version 1.3.0
  */
@@ -109,13 +101,6 @@ typedef struct orte_rmaps_base_component_2_0_0_t orte_rmaps_base_component_2_0_0
 /** Convenience typedef */
 typedef orte_rmaps_base_component_2_0_0_t orte_rmaps_base_component_t;
 
-
-/**
- * Macro for use in components that are of type rmaps
- */
-#define ORTE_RMAPS_BASE_VERSION_2_0_0 \
-  MCA_BASE_VERSION_2_0_0, \
-  "rmaps", 2, 0, 0
 
 END_C_DECLS
 

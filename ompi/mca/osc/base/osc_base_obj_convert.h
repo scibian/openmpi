@@ -3,14 +3,16 @@
  *                         All rights reserved.
  * Copyright (c) 2004-2005 The Trustees of the University of Tennessee.
  *                         All rights reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
+ * Copyright (c) 2015      Research Organization for Information Science
+ *                         and Technology (RIST). All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -74,7 +76,7 @@ static inline
 ompi_op_t *
 ompi_osc_base_op_create(int op_id)
 {
-    ompi_op_t *op = MPI_Op_f2c(op_id);
+    ompi_op_t *op = PMPI_Op_f2c(op_id);
     OBJ_RETAIN(op);
     return op;
 }
@@ -96,7 +98,7 @@ ompi_osc_base_op_create(int op_id)
  * @retval OMPI_SUCCESS Success
  */
 OMPI_DECLSPEC int ompi_osc_base_get_primitive_type_info(ompi_datatype_t *datatype,
-                                                        ompi_datatype_t **prim_datatype, 
+                                                        ompi_datatype_t **prim_datatype,
                                                         uint32_t *prim_count);
 
 
@@ -116,5 +118,13 @@ OMPI_DECLSPEC int ompi_osc_base_process_op(void *outbuf,
                                            struct ompi_datatype_t *datatype,
                                            int count,
                                            ompi_op_t *op);
+
+OMPI_DECLSPEC int ompi_osc_base_sndrcv_op(const void *origin,
+                                          int32_t origin_count,
+                                          struct ompi_datatype_t *origin_dt,
+                                          void *target,
+                                          int32_t target_count,
+                                          struct ompi_datatype_t *target_dt,
+                                          ompi_op_t *op);
 
 END_C_DECLS

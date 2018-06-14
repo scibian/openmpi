@@ -13,6 +13,8 @@
 # Copyright (c) 2010      Cisco Systems, Inc.  All rights reserved.
 # Copyright (c) 2010-2011 Los Alamos National Security, LLC.
 #                         All rights reserved.
+# Copyright (c) 2015      Research Organization for Information Science
+#                         and Technology (RIST). All rights reserved.
 # $COPYRIGHT$
 #
 # Additional copyrights may follow
@@ -20,10 +22,12 @@
 # $HEADER$
 #
 
-# MCA_shmem_mmap_CONFIG(action-if-can-compile,
-#                       [action-if-cant-compile])
+# MCA_opal_shmem_mmap_CONFIG(action-if-can-compile,
+#                        [action-if-cant-compile])
 # ------------------------------------------------
-AC_DEFUN([MCA_shmem_mmap_CONFIG],[
+AC_DEFUN([MCA_opal_shmem_mmap_CONFIG],[
+    AC_CONFIG_FILES([opal/mca/shmem/mmap/Makefile])
+
     # do we have the mmap shm stuff?
     AC_MSG_CHECKING([if want mmap shared memory support])
     AC_ARG_ENABLE(mmap-shmem,
@@ -36,7 +40,7 @@ AC_DEFUN([MCA_shmem_mmap_CONFIG],[
            AC_SEARCH_LIBS([mmap], [c],
                   [shmem_mmap_sm_build_mmap=1],
                   [shmem_mmap_sm_build_mmap=0])])
-    AS_IF([test "$enable_mmap_shmem" = "yes" -a "$shmem_mmap_sm_build_mmap" = "0"],
+    AS_IF([test "$enable_mmap_shmem" = "yes" && test "$shmem_mmap_sm_build_mmap" = "0"],
           [AC_MSG_WARN([mmap shared memory support requested but not found])
            AC_MSG_ERROR([Cannot continue])])
 

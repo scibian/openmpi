@@ -1,3 +1,4 @@
+/* -*- Mode: C; c-basic-offset:4 ; indent-tabs-mode:nil -*- */
 /*
  * Copyright (c) 2004-2006 The Trustees of Indiana University and Indiana
  *                         University Research and Technology
@@ -10,6 +11,8 @@
  * Copyright (c) 2004-2006 The Regents of the University of California.
  *                         All rights reserved.
  * Copyright (c) 2006      QLogic Corporation. All rights reserved.
+ * Copyright (c) 2015      Los Alamos National Security, LLC. All rights
+ *                         reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -28,7 +31,7 @@
 #include "ompi/mca/mtl/base/mtl_base_datatype.h"
 
 int
-ompi_mtl_psm_send(struct mca_mtl_base_module_t* mtl, 
+ompi_mtl_psm_send(struct mca_mtl_base_module_t* mtl,
                  struct ompi_communicator_t* comm,
                  int dest,
                  int tag,
@@ -42,18 +45,18 @@ ompi_mtl_psm_send(struct mca_mtl_base_module_t* mtl,
     int ret;
     size_t length;
     ompi_proc_t* ompi_proc = ompi_comm_peer_lookup( comm, dest );
-    mca_mtl_psm_endpoint_t* psm_endpoint = (mca_mtl_psm_endpoint_t*) ompi_proc->proc_pml;
+    mca_mtl_psm_endpoint_t* psm_endpoint = ompi_mtl_psm_get_endpoint (mtl, ompi_proc);
 
     assert(mtl == &ompi_mtl_psm.super);
 
     mqtag = PSM_MAKE_MQTAG(comm->c_contextid, comm->c_my_rank, tag);
-    
-    ret = ompi_mtl_datatype_pack(convertor, 
+
+    ret = ompi_mtl_datatype_pack(convertor,
                                  &mtl_psm_request.buf,
-                                 &length, 
+                                 &length,
                                  &mtl_psm_request.free_after);
 
-    
+
     mtl_psm_request.length = length;
     mtl_psm_request.convertor = convertor;
     mtl_psm_request.type = OMPI_MTL_PSM_ISEND;
@@ -78,7 +81,7 @@ ompi_mtl_psm_send(struct mca_mtl_base_module_t* mtl,
 }
 
 int
-ompi_mtl_psm_isend(struct mca_mtl_base_module_t* mtl, 
+ompi_mtl_psm_isend(struct mca_mtl_base_module_t* mtl,
                   struct ompi_communicator_t* comm,
                   int dest,
                   int tag,
@@ -94,16 +97,16 @@ ompi_mtl_psm_isend(struct mca_mtl_base_module_t* mtl,
     mca_mtl_psm_request_t * mtl_psm_request = (mca_mtl_psm_request_t*) mtl_request;
     size_t length;
     ompi_proc_t* ompi_proc = ompi_comm_peer_lookup( comm, dest );
-    mca_mtl_psm_endpoint_t* psm_endpoint = (mca_mtl_psm_endpoint_t*)ompi_proc->proc_pml;
+    mca_mtl_psm_endpoint_t* psm_endpoint = ompi_mtl_psm_get_endpoint (mtl, ompi_proc);
 
     assert(mtl == &ompi_mtl_psm.super);
 
     mqtag = PSM_MAKE_MQTAG(comm->c_contextid, comm->c_my_rank, tag);
 
-    
-    ret = ompi_mtl_datatype_pack(convertor, 
+
+    ret = ompi_mtl_datatype_pack(convertor,
                                  &mtl_psm_request->buf,
-                                 &length, 
+                                 &length,
                                  &mtl_psm_request->free_after);
 
     mtl_psm_request->length= length;
@@ -114,7 +117,7 @@ ompi_mtl_psm_isend(struct mca_mtl_base_module_t* mtl,
 
     if (mode == MCA_PML_BASE_SEND_SYNCHRONOUS)
 	flags |= PSM_MQ_FLAG_SENDSYNC;
-    
+
     psm_error = psm_mq_isend(ompi_mtl_psm.mq,
 			     psm_endpoint->peer_addr,
 			     flags,
@@ -123,6 +126,6 @@ ompi_mtl_psm_isend(struct mca_mtl_base_module_t* mtl,
 			     length,
 			     mtl_psm_request,
 			     &mtl_psm_request->psm_request);
-    
+
     return psm_error == PSM_OK ? OMPI_SUCCESS : OMPI_ERROR;
 }

@@ -2,18 +2,20 @@
  * Copyright (c) 2004-2005 The Trustees of Indiana University and Indiana
  *                         University Research and Technology
  *                         Corporation.  All rights reserved.
- * Copyright (c) 2004-2006 The University of Tennessee and The University
+ * Copyright (c) 2004-2014 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
  * Copyright (c) 2011      NVIDIA Corporation.  All rights reserved.
+ * Copyright (c) 2015      Research Organization for Information Science
+ *                         and Technology (RIST). All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -40,14 +42,14 @@
  *	Returns:	- MPI_SUCCESS or error code
  */
 int
-mca_coll_basic_exscan_intra(void *sbuf, void *rbuf, int count,
+mca_coll_basic_exscan_intra(const void *sbuf, void *rbuf, int count,
                             struct ompi_datatype_t *dtype,
                             struct ompi_op_t *op,
                             struct ompi_communicator_t *comm,
                             mca_coll_base_module_t *module)
 {
     int size, rank, err;
-    ptrdiff_t true_lb, true_extent, lb, extent;
+    ptrdiff_t dsize, gap;
     char *free_buffer = NULL;
     char *reduce_buffer = NULL;
 
@@ -81,15 +83,14 @@ mca_coll_basic_exscan_intra(void *sbuf, void *rbuf, int count,
 
     /* Get a temporary buffer to perform the reduction into.  Rationale
      * for malloc'ing this size is provided in coll_basic_reduce.c. */
-    ompi_datatype_get_extent(dtype, &lb, &extent);
-    ompi_datatype_get_true_extent(dtype, &true_lb, &true_extent);
+    dsize = opal_datatype_span(&dtype->super, count, &gap);
 
-    free_buffer = (char*)malloc(true_extent + (count - 1) * extent);
+    free_buffer = (char*)malloc(dsize);
     if (NULL == free_buffer) {
         return OMPI_ERR_OUT_OF_RESOURCE;
     }
-    reduce_buffer = free_buffer - lb;
-    err = ompi_datatype_copy_content_same_ddt(dtype, count, 
+    reduce_buffer = free_buffer - gap;
+    err = ompi_datatype_copy_content_same_ddt(dtype, count,
                                               reduce_buffer, (char*)sbuf);
 
     /* Receive the reduced value from the prior rank */
@@ -124,7 +125,7 @@ mca_coll_basic_exscan_intra(void *sbuf, void *rbuf, int count,
  *	Returns:	- MPI_SUCCESS or error code
  */
 int
-mca_coll_basic_exscan_inter(void *sbuf, void *rbuf, int count,
+mca_coll_basic_exscan_inter(const void *sbuf, void *rbuf, int count,
                             struct ompi_datatype_t *dtype,
                             struct ompi_op_t *op,
                             struct ompi_communicator_t *comm,

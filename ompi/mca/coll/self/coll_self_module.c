@@ -5,14 +5,15 @@
  * Copyright (c) 2004-2005 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
+ * Copyright (c) 2015      Los Alamos National Security, LLC.  All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -23,7 +24,6 @@
 
 #include "mpi.h"
 #include "ompi/communicator/communicator.h"
-#include "opal/mca/base/mca_base_param.h"
 #include "ompi/mca/coll/coll.h"
 #include "ompi/mca/coll/base/base.h"
 #include "coll_self.h"
@@ -37,7 +37,7 @@ int mca_coll_self_init_query(bool enable_progress_threads,
                              bool enable_mpi_threads)
 {
     /* Nothing to do */
-  
+
     return OMPI_SUCCESS;
 }
 
@@ -48,7 +48,7 @@ int mca_coll_self_init_query(bool enable_progress_threads,
  * priority we want to return.
  */
 mca_coll_base_module_t *
-mca_coll_self_comm_query(struct ompi_communicator_t *comm, 
+mca_coll_self_comm_query(struct ompi_communicator_t *comm,
                          int *priority)
 {
     mca_coll_self_module_t *module;
@@ -56,17 +56,13 @@ mca_coll_self_comm_query(struct ompi_communicator_t *comm,
     /* We only work on intracommunicators of size 1 */
 
     if (!OMPI_COMM_IS_INTER(comm) && 1 == ompi_comm_size(comm)) {
-        if (OMPI_SUCCESS != 
-            mca_base_param_lookup_int(mca_coll_self_priority_param,
-                                      priority)) {
-            return NULL;
-        }
+        *priority = ompi_coll_self_priority;
 
         module = OBJ_NEW(mca_coll_self_module_t);
         if (NULL == module) return NULL;
 
         module->super.coll_module_enable = mca_coll_self_module_enable;
-        module->super.ft_event        = mca_coll_self_ft_event;
+        module->super.ft_event        = NULL;
         module->super.coll_allgather  = mca_coll_self_allgather_intra;
         module->super.coll_allgatherv = mca_coll_self_allgatherv_intra;
         module->super.coll_allreduce  = mca_coll_self_allreduce_intra;
@@ -101,23 +97,3 @@ mca_coll_self_module_enable(mca_coll_base_module_t *module,
     return OMPI_SUCCESS;
 }
 
-
-int mca_coll_self_ft_event(int state) {
-    if(OPAL_CRS_CHECKPOINT == state) {
-        ;
-    }
-    else if(OPAL_CRS_CONTINUE == state) {
-        ;
-    }
-    else if(OPAL_CRS_RESTART == state) {
-        ;
-    }
-    else if(OPAL_CRS_TERM == state ) {
-        ;
-    }
-    else {
-        ;
-    }
-
-    return OMPI_SUCCESS;
-}

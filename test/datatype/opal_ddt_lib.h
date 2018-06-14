@@ -1,6 +1,6 @@
 /* -*- Mode: C; c-basic-offset:4 ; -*- */
 /*
- * Copyright (c) 2009      The University of Tennessee and The University
+ * Copyright (c) 2009-2014 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
  * Copyright (c) 2009      Oak Ridge National Labs.  All rights reserved.
@@ -25,12 +25,15 @@
 
 #define DUMP_DATA_AFTER_COMMIT 0x00000001
 #define CHECK_PACK_UNPACK      0x00000002
+#define VALIDATE_DATA          0x00000004
+#define RESET_CONVERTORS       0x00000010
+#define QUIT_ON_FIRST_ERROR    0x00000020
 
 extern uint32_t outputFlags;
 
 extern void cache_trash( void );
-extern opal_datatype_t* create_contiguous_type( const opal_datatype_t* type, int length );
-extern opal_datatype_t* create_vector_type( const opal_datatype_t* data, int count, int length, int stride );
+extern opal_datatype_t* create_contiguous_type( opal_datatype_t const * const type, int length );
+extern opal_datatype_t* create_vector_type( opal_datatype_t const* const data, int count, int length, int stride );
 extern opal_datatype_t* create_strange_dt( void );
 extern opal_datatype_t* upper_matrix( unsigned int mat_size );
 extern opal_datatype_t* lower_matrix( unsigned int mat_size );
@@ -42,11 +45,13 @@ extern opal_datatype_t* test_struct_char_double( void );
 extern opal_datatype_t* test_create_twice_two_doubles( void );
 extern opal_datatype_t* test_struct( void );
 extern opal_datatype_t* test_create_blacs_type( void );
-extern opal_datatype_t* test_create_blacs_type1( opal_datatype_t* base_type );
-extern opal_datatype_t* test_create_blacs_type2( opal_datatype_t* base_type );
+extern opal_datatype_t* test_create_blacs_type1( opal_datatype_t const * const base_type );
+extern opal_datatype_t* test_create_blacs_type2( opal_datatype_t const * const base_type );
 
 extern int mpich_typeub( void );
 extern int mpich_typeub2( void );
 extern int mpich_typeub3( void );
+
+extern opal_datatype_t* create_struct_constant_gap_resized_ddt( const opal_datatype_t* type );
 
 #endif /* TEST_OPAL_DDT_LIB_H */

@@ -1,20 +1,25 @@
-/* -*- Mode: C; c-basic-offset:4 ; -*- */
-/* 
+/* -*- Mode: C; c-basic-offset:4 ; indent-tabs-mode:nil -*- */
+/*
  * Copyright (c) 2004-2005 The Trustees of Indiana University and Indiana
  *                         University Research and Technology
  *                         Corporation.  All rights reserved.
  * Copyright (c) 2004-2007 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
  * Copyright (c) 2009      Sun Microsystems, Inc. All rights reserved.
+ * Copyright (c) 2009-2012 Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2013-2015 Los Alamos National Security, LLC.  All rights
+ *                         reserved.
+ * Copyright (c) 2015-2016 Research Organization for Information Science
+ *                         and Technology (RIST). All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -30,14 +35,23 @@
 #include "ompi/mca/osc/base/base.h"
 #include "ompi/mca/osc/osc.h"
 
+#include "ompi/runtime/params.h"
 
 /*
  * Table for Fortran <-> C communicator handle conversion.  Note that
  * these are not necessarily global.
  */
-opal_pointer_array_t ompi_mpi_windows; 
+opal_pointer_array_t ompi_mpi_windows = {{0}};
 
-ompi_predefined_win_t ompi_mpi_win_null;
+ompi_predefined_win_t ompi_mpi_win_null = {{{0}}};
+ompi_predefined_win_t *ompi_mpi_win_null_addr = &ompi_mpi_win_null;
+mca_base_var_enum_t *ompi_win_accumulate_ops = NULL;
+
+static mca_base_var_enum_value_t accumulate_ops_values[] = {
+    {.value = OMPI_WIN_ACCUMULATE_OPS_SAME_OP_NO_OP, .string = "same_op_no_op",},
+    {.value = OMPI_WIN_ACCUMULATE_OPS_SAME_OP, .string = "same_op",},
+    {.value = -1, .string = NULL},
+};
 
 static void ompi_win_construct(ompi_win_t *win);
 static void ompi_win_destruct(ompi_win_t *win);
@@ -48,6 +62,10 @@ OBJ_CLASS_INSTANCE(ompi_win_t, opal_object_t,
 int
 ompi_win_init(void)
 {
+    int ret;
+
+    assert (sizeof (ompi_predefined_win_t) >= sizeof (ompi_win_t));
+
     /* setup window Fortran array */
     OBJ_CONSTRUCT(&ompi_mpi_windows, opal_pointer_array_t);
     if( OPAL_SUCCESS != opal_pointer_array_init(&ompi_mpi_windows, 0,
@@ -63,79 +81,235 @@ ompi_win_init(void)
     ompi_win_set_name(&ompi_mpi_win_null.win, "MPI_WIN_NULL");
     opal_pointer_array_set_item(&ompi_mpi_windows, 0, &ompi_mpi_win_null.win);
 
+    ret = mca_base_var_enum_create ("accumulate_ops", accumulate_ops_values, &ompi_win_accumulate_ops);
+    if (OPAL_SUCCESS != ret) {
+        return ret;
+    }
+
     return OMPI_SUCCESS;
 }
 
-
-int
-ompi_win_finalize(void)
+static void ompi_win_dump (ompi_win_t *win)
 {
+    opal_output(0, "Dumping information for window: %s\n", win->w_name);
+    opal_output(0,"  Fortran window handle: %d, window size: %d\n",
+                win->w_f_to_c_index, ompi_group_size (win->w_group));
+}
+
+int ompi_win_finalize(void)
+{
+    size_t size = opal_pointer_array_get_size (&ompi_mpi_windows);
+    /* start at 1 to skip win null */
+    for (size_t i = 1 ; i < size ; ++i) {
+        ompi_win_t *win =
+            (ompi_win_t *) opal_pointer_array_get_item (&ompi_mpi_windows, i);
+        if (NULL != win) {
+            if (ompi_debug_show_handle_leaks && !ompi_win_invalid(win)){
+                opal_output(0,"WARNING: MPI_Win still allocated in MPI_Finalize\n");
+                ompi_win_dump (win);
+            }
+            ompi_win_free (win);
+        }
+    }
+
     OBJ_DESTRUCT(&ompi_mpi_win_null.win);
     OBJ_DESTRUCT(&ompi_mpi_windows);
+    OBJ_RELEASE(ompi_win_accumulate_ops);
 
     return OMPI_SUCCESS;
 }
 
+static int alloc_window(struct ompi_communicator_t *comm, ompi_info_t *info, int flavor, ompi_win_t **win_out)
+{
+    ompi_win_t *win;
+    ompi_group_t *group;
+    int acc_ops, flag, ret;
+
+    /* create the object */
+    win = OBJ_NEW(ompi_win_t);
+    if (NULL == win) {
+        return OMPI_ERR_OUT_OF_RESOURCE;
+    }
+
+    ret = ompi_info_get_value_enum (info, "accumulate_ops", &acc_ops,
+                                    OMPI_WIN_ACCUMULATE_OPS_SAME_OP_NO_OP,
+                                    ompi_win_accumulate_ops, &flag);
+    if (OMPI_SUCCESS != ret) {
+        OBJ_RELEASE(win);
+        return ret;
+    }
+
+    win->w_acc_ops = acc_ops;
+    win->w_flavor = flavor;
+
+    /* setup data that is independent of osc component */
+    group = comm->c_local_group;
+    OBJ_RETAIN(group);
+    win->w_group = group;
+
+    *win_out = win;
+
+    return OMPI_SUCCESS;
+}
+
+static int
+config_window(void *base, size_t size, int disp_unit,
+              int flavor, int model, ompi_win_t *win)
+{
+    int ret;
+
+    ret = ompi_attr_set_c(WIN_ATTR, win, &win->w_keyhash,
+                          MPI_WIN_BASE, base, true);
+    if (OMPI_SUCCESS != ret) return ret;
+
+    ret = ompi_attr_set_fortran_mpi2(WIN_ATTR, win,
+                                     &win->w_keyhash,
+                                     MPI_WIN_SIZE, size, true);
+    if (OMPI_SUCCESS != ret) return ret;
+
+    ret = ompi_attr_set_fortran_mpi1(WIN_ATTR, win,
+                                     &win->w_keyhash,
+                                     MPI_WIN_DISP_UNIT, disp_unit,
+                                     true);
+    if (OMPI_SUCCESS != ret) return ret;
+
+    ret = ompi_attr_set_fortran_mpi1(WIN_ATTR, win,
+                                     &win->w_keyhash,
+                                     MPI_WIN_CREATE_FLAVOR, flavor, true);
+    if (OMPI_SUCCESS != ret) return ret;
+
+    ret = ompi_attr_set_fortran_mpi1(WIN_ATTR, win,
+                                     &win->w_keyhash,
+                                     MPI_WIN_MODEL, model, true);
+    if (OMPI_SUCCESS != ret) return ret;
+
+    win->w_f_to_c_index = opal_pointer_array_add(&ompi_mpi_windows, win);
+    if (-1 == win->w_f_to_c_index) return OMPI_ERR_OUT_OF_RESOURCE;
+
+    return OMPI_SUCCESS;
+}
 
 int
-ompi_win_create(void *base, size_t size, 
+ompi_win_create(void *base, size_t size,
                 int disp_unit, ompi_communicator_t *comm,
                 ompi_info_t *info,
                 ompi_win_t** newwin)
 {
     ompi_win_t *win;
-    ompi_group_t *group;
+    int model;
     int ret;
 
-    /* create the object */
-    win = OBJ_NEW(ompi_win_t);
-    if (NULL == win) return OMPI_ERR_TEMP_OUT_OF_RESOURCE;
-
-    /* setup data that is independent of osc component */
-    group = comm->c_local_group;
-    OBJ_RETAIN(group);
-    ompi_group_increment_proc_count(group);
-    win->w_group = group;
-
-    win->w_baseptr = base;
-    win->w_size = size;
-    win->w_disp_unit = disp_unit;
-
-    /* Fill in required attributes */
-    ret = ompi_attr_set_c(WIN_ATTR, win, &win->w_keyhash, 
-                          MPI_WIN_BASE, win->w_baseptr, true);
+    ret = alloc_window (comm, info, MPI_WIN_FLAVOR_CREATE, &win);
     if (OMPI_SUCCESS != ret) {
-        OBJ_RELEASE(win);
         return ret;
     }
-    ret = ompi_attr_set_fortran_mpi2(WIN_ATTR, win, 
-                                     &win->w_keyhash, 
-                                     MPI_WIN_SIZE, win->w_size, true);
-    if (OMPI_SUCCESS != ret) {
-        OBJ_RELEASE(win);
-        return ret;
-    }
-    ret = ompi_attr_set_fortran_mpi2(WIN_ATTR, win, 
-                                     &win->w_keyhash, 
-                                     MPI_WIN_DISP_UNIT, win->w_disp_unit,
-                                     true);
+
+    ret = ompi_osc_base_select(win, &base, size, disp_unit, comm, info, MPI_WIN_FLAVOR_CREATE, &model);
     if (OMPI_SUCCESS != ret) {
         OBJ_RELEASE(win);
         return ret;
     }
 
-    /* create backend onesided module for this window */
-    ret = ompi_osc_base_select(win, (ompi_info_t*) info, comm);
+    ret = config_window(base, size, disp_unit, MPI_WIN_FLAVOR_CREATE, model, win);
     if (OMPI_SUCCESS != ret) {
         OBJ_RELEASE(win);
         return ret;
     }
 
-    /* fill in Fortran index */
-    win->w_f_to_c_index = opal_pointer_array_add(&ompi_mpi_windows, win);
-    if (-1 == win->w_f_to_c_index) {
-        ompi_win_free(win);
-        return OMPI_ERR_OUT_OF_RESOURCE;
+    *newwin = win;
+
+    return OMPI_SUCCESS;
+}
+
+
+int
+ompi_win_allocate(size_t size, int disp_unit, ompi_info_t *info,
+                  ompi_communicator_t *comm, void *baseptr, ompi_win_t **newwin)
+{
+    ompi_win_t *win;
+    int model;
+    int ret;
+    void *base;
+
+    ret = alloc_window (comm, info, MPI_WIN_FLAVOR_ALLOCATE, &win);
+    if (OMPI_SUCCESS != ret) {
+        return ret;
+    }
+
+    ret = ompi_osc_base_select(win, &base, size, disp_unit, comm, info, MPI_WIN_FLAVOR_ALLOCATE, &model);
+    if (OMPI_SUCCESS != ret) {
+        OBJ_RELEASE(win);
+        return ret;
+    }
+
+    ret = config_window(base, size, disp_unit, MPI_WIN_FLAVOR_ALLOCATE, model, win);
+    if (OMPI_SUCCESS != ret) {
+        OBJ_RELEASE(win);
+        return ret;
+    }
+
+    *((void**) baseptr) = base;
+    *newwin = win;
+
+    return OMPI_SUCCESS;
+}
+
+
+int
+ompi_win_allocate_shared(size_t size, int disp_unit, ompi_info_t *info,
+                         ompi_communicator_t *comm, void *baseptr, ompi_win_t **newwin)
+{
+    ompi_win_t *win;
+    int model;
+    int ret;
+    void *base;
+
+    ret = alloc_window (comm, info, MPI_WIN_FLAVOR_SHARED, &win);
+    if (OMPI_SUCCESS != ret) {
+        return ret;
+    }
+
+    ret = ompi_osc_base_select(win, &base, size, disp_unit, comm, info, MPI_WIN_FLAVOR_SHARED, &model);
+    if (OMPI_SUCCESS != ret) {
+        OBJ_RELEASE(win);
+        return ret;
+    }
+
+    ret = config_window(base, size, disp_unit, MPI_WIN_FLAVOR_SHARED, model, win);
+    if (OMPI_SUCCESS != ret) {
+        OBJ_RELEASE(win);
+        return ret;
+    }
+
+    *((void**) baseptr) = base;
+    *newwin = win;
+
+    return OMPI_SUCCESS;
+}
+
+
+int
+ompi_win_create_dynamic(ompi_info_t *info, ompi_communicator_t *comm, ompi_win_t **newwin)
+{
+    ompi_win_t *win;
+    int model;
+    int ret;
+
+    ret = alloc_window (comm, info, MPI_WIN_FLAVOR_DYNAMIC, &win);
+    if (OMPI_SUCCESS != ret) {
+        return ret;
+    }
+
+    ret = ompi_osc_base_select(win, MPI_BOTTOM, 0, 1, comm, info, MPI_WIN_FLAVOR_DYNAMIC, &model);
+    if (OMPI_SUCCESS != ret) {
+        OBJ_RELEASE(win);
+        return ret;
+    }
+
+    ret = config_window(MPI_BOTTOM, 0, 1, MPI_WIN_FLAVOR_DYNAMIC, model, win);
+    if (OMPI_SUCCESS != ret) {
+        OBJ_RELEASE(win);
+        return ret;
     }
 
     *newwin = win;
@@ -164,7 +338,7 @@ ompi_win_free(ompi_win_t *win)
 
 
 int
-ompi_win_set_name(ompi_win_t *win, char *win_name)
+ompi_win_set_name(ompi_win_t *win, const char *win_name)
 {
     OPAL_THREAD_LOCK(&(win->w_lock));
     memset(win->w_name, 0, MPI_MAX_OBJECT_NAME);
@@ -191,7 +365,6 @@ ompi_win_get_name(ompi_win_t *win, char *win_name, int *length)
 int
 ompi_win_group(ompi_win_t *win, ompi_group_t **group) {
     OBJ_RETAIN(win->w_group);
-    ompi_group_increment_proc_count(win->w_group);
     *group = win->w_group;
 
     return OMPI_SUCCESS;
@@ -213,11 +386,7 @@ ompi_win_construct(ompi_win_t *win)
     win->error_handler = &ompi_mpi_errors_are_fatal.eh;
     win->errhandler_type = OMPI_ERRHANDLER_TYPE_WIN;
 
-    win->w_disp_unit = 0;
     win->w_flags = 0;
-    win->w_mode = 0;
-    win->w_baseptr = NULL;
-    win->w_size = 0;
     win->w_osc_module = NULL;
 }
 
@@ -235,7 +404,6 @@ ompi_win_destruct(ompi_win_t *win)
     }
 
     if (NULL != win->w_group) {
-        ompi_group_decrement_proc_count(win->w_group);
         OBJ_RELEASE(win->w_group);
     }
 

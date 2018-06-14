@@ -5,21 +5,25 @@
  * Copyright (c) 2004-2005 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2006 The Regents of the University of California.
  *                         All rights reserved.
  * Copyright (c) 2011 Cisco Systems, Inc.  All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
 #include "opal_config.h"
 
 #include <stdio.h>
+#include <string.h>
+#ifdef HAVE_UNISTD_H
+#include <unistd.h>
+#endif
 #ifdef HAVE_EXECINFO_H
 #include <execinfo.h>
 #endif
@@ -27,28 +31,36 @@
 #include "opal/constants.h"
 #include "opal/mca/backtrace/backtrace.h"
 
-void
-opal_backtrace_print(FILE *file)
+int
+opal_backtrace_print(FILE *file, char *prefix, int strip)
 {
-    int i;
+    int i, fd, len;
     int trace_size;
     void * trace[32];
-    char ** messages = (char **)NULL;
+    char buf[6];
 
-    trace_size = backtrace (trace, 32);
-    messages = backtrace_symbols (trace, trace_size);
-
-    for (i = 0; i < trace_size; i++) {
-        fprintf(file, "[%d] func:%s\n", i, messages[i]);
-        fflush(file);
+    fd = fileno (file);
+    if (-1 == fd) {
+        return OPAL_ERR_BAD_PARAM;
     }
 
-    free(messages);
+    trace_size = backtrace (trace, 32);
+
+    for (i = strip; i < trace_size; i++) {
+        if (NULL != prefix) {
+            write (fd, prefix, strlen (prefix));
+        }
+        len = snprintf (buf, sizeof(buf), "[%2d] ", i - strip);
+        write (fd, buf, len);
+        backtrace_symbols_fd (&trace[i], 1, fd);
+    }
+
+    return OPAL_SUCCESS;
 }
 
 
 int
-opal_backtrace_buffer(char ***message_out, int *len_out) 
+opal_backtrace_buffer(char ***message_out, int *len_out)
 {
     int trace_size;
     void * trace[32];

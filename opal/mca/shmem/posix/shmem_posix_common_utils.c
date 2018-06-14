@@ -14,6 +14,7 @@
  * Copyright (c) 2010-2011 Los Alamos National Security, LLC.
  *                         All rights reserved.
  * Copyright (c) 2011      NVIDIA Corporation.  All rights reserved.
+ * Copyright (c) 2014      Intel, Inc. All rights reserved.
  *
  * $COPYRIGHT$
  *
@@ -28,12 +29,16 @@
 #ifdef HAVE_FCNTL_H
 #include <fcntl.h>
 #endif  /* HAVE_FCNTL_H */
-#ifdef HAVE_STRING_H
 #include <string.h>
-#endif /* HAVE_STRING_H */
+#if OPAL_HAVE_SOLARIS && !defined(_POSIX_C_SOURCE)
+  #define _POSIX_C_SOURCE 200112L /* Required for shm_{open,unlink} decls */
+  #include <sys/mman.h>
+  #undef _POSIX_C_SOURCE
+#else
 #ifdef HAVE_SYS_MMAN_H
 #include <sys/mman.h>
 #endif /* HAVE_SYS_MMAN_H */
+#endif
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
 #endif /* HAVE_UNISTD_H */
@@ -83,10 +88,9 @@ shmem_posix_shm_open(char *posix_file_name_buff, size_t size)
              * of here. we can't be selected :-(.
              */
             else {
-                char hn[MAXHOSTNAMELEN];
-                gethostname(hn, MAXHOSTNAMELEN - 1);
-                hn[MAXHOSTNAMELEN - 1] = '\0';
-                opal_output_verbose(10, opal_shmem_base_output,
+                char hn[OPAL_MAXHOSTNAMELEN];
+                gethostname(hn, sizeof(hn));
+                opal_output_verbose(10, opal_shmem_base_framework.framework_output,
                      "shmem_posix_shm_open: disqualifying posix because "
                      "shm_open(2) failed with error: %s (errno %d)\n",
                      strerror(err), err);

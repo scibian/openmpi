@@ -1,10 +1,14 @@
-/* -*- Mode: C; c-basic-offset:4 ; -*- */
+/* -*- Mode: C; c-basic-offset:4 ; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2009      The University of Tennessee and The University
+ * Copyright (c) 2009-2013 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
  * Copyright (c) 2009      Oak Ridge National Labs.  All rights reserved.
  * Copyright (c) 2010      Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2013      Los Alamos National Security, LLC.  All rights
+ *                         reserved.
+ * Copyright (c) 2015      Research Organization for Information Science
+ *                         and Technology (RIST). All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -26,18 +30,12 @@
 #include "ompi_config.h"
 
 #include <stddef.h>
-#ifdef HAVE_STDINT_H
 #include <stdint.h>
-#endif
-#ifdef HAVE_STRING_H
 #include <string.h>
-#endif
+#include <limits.h>
 
 #include "ompi/constants.h"
-#include "opal/class/opal_pointer_array.h"
-#include "opal/class/opal_hash_table.h"
 #include "opal/datatype/opal_convertor.h"
-#include "opal/datatype/opal_datatype.h"
 #include "mpi.h"
 
 BEGIN_C_DECLS
@@ -56,7 +54,7 @@ BEGIN_C_DECLS
 #define OMPI_DATATYPE_FLAG_DATA_FORTRAN  0xC000
 #define OMPI_DATATYPE_FLAG_DATA_LANGUAGE 0xC000
 
-#define OMPI_DATATYPE_MAX_PREDEFINED 45
+#define OMPI_DATATYPE_MAX_PREDEFINED 47
 
 #if OMPI_DATATYPE_MAX_PREDEFINED > OPAL_DATATYPE_MAX_SUPPORTED
 #error Need to increase the number of supported dataypes by OPAL (value OPAL_DATATYPE_MAX_SUPPORTED).
@@ -75,6 +73,7 @@ struct ompi_datatype_t {
 
     void*              args;                     /**< Data description for the user */
     void*              packed_description;       /**< Packed description of the datatype */
+    uint64_t           pml_data;                 /**< PML-specific information */
     /* --- cacheline 6 boundary (384 bytes) --- */
     char               name[MPI_MAX_OBJECT_NAME];/**< Externally visible name */
     /* --- cacheline 7 boundary (448 bytes) --- */
@@ -159,18 +158,7 @@ ompi_datatype_commit( ompi_datatype_t ** type )
 }
 
 
-static inline int32_t
-ompi_datatype_destroy( ompi_datatype_t** type)
-{
-    ompi_datatype_t* pData = *type;
-
-    if( ompi_datatype_is_predefined(pData) && (pData->super.super.obj_reference_count <= 1) )
-        return OMPI_ERROR;
-
-    OBJ_RELEASE( pData );
-    *type = NULL;
-    return OMPI_SUCCESS;
-}
+OMPI_DECLSPEC int32_t ompi_datatype_destroy( ompi_datatype_t** type);
 
 
 /*
@@ -183,31 +171,8 @@ ompi_datatype_add( ompi_datatype_t* pdtBase, const ompi_datatype_t* pdtAdd, uint
     return opal_datatype_add( &pdtBase->super, &pdtAdd->super, count, disp, extent );
 }
 
-
-static inline int32_t
-ompi_datatype_duplicate( const ompi_datatype_t* oldType, ompi_datatype_t** newType )
-{
-    ompi_datatype_t * new_ompi_datatype = ompi_datatype_create( oldType->super.desc.used + 2 );
-
-    *newType = new_ompi_datatype;
-    if( NULL == new_ompi_datatype ) {
-        return OMPI_ERR_OUT_OF_RESOURCE;
-    }
-    opal_datatype_clone ( &oldType->super, &new_ompi_datatype->super);
-    /* Strip the predefined flag at the OMPI level. */
-    new_ompi_datatype->super.flags &= ~OMPI_DATATYPE_FLAG_PREDEFINED;
-    /* By default maintain the relationships related to the old data (such as ops) */
-    new_ompi_datatype->id = oldType->id;
-
-    /* Set the keyhash to NULL -- copying attributes is *only* done at
-       the top level (specifically, MPI_TYPE_DUP). */
-    new_ompi_datatype->d_keyhash = NULL;
-    new_ompi_datatype->args = NULL;
-    snprintf (new_ompi_datatype->name, MPI_MAX_OBJECT_NAME, "Dup %s",
-              oldType->name);
-
-    return OMPI_SUCCESS;
-}
+OMPI_DECLSPEC int32_t
+ompi_datatype_duplicate( const ompi_datatype_t* oldType, ompi_datatype_t** newType );
 
 OMPI_DECLSPEC int32_t ompi_datatype_create_contiguous( int count, const ompi_datatype_t* oldType, ompi_datatype_t** newType );
 OMPI_DECLSPEC int32_t ompi_datatype_create_vector( int count, int bLength, int stride,
@@ -220,10 +185,22 @@ OMPI_DECLSPEC int32_t ompi_datatype_create_hindexed( int count, const int* pBloc
                                                      const ompi_datatype_t* oldType, ompi_datatype_t** newType );
 OMPI_DECLSPEC int32_t ompi_datatype_create_indexed_block( int count, int bLength, const int* pDisp,
                                                           const ompi_datatype_t* oldType, ompi_datatype_t** newType );
+OMPI_DECLSPEC int32_t ompi_datatype_create_hindexed_block( int count, int bLength, const OPAL_PTRDIFF_TYPE* pDisp,
+                                                           const ompi_datatype_t* oldType, ompi_datatype_t** newType );
 OMPI_DECLSPEC int32_t ompi_datatype_create_struct( int count, const int* pBlockLength, const OPAL_PTRDIFF_TYPE* pDisp,
                                                    ompi_datatype_t* const* pTypes, ompi_datatype_t** newType );
+OMPI_DECLSPEC int32_t ompi_datatype_create_darray( int size, int rank, int ndims, int const* gsize_array,
+                                                   int const* distrib_array, int const* darg_array,
+                                                   int const* psize_array, int order, const ompi_datatype_t* oldtype,
+                                                   ompi_datatype_t** newtype);
+OMPI_DECLSPEC int32_t ompi_datatype_create_subarray(int ndims, int const* size_array, int const* subsize_array,
+                                                    int const* start_array, int order,
+                                                    const ompi_datatype_t* oldtype, ompi_datatype_t** newtype);
 static inline int32_t
-ompi_datatype_create_resized( const ompi_datatype_t* oldType, OPAL_PTRDIFF_TYPE lb, OPAL_PTRDIFF_TYPE extent, ompi_datatype_t** newType )
+ompi_datatype_create_resized( const ompi_datatype_t* oldType,
+                              OPAL_PTRDIFF_TYPE lb,
+                              OPAL_PTRDIFF_TYPE extent,
+                              ompi_datatype_t** newType )
 {
     ompi_datatype_t * type;
     ompi_datatype_duplicate( oldType, &type );
@@ -271,23 +248,37 @@ ompi_datatype_get_true_extent( const ompi_datatype_t* type, OPAL_PTRDIFF_TYPE* t
     return opal_datatype_get_true_extent( &type->super, true_lb, true_extent);
 }
 
-static inline int32_t
+static inline ssize_t
 ompi_datatype_get_element_count( const ompi_datatype_t* type, size_t iSize )
 {
     return opal_datatype_get_element_count( &type->super, iSize );
 }
 
 static inline int32_t
-ompi_datatype_set_element_count( const ompi_datatype_t* type, uint32_t count, size_t* length )
+ompi_datatype_set_element_count( const ompi_datatype_t* type, size_t count, size_t* length )
 {
     return opal_datatype_set_element_count( &type->super, count, length );
 }
 
 static inline int32_t
-ompi_datatype_copy_content_same_ddt( const ompi_datatype_t* type, int32_t count,
+ompi_datatype_copy_content_same_ddt( const ompi_datatype_t* type, size_t count,
                                      char* pDestBuf, char* pSrcBuf )
 {
-    return opal_datatype_copy_content_same_ddt( &type->super, count, pDestBuf, pSrcBuf );
+    int32_t length, rc;
+    OPAL_PTRDIFF_TYPE extent;
+
+    ompi_datatype_type_extent( type, &extent );
+    while( 0 != count ) {
+        length = INT_MAX;
+        if( ((size_t)length) > count ) length = (int32_t)count;
+        rc = opal_datatype_copy_content_same_ddt( &type->super, length,
+                                                  pDestBuf, pSrcBuf );
+        if( 0 != rc ) return rc;
+        pDestBuf += ((ptrdiff_t)length) * extent;
+        pSrcBuf  += ((ptrdiff_t)length) * extent;
+        count -= (size_t)length;
+    }
+    return 0;
 }
 
 OMPI_DECLSPEC const ompi_datatype_t* ompi_datatype_match_size( int size, uint16_t datakind, uint16_t datalang );
@@ -295,7 +286,7 @@ OMPI_DECLSPEC const ompi_datatype_t* ompi_datatype_match_size( int size, uint16_
 /*
  *
  */
-OMPI_DECLSPEC int32_t ompi_datatype_sndrcv( void *sbuf, int32_t scount, const ompi_datatype_t* sdtype,
+OMPI_DECLSPEC int32_t ompi_datatype_sndrcv( const void *sbuf, int32_t scount, const ompi_datatype_t* sdtype,
                                             void *rbuf, int32_t rcount, const ompi_datatype_t* rdtype);
 
 /*
@@ -306,33 +297,60 @@ OMPI_DECLSPEC int32_t ompi_datatype_get_args( const ompi_datatype_t* pData, int3
                                               int32_t * ca, OPAL_PTRDIFF_TYPE* a,
                                               int32_t * cd, ompi_datatype_t** d, int32_t * type);
 OMPI_DECLSPEC int32_t ompi_datatype_set_args( ompi_datatype_t* pData,
-                                              int32_t ci, int32_t ** i,
-                                              int32_t ca, OPAL_PTRDIFF_TYPE* a,
-                                              int32_t cd, ompi_datatype_t** d,int32_t type);
+                                              int32_t ci, const int32_t ** i,
+                                              int32_t ca, const OPAL_PTRDIFF_TYPE* a,
+                                              int32_t cd, ompi_datatype_t* const * d,int32_t type);
 OMPI_DECLSPEC int32_t ompi_datatype_copy_args( const ompi_datatype_t* source_data,
                                                ompi_datatype_t* dest_data );
 OMPI_DECLSPEC int32_t ompi_datatype_release_args( ompi_datatype_t* pData );
 OMPI_DECLSPEC ompi_datatype_t* ompi_datatype_get_single_predefined_type_from_args( ompi_datatype_t* type );
 
-/*
- *
+/**
+ * Return the amount of buffer necessary to pack the entire description of
+ * the datatype. This value is computed once per datatype, and it is stored
+ * in the datatype structure together with the packed description. As a side
+ * note special care is taken to align the amount of data on void* for
+ * architectures that require it.
  */
-OMPI_DECLSPEC size_t ompi_datatype_pack_description_length( const ompi_datatype_t* datatype );
+OMPI_DECLSPEC size_t ompi_datatype_pack_description_length( ompi_datatype_t* datatype );
 
-/*
- *
+/**
+ * Return a pointer to the constant packed representation of the datatype.
+ * The length can be retrieved with the ompi_datatype_pack_description_length,
+ * and it is quarantee this is exactly the amount to be copied and not an
+ * upper bound. Additionally, the packed representation is slightly optimized
+ * compared with the get_content function, as all combiner_dup have been replaced
+ * directly with the target type.
  */
 OMPI_DECLSPEC int ompi_datatype_get_pack_description( ompi_datatype_t* datatype,
                                                       const void** packed_buffer );
 
-/*
- *
+/**
+ * Extract a fully-fledged datatype from the packed representation. This datatype
+ * is ready to be used in communications (it is automatically committed). However,
+ * this datatype does not have an internal representation, so it might not be
+ * repacked. Read the comment for the ompi_datatype_get_pack_description function
+ * for extra information.
  */
 struct ompi_proc_t;
-OMPI_DECLSPEC ompi_datatype_t* ompi_datatype_create_from_packed_description( void** packed_buffer,
-                                                                             struct ompi_proc_t* remote_processor );
+OMPI_DECLSPEC ompi_datatype_t*
+ompi_datatype_create_from_packed_description( void** packed_buffer,
+                                              struct ompi_proc_t* remote_processor );
 
+/**
+ * Auxiliary function providing a pretty print for the packed data description.
+ */
 OMPI_DECLSPEC int32_t ompi_datatype_print_args( const ompi_datatype_t* pData );
+
+
+/**
+ * Get the number of basic elements of the datatype in ucount
+ *
+ * @returns OMPI_SUCCESS if the count is valid
+ * @returns OMPI_ERR_VALUE_OUT_OF_BOUNDS if no
+ */
+OMPI_DECLSPEC int ompi_datatype_get_elements (ompi_datatype_t *datatype, size_t ucount,
+                                              size_t *count);
 
 #if OPAL_ENABLE_DEBUG
 /*

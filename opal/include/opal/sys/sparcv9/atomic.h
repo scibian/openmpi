@@ -5,20 +5,20 @@
  * Copyright (c) 2004-2005 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
  * Copyright (c) 2007      Sun Microsystems, Inc.  All rights reserverd.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
-#ifndef OMPI_SYS_ARCH_ATOMIC_H
-#define OMPI_SYS_ARCH_ATOMIC_H 1
+#ifndef OPAL_SYS_ARCH_ATOMIC_H
+#define OPAL_SYS_ARCH_ATOMIC_H 1
 
 /*
  * On sparc v9, use casa and casxa (compare and swap) instructions.
@@ -26,11 +26,7 @@
 
 #define ASI_P "0x80"
 
-#if OPAL_WANT_SMP_LOCKS
 #define MEMBAR(type) __asm__  __volatile__ ("membar " type : : : "memory")
-#else
-#define MEMBAR(type)
-#endif
 
 
 /**********************************************************************
@@ -50,7 +46,7 @@
  * Memory Barriers
  *
  *********************************************************************/
-#if OMPI_GCC_INLINE_ASSEMBLY
+#if OPAL_GCC_INLINE_ASSEMBLY
 
 static inline void opal_atomic_mb(void)
 {
@@ -69,7 +65,7 @@ static inline void opal_atomic_wmb(void)
     MEMBAR("#StoreStore");
 }
 
-#endif /* OMPI_GCC_INLINE_ASSEMBLY */
+#endif /* OPAL_GCC_INLINE_ASSEMBLY */
 
 
 /**********************************************************************
@@ -77,7 +73,7 @@ static inline void opal_atomic_wmb(void)
  * Atomic math operations
  *
  *********************************************************************/
-#if OMPI_GCC_INLINE_ASSEMBLY
+#if OPAL_GCC_INLINE_ASSEMBLY
 
 static inline int opal_atomic_cmpset_32( volatile int32_t *addr,
                                          int32_t oldval, int32_t newval)
@@ -119,7 +115,7 @@ static inline int opal_atomic_cmpset_rel_32( volatile int32_t *addr,
 }
 
 
-#if OPAL_ASSEMBLY_ARCH == OMPI_SPARCV9_64
+#if OPAL_ASSEMBLY_ARCH == OPAL_SPARCV9_64
 
 static inline int opal_atomic_cmpset_64( volatile int64_t *addr,
                                          int64_t oldval, int64_t newval)
@@ -139,7 +135,7 @@ static inline int opal_atomic_cmpset_64( volatile int64_t *addr,
    return (ret == oldval);
 }
 
-#else /* OPAL_ASSEMBLY_ARCH == OMPI_SPARCV9_64 */
+#else /* OPAL_ASSEMBLY_ARCH == OPAL_SPARCV9_64 */
 
 static inline int opal_atomic_cmpset_64( volatile int64_t *addr,
                                          int64_t oldval, int64_t newval)
@@ -167,16 +163,16 @@ static inline int opal_atomic_cmpset_64( volatile int64_t *addr,
    return (ret == oldval);
 }
 
-#endif /* OPAL_ASSEMBLY_ARCH == OMPI_SPARCV9_64 */
+#endif /* OPAL_ASSEMBLY_ARCH == OPAL_SPARCV9_64 */
 
 static inline int opal_atomic_cmpset_acq_64( volatile int64_t *addr,
                                              int64_t oldval, int64_t newval)
 {
    int rc;
-   
+
    rc = opal_atomic_cmpset_64(addr, oldval, newval);
    opal_atomic_rmb();
-   
+
    return rc;
 }
 
@@ -188,7 +184,7 @@ static inline int opal_atomic_cmpset_rel_64( volatile int64_t *addr,
    return opal_atomic_cmpset_64(addr, oldval, newval);
 }
 
-#endif /* OMPI_GCC_INLINE_ASSEMBLY */
+#endif /* OPAL_GCC_INLINE_ASSEMBLY */
 
 
-#endif /* ! OMPI_SYS_ARCH_ATOMIC_H */
+#endif /* ! OPAL_SYS_ARCH_ATOMIC_H */

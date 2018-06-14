@@ -28,7 +28,8 @@ int main(int argc, char* argv[])
     orte_process_name_t name;
     struct iovec msg;
     orte_vpid_t i;
-    
+
+
     if (0 > (rc = orte_init(&argc, &argv, ORTE_PROC_NON_MPI))) {
         fprintf(stderr, "couldn't init orte - error code %d\n", rc);
         return rc;
@@ -36,18 +37,21 @@ int main(int argc, char* argv[])
 
     /* setup the job object */
     jdata = OBJ_NEW(orte_job_t);
-    jdata->controls |= ORTE_JOB_CONTROL_NON_ORTE_JOB;
+    orte_set_attribute(&jdata->attributes, ORTE_JOB_NON_ORTE_JOB, ORTE_ATTR_GLOBAL, NULL, OPAL_BOOL);
 
     /* create an app_context that defines the app to be run */
     app = OBJ_NEW(orte_app_context_t);
     app->app = strdup("hostname");
     opal_argv_append_nosize(&app->argv, "hostname");
     app->num_procs = 3;
-    
+
     getcwd(cwd, sizeof(cwd));
     app->cwd = strdup(cwd);
-    app->user_specified_cwd = false;
-    
+    /*===================================*/
+    char *host_list = "vm,vm3,vm4";
+    orte_set_attribute(&app->attributes, ORTE_APP_DASH_HOST, ORTE_ATTR_GLOBAL, host_list, OPAL_STRING);
+    /*==================================*/
+
     /* add the app to the job data */
     opal_pointer_array_add(jdata->apps, app);
     jdata->num_apps = 1;
@@ -55,7 +59,7 @@ int main(int argc, char* argv[])
     /* setup a map object */
     jdata->map = OBJ_NEW(orte_job_map_t);
     jdata->map->display_map = true;
-#endif    
+#endif
     /* launch the job */
     fprintf(stderr, "Parent: spawning children!\n");
     if (ORTE_SUCCESS != (rc = orte_plm.spawn(jdata))) {
@@ -73,6 +77,7 @@ int main(int argc, char* argv[])
     msg.iov_len  = sizeof(i);
     for (i=0; i < app->num_procs; i++) {
         name.vpid = i;
+
         fprintf(stderr, "Parent: sending message to child %s\n", ORTE_NAME_PRINT(&name));
         if (0 > (rc = orte_rml.send(&name, &msg, 1, MY_TAG, 0))) {
             ORTE_ERROR_LOG(rc);

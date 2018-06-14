@@ -1,3 +1,4 @@
+/* -*- Mode: C; c-basic-offset:4 ; indent-tabs-mode:nil -*- */
 /*
  * Copyright (c) 2004-2005 The Trustees of Indiana University and Indiana
  *                         University Research and Technology
@@ -5,15 +6,19 @@
  * Copyright (c) 2004-2007 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2006 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2006 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
- * Copyright (c) 2007      Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2007-2014 Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2014      Research Organization for Information Science
+ *                         and Technology (RIST). All rights reserved.
+ * Copyright (c) 2015      Los Alamos National Security, LLC. All rights
+ *                         reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -46,13 +51,13 @@
  *   OBJ_CLASS_DECLARATION(sally_t);
  * @endcode
  * All classes must have a parent which is also class.
- * 
+ *
  * In an implementation (.c) file, instantiate a class descriptor for
  * the class like this:
  * @code
  *   OBJ_CLASS_INSTANCE(sally_t, parent_t, sally_construct, sally_destruct);
  * @endcode
- * This macro actually expands to 
+ * This macro actually expands to
  * @code
  *   opal_class_t sally_t_class = {
  *     "sally_t",
@@ -118,13 +123,9 @@
 
 #include "opal_config.h"
 #include <assert.h>
-#ifdef HAVE_STDLIB_H
 #include <stdlib.h>
-#endif  /* HAVE_STDLIB_H */
 
-#if OPAL_HAVE_THREAD_SUPPORT
-#include "opal/sys/atomic.h"
-#endif  /* OPAL_HAVE_THREAD_SUPPORT */
+#include "opal/threads/thread_usage.h"
 
 BEGIN_C_DECLS
 
@@ -169,9 +170,20 @@ struct opal_class_t {
  * @param NAME   Name of the class to initialize
  */
 #if OPAL_ENABLE_DEBUG
-#define OPAL_OBJ_STATIC_INIT(BASE_CLASS) { OPAL_OBJ_MAGIC_ID, OBJ_CLASS(BASE_CLASS), 1, __FILE__, __LINE__ }
+#define OPAL_OBJ_STATIC_INIT(BASE_CLASS)        \
+    {                                           \
+        .obj_magic_id = OPAL_OBJ_MAGIC_ID,      \
+        .obj_class = OBJ_CLASS(BASE_CLASS),     \
+        .obj_reference_count = 1,               \
+        .cls_init_file_name = __FILE__,         \
+        .cls_init_lineno = __LINE__,            \
+    }
 #else
-#define OPAL_OBJ_STATIC_INIT(BASE_CLASS) { OBJ_CLASS(BASE_CLASS), 1 }
+#define OPAL_OBJ_STATIC_INIT(BASE_CLASS)        \
+    {                                           \
+        .obj_class = OBJ_CLASS(BASE_CLASS),     \
+        .obj_reference_count = 1,               \
+    }
 #endif
 
 /**
@@ -242,7 +254,7 @@ struct opal_object_t {
  * constructor.
  *
  * @param type          Type (class) of the object
- * @return              Pointer to the object 
+ * @return              Pointer to the object
  */
 static inline opal_object_t *opal_obj_new(opal_class_t * cls);
 #if OPAL_ENABLE_DEBUG
@@ -459,14 +471,18 @@ static inline void opal_obj_run_destructors(opal_object_t * object)
  *
  * @param size          Size of the object
  * @param cls           Pointer to the class descriptor of this object
- * @return              Pointer to the object 
+ * @return              Pointer to the object
  */
 static inline opal_object_t *opal_obj_new(opal_class_t * cls)
 {
     opal_object_t *object;
     assert(cls->cls_sizeof >= sizeof(opal_object_t));
 
+#if OPAL_WANT_MEMCHECKER
+    object = (opal_object_t *) calloc(1, cls->cls_sizeof);
+#else
     object = (opal_object_t *) malloc(cls->cls_sizeof);
+#endif
     if (0 == cls->cls_initialized) {
         opal_class_initialize(cls);
     }
@@ -492,15 +508,9 @@ static inline opal_object_t *opal_obj_new(opal_class_t * cls)
 static inline int opal_obj_update(opal_object_t *object, int inc) __opal_attribute_always_inline__;
 static inline int opal_obj_update(opal_object_t *object, int inc)
 {
-#if OPAL_HAVE_THREAD_SUPPORT
-    return opal_atomic_add_32(&(object->obj_reference_count), inc );
-#else
-    object->obj_reference_count += inc;
-    return object->obj_reference_count;
-#endif
+    return OPAL_THREAD_ADD32(&object->obj_reference_count, inc);
 }
 
 END_C_DECLS
 
 #endif
-

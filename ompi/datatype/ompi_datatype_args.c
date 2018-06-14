@@ -1,9 +1,9 @@
-/* -*- Mode: C; c-basic-offset:4 ; -*- */
+/* -*- Mode: C; c-basic-offset:4 ; indent-tabs-mode:nil -*- */
 /*
  * Copyright (c) 2004-2007 The Trustees of Indiana University and Indiana
  *                         University Research and Technology
  *                         Corporation.  All rights reserved.
- * Copyright (c) 2004-2009 The University of Tennessee and The University
+ * Copyright (c) 2004-2016 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
  * Copyright (c) 2004-2006 High Performance Computing Center Stuttgart,
@@ -11,6 +11,10 @@
  * Copyright (c) 2004-2006 The Regents of the University of California.
  *                         All rights reserved.
  * Copyright (c) 2009      Oak Ridge National Labs.  All rights reserved.
+ * Copyright (c) 2013-2016 Los Alamos National Security, LLC.  All rights
+ *                         reserved.
+ * Copyright (c) 2015-2016 Research Organization for Information Science
+ *                         and Technology (RIST). All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -21,8 +25,6 @@
 #include "ompi_config.h"
 
 #include <stddef.h>
-
-#include "mpi.h"
 
 #include "opal/align.h"
 #include "opal/types.h"
@@ -42,12 +44,12 @@ __ompi_datatype_create_from_args( int32_t* i, OPAL_PTRDIFF_TYPE * a,
                                   ompi_datatype_t** d, int32_t type );
 
 typedef struct __dt_args {
-    int                ref_count;
-    int                create_type;
+    int32_t            ref_count;
+    int32_t            create_type;
     size_t             total_pack_size;
-    int                ci;
-    int                ca;
-    int                cd;
+    int32_t            ci;
+    int32_t            ca;
+    int32_t            cd;
     int*               i;
     OPAL_PTRDIFF_TYPE* a;
     ompi_datatype_t**  d;
@@ -62,21 +64,18 @@ typedef struct __dt_args {
  * copy the buffer into an aligned buffer first.
  */
 #if OPAL_ALIGN_WORD_SIZE_INTEGERS
-#define OMPI_DATATYPE_ALIGN_INT(VALUE,  TYPE) \
-    (VALUE) = OPAL_ALIGN((VALUE), sizeof(OPAL_PTRDIFF_TYPE), TYPE)
 #define OMPI_DATATYPE_ALIGN_PTR(PTR, TYPE) \
     (PTR) = OPAL_ALIGN_PTR((PTR), sizeof(OPAL_PTRDIFF_TYPE), TYPE)
 #else
-#define OMPI_DATATYPE_ALIGN_INT(VALUE, TYPE)
 #define OMPI_DATATYPE_ALIGN_PTR(PTR, TYPE)
 #endif  /* OPAL_ALIGN_WORD_SIZE_INTEGERS */
 
 /**
- * Some architecture require that 64 bits pointers (to pointers) has to
- * be 64 bits aligned. As in the ompi_datatype_args_t structure we have 2 such
- * pointers and one to an array of ints, if we start by setting the 64
- * bits aligned one we will not have any trouble. Problem arise on
- * SPARC 64.
+ * Some architectures require 64 bits pointers (to pointers) to
+ * be 64 bits aligned. As in the ompi_datatype_args_t structure we have
+ * 2 such array of pointers and one to an array of ints, if we start by
+ * setting the 64 bits aligned one we will not have any trouble. Problem
+ * originally reported on SPARC 64.
  */
 #define ALLOC_ARGS(PDATA, IC, AC, DC)                                   \
     do {                                                                \
@@ -101,18 +100,17 @@ typedef struct __dt_args {
         if( pArgs->ci == 0 ) pArgs->i = NULL;                           \
         else pArgs->i = (int*)buf;                                      \
         pArgs->ref_count = 1;                                           \
-        pArgs->total_pack_size = (4 + (IC)) * sizeof(int) +             \
-            (AC) * sizeof(OPAL_PTRDIFF_TYPE) + (DC) * sizeof(int);      \
-        OMPI_DATATYPE_ALIGN_INT( pArgs->total_pack_size, int );         \
+        pArgs->total_pack_size = (4 + (IC) + (DC)) * sizeof(int) +      \
+            (AC) * sizeof(OPAL_PTRDIFF_TYPE);                           \
         (PDATA)->args = (void*)pArgs;                                   \
         (PDATA)->packed_description = NULL;                             \
     } while(0)
 
 
 int32_t ompi_datatype_set_args( ompi_datatype_t* pData,
-                                int32_t ci, int32_t** i,
-                                int32_t ca, OPAL_PTRDIFF_TYPE* a,
-                                int32_t cd, ompi_datatype_t** d, int32_t type)
+                                int32_t ci, const int32_t** i,
+                                int32_t ca, const OPAL_PTRDIFF_TYPE* a,
+                                int32_t cd, ompi_datatype_t* const * d, int32_t type)
 {
     int pos;
     ompi_datatype_args_t* pArgs;
@@ -123,13 +121,10 @@ int32_t ompi_datatype_set_args( ompi_datatype_t* pData,
     pArgs = (ompi_datatype_args_t*)pData->args;
     pArgs->create_type = type;
 
-    switch(type){
+    switch(type) {
 
     case MPI_COMBINER_DUP:
-        /* Recompute the data description packed size based on the optimization
-         * for MPI_COMBINER_DUP.
-         */
-        pArgs->total_pack_size = 2 * sizeof(int);
+        pArgs->total_pack_size = 0;  /* store no extra data */
         break;
 
     case MPI_COMBINER_CONTIGUOUS:
@@ -216,6 +211,11 @@ int32_t ompi_datatype_set_args( ompi_datatype_t* pData,
     case MPI_COMBINER_RESIZED:
         break;
 
+    case MPI_COMBINER_HINDEXED_BLOCK:
+        pArgs->i[0] = i[0][0];
+        pArgs->i[1] = i[1][0];
+        break;
+
     default:
         break;
     }
@@ -236,16 +236,8 @@ int32_t ompi_datatype_set_args( ompi_datatype_t* pData,
              */
             OBJ_RETAIN( d[pos] );
             pArgs->total_pack_size += ((ompi_datatype_args_t*)d[pos]->args)->total_pack_size;
-#if OPAL_ALIGN_WORD_SIZE_INTEGERS
-            /*
-             * as total_pack_size is always aligned to
-             * MPI_Aint (aka OPAL_PTRDIFF_TYPE) size their sum
-             * will be aligned to ...
-             */
-            assert( pArgs->total_pack_size ==
-                    OPAL_ALIGN(pArgs->total_pack_size, sizeof(OPAL_PTRDIFF_TYPE), int) );
-#endif  /* OPAL_ALIGN_WORD_SIZE_INTEGERS */
         }
+        pArgs->total_pack_size += sizeof(int);  /* each data has an ID */
     }
 
     return OMPI_SUCCESS;
@@ -419,16 +411,6 @@ int32_t ompi_datatype_release_args( ompi_datatype_t* pData )
 }
 
 
-size_t ompi_datatype_pack_description_length( const ompi_datatype_t* datatype )
-{
-    if( ompi_datatype_is_predefined(datatype) ) {
-        return sizeof(int) * 2;
-    }
-    assert( NULL != (ompi_datatype_args_t*)datatype->args );
-    return ((ompi_datatype_args_t*)datatype->args)->total_pack_size;
-}
-
-
 static inline int __ompi_datatype_pack_description( ompi_datatype_t* datatype,
                                                     void** packed_buffer, int* next_index )
 {
@@ -437,40 +419,40 @@ static inline int __ompi_datatype_pack_description( ompi_datatype_t* datatype,
     char* next_packed = (char*)*packed_buffer;
 
     if( ompi_datatype_is_predefined(datatype) ) {
-        position[0] = MPI_COMBINER_DUP;
+        position[0] = MPI_COMBINER_NAMED;
         position[1] = datatype->id;   /* On the OMPI - layer, copy the ompi_datatype.id */
+        next_packed += (2 * sizeof(int));
+        *packed_buffer = next_packed;
         return OMPI_SUCCESS;
     }
     /* For duplicated datatype we don't have to store all the information */
     if( MPI_COMBINER_DUP == args->create_type ) {
-        position[0] = args->create_type;
-        position[1] = args->d[0]->id; /* On the OMPI - layer, copy the ompi_datatype.id */
-        return OMPI_SUCCESS;
+        ompi_datatype_t* temp_data = args->d[0];
+        return __ompi_datatype_pack_description(temp_data,
+                                                packed_buffer,
+                                                next_index );
     }
     position[0] = args->create_type;
     position[1] = args->ci;
     position[2] = args->ca;
     position[3] = args->cd;
     next_packed += (4 * sizeof(int));
-    /* So far there are 4 integers in the array, so we're still 64 bits aligned
-     * if we suppose that the original buffer was 64 bits aligned.
-     *
-     * In order to solve issues with the Sparc 64 which require 64 bits pointers
-     * to be correctly aligned, we have to start adding the data in a smart way,
-     * just to keep everything as aligned as possible. Therefore, the first
-     * array we have to copy is the array of displacements, followed by the
-     * array of datatypes (both of them might be arrays of pointers) and then
-     * finally the array of counts.
+    /* Spoiler: We will access the data in this storage structure, and thus we
+     * need to align it to the expected boundaries (special thanks to Sparc64).
+     * The simplest way is to ensure that prior to each type that must be 64
+     * bits aligned, we have a pointer that is 64 bits aligned. That will minimize
+     * the memory requirements in all cases where no displacements are stored.
      */
     if( 0 < args->ca ) {
+        /* description of the displacements must be 64 bits aligned */
+        OMPI_DATATYPE_ALIGN_PTR(next_packed, char*);
+
         memcpy( next_packed, args->a, sizeof(OPAL_PTRDIFF_TYPE) * args->ca );
         next_packed += sizeof(OPAL_PTRDIFF_TYPE) * args->ca;
     }
     position = (int*)next_packed;
     next_packed += sizeof(int) * args->cd;
 
-    /* description of next datatype should be 64 bits aligned */
-    OMPI_DATATYPE_ALIGN_PTR(next_packed, char*);
     /* copy the aray of counts (32 bits aligned) */
     memcpy( next_packed, args->i, sizeof(int) * args->ci );
     next_packed += args->ci * sizeof(int);
@@ -498,23 +480,74 @@ int ompi_datatype_get_pack_description( ompi_datatype_t* datatype,
 {
     ompi_datatype_args_t* args = (ompi_datatype_args_t*)datatype->args;
     int next_index = OMPI_DATATYPE_MAX_PREDEFINED;
+    void *packed_description = datatype->packed_description;
     void* recursive_buffer;
 
-    if( NULL == datatype->packed_description ) {
-        if( ompi_datatype_is_predefined(datatype) ) {
-            datatype->packed_description = malloc(2 * sizeof(int));
-        } else if( NULL == args ) {
-            return OMPI_ERROR;
+    if (NULL == packed_description) {
+        if (opal_atomic_cmpset (&datatype->packed_description, NULL, (void *) 1)) {
+            if( ompi_datatype_is_predefined(datatype) ) {
+                packed_description = malloc(2 * sizeof(int));
+            } else if( NULL == args ) {
+                return OMPI_ERROR;
+            } else {
+                packed_description = malloc(args->total_pack_size);
+            }
+            recursive_buffer = packed_description;
+            __ompi_datatype_pack_description( datatype, &recursive_buffer, &next_index );
+
+            if (!ompi_datatype_is_predefined(datatype)) {
+                /* If the precomputed size is not large enough we're already in troubles, we
+                 * have overwritten outside of the allocated buffer. Raise the alarm !
+                 * If not reassess the size of the packed buffer necessary for holding the
+                 * datatype description.
+                 */
+                assert(args->total_pack_size >= (uintptr_t)((char*)recursive_buffer - (char *) packed_description));
+                args->total_pack_size = (uintptr_t)((char*)recursive_buffer - (char *) packed_description);
+            }
+
+            opal_atomic_wmb ();
+            datatype->packed_description = packed_description;
         } else {
-            datatype->packed_description = malloc( args->total_pack_size );
+            /* another thread beat us to it */
+            packed_description = datatype->packed_description;
         }
-        recursive_buffer = datatype->packed_description;
-        __ompi_datatype_pack_description( datatype, &recursive_buffer, &next_index );
     }
-    *packed_buffer = (const void*)datatype->packed_description;
+
+    if ((void *) 1 == packed_description) {
+        struct timespec interval = {.tv_sec = 0, .tv_nsec = 1000};
+
+        /* wait until the packed description is updated */
+        while ((void *) 1 == datatype->packed_description) {
+            nanosleep (&interval, NULL);
+        }
+
+        packed_description = datatype->packed_description;
+    }
+
+    *packed_buffer = (const void *) packed_description;
     return OMPI_SUCCESS;
 }
 
+size_t ompi_datatype_pack_description_length( ompi_datatype_t* datatype )
+{
+    void *packed_description = datatype->packed_description;
+
+    if( ompi_datatype_is_predefined(datatype) ) {
+        return 2 * sizeof(int);
+    }
+    if( NULL == packed_description || (void *) 1 == packed_description) {
+        const void* buf;
+        int rc;
+
+        rc = ompi_datatype_get_pack_description(datatype, &buf);
+        if( OMPI_SUCCESS != rc ) {
+            return 0;
+        }
+    }
+    assert( NULL != (ompi_datatype_args_t*)datatype->args );
+    assert( NULL != (ompi_datatype_args_t*)datatype->packed_description );
+    return ((ompi_datatype_args_t*)datatype->args)->total_pack_size;
+}
 
 static ompi_datatype_t* __ompi_datatype_create_from_packed_description( void** packed_buffer,
                                                                         const struct ompi_proc_t* remote_processor )
@@ -531,15 +564,13 @@ static ompi_datatype_t* __ompi_datatype_create_from_packed_description( void** p
 #if OPAL_ENABLE_HETEROGENEOUS_SUPPORT
     bool need_swap = false;
 
-    if( (remote_processor->proc_arch ^ ompi_proc_local()->proc_arch) &
+    if( (remote_processor->super.proc_arch ^ ompi_proc_local()->super.proc_arch) &
         OPAL_ARCH_ISBIGENDIAN ) {
         need_swap = true;
     }
 #endif
 
     next_buffer = (char*)*packed_buffer;
-    /* The pointer should always be aligned on MPI_Aint, aka OPAL_PTRDIFF_TYPE */
-    OMPI_DATATYPE_ALIGN_PTR(next_buffer, char*);
     position = (int*)next_buffer;
 
     create_type = position[0];
@@ -548,7 +579,7 @@ static ompi_datatype_t* __ompi_datatype_create_from_packed_description( void** p
         create_type = opal_swap_bytes4(create_type);
     }
 #endif
-    if( MPI_COMBINER_DUP == create_type ) {
+    if( MPI_COMBINER_NAMED == create_type ) {
         /* there we have a simple predefined datatype */
         data_id = position[1];
 #if OPAL_ENABLE_HETEROGENEOUS_SUPPORT
@@ -574,6 +605,12 @@ static ompi_datatype_t* __ompi_datatype_create_from_packed_description( void** p
     array_of_datatype = (ompi_datatype_t**)malloc( sizeof(ompi_datatype_t*) *
                                                    number_of_datatype );
     next_buffer += (4 * sizeof(int));  /* move after the header */
+
+    /* description of the displacements (if ANY !)  should always be aligned
+       on MPI_Aint, aka OPAL_PTRDIFF_TYPE */
+    if (number_of_disp > 0) {
+        OMPI_DATATYPE_ALIGN_PTR(next_buffer, char*);
+    }
 
     array_of_disp   = (OPAL_PTRDIFF_TYPE*)next_buffer;
     next_buffer    += number_of_disp * sizeof(OPAL_PTRDIFF_TYPE);
@@ -648,17 +685,18 @@ static ompi_datatype_t* __ompi_datatype_create_from_args( int32_t* i, MPI_Aint* 
     case MPI_COMBINER_DUP:
         /* should we duplicate d[0]? */
         /* ompi_datatype_set_args( datatype, 0, NULL, 0, NULL, 1, d[0], MPI_COMBINER_DUP ); */
+        assert(0);  /* shouldn't happen */
         break;
         /******************************************************************/
     case MPI_COMBINER_CONTIGUOUS:
         ompi_datatype_create_contiguous( i[0], d[0], &datatype );
-        ompi_datatype_set_args( datatype, 1, &i, 0, NULL, 1, d, MPI_COMBINER_CONTIGUOUS );
+        ompi_datatype_set_args( datatype, 1, (const int **) &i, 0, NULL, 1, d, MPI_COMBINER_CONTIGUOUS );
         break;
         /******************************************************************/
     case MPI_COMBINER_VECTOR:
         ompi_datatype_create_vector( i[0], i[1], i[2], d[0], &datatype );
         {
-            int* a_i[3]; a_i[0] = &i[0]; a_i[1] = &i[1]; a_i[2] = &i[2];
+            const int* a_i[3] = {&i[0], &i[1], &i[2]};
             ompi_datatype_set_args( datatype, 3, a_i, 0, NULL, 1, d, MPI_COMBINER_VECTOR );
         }
         break;
@@ -667,7 +705,7 @@ static ompi_datatype_t* __ompi_datatype_create_from_args( int32_t* i, MPI_Aint* 
     case MPI_COMBINER_HVECTOR:
         ompi_datatype_create_hvector( i[0], i[1], a[0], d[0], &datatype );
         {
-            int* a_i[2]; a_i[0] = &i[0]; a_i[1] = &i[1];
+            const int* a_i[2] = {&i[0], &i[1]};
             ompi_datatype_set_args( datatype, 2, a_i, 1, a, 1, d, MPI_COMBINER_HVECTOR );
         }
         break;
@@ -675,7 +713,7 @@ static ompi_datatype_t* __ompi_datatype_create_from_args( int32_t* i, MPI_Aint* 
     case MPI_COMBINER_INDEXED:  /* TO CHECK */
         ompi_datatype_create_indexed( i[0], &(i[1]), &(i[1+i[0]]), d[0], &datatype );
         {
-            int* a_i[3]; a_i[0] = &i[0]; a_i[1] = &i[1]; a_i[2] = &(i[1+i[0]]);
+            const int* a_i[3] = {&i[0], &i[1], &(i[1+i[0]])};
             ompi_datatype_set_args( datatype, 2 * i[0] + 1, a_i, 0, NULL, 1, d, MPI_COMBINER_INDEXED );
         }
         break;
@@ -684,7 +722,7 @@ static ompi_datatype_t* __ompi_datatype_create_from_args( int32_t* i, MPI_Aint* 
     case MPI_COMBINER_HINDEXED:
         ompi_datatype_create_hindexed( i[0], &(i[1]), a, d[0], &datatype );
         {
-            int* a_i[2]; a_i[0] = &i[0]; a_i[1] = &i[1];
+            const int* a_i[2] = {&i[0], &i[1]};
             ompi_datatype_set_args( datatype, i[0] + 1, a_i, i[0], a, 1, d, MPI_COMBINER_HINDEXED );
         }
         break;
@@ -692,8 +730,8 @@ static ompi_datatype_t* __ompi_datatype_create_from_args( int32_t* i, MPI_Aint* 
     case MPI_COMBINER_INDEXED_BLOCK:
         ompi_datatype_create_indexed_block( i[0], i[1], &(i[2]), d[0], &datatype );
         {
-            int* a_i[3]; a_i[0] = &i[0]; a_i[1] = &i[1]; a_i[2] = &i[2];
-            ompi_datatype_set_args( datatype, 2 * i[0], a_i, 0, NULL, 1, d, MPI_COMBINER_INDEXED_BLOCK );
+            const int* a_i[3] = {&i[0], &i[1], &i[2]};
+            ompi_datatype_set_args( datatype, i[0] + 2, a_i, 0, NULL, 1, d, MPI_COMBINER_INDEXED_BLOCK );
         }
         break;
         /******************************************************************/
@@ -701,54 +739,31 @@ static ompi_datatype_t* __ompi_datatype_create_from_args( int32_t* i, MPI_Aint* 
     case MPI_COMBINER_STRUCT:
         ompi_datatype_create_struct( i[0], &(i[1]), a, d, &datatype );
         {
-            int* a_i[2]; a_i[0] = &i[0]; a_i[1] = &i[1];
+            const int* a_i[2] = {&i[0], &i[1]};
             ompi_datatype_set_args( datatype, i[0] + 1, a_i, i[0], a, i[0], d, MPI_COMBINER_STRUCT );
         }
         break;
         /******************************************************************/
     case MPI_COMBINER_SUBARRAY:
-        /*pos = 1;
-          pArgs->i[0] = i[0][0];
-          memcpy( pArgs->i + pos, i[1], pArgs->i[0] * sizeof(int) );
-          pos += pArgs->i[0];
-          memcpy( pArgs->i + pos, i[2], pArgs->i[0] * sizeof(int) );
-          pos += pArgs->i[0];
-          memcpy( pArgs->i + pos, i[3], pArgs->i[0] * sizeof(int) );
-          pos += pArgs->i[0];
-          pArgs->i[pos] = i[4][0];
-        */
-#if 0
+        ompi_datatype_create_subarray( i[0], &i[1 + 0 * i[0]], &i[1 + 1 * i[0]],
+                                       &i[1 + 2 * i[0]], i[1 + 3 * i[0]],
+                                       d[0], &datatype );
         {
-            int* a_i[5]; a_i[0] = &i[0]; a_i[1] = &i[1 + 0 * i[0]]; a_i[2] = &i[1 + 1 * i[0]];  a_i[3] = &i[1 + 2 * i[0]];
+            const int* a_i[5] = {&i[0], &i[1 + 0 * i[0]], &i[1 + 1 * i[0]], &i[1 + 2 * i[0]], &i[1 + 3 * i[0]]};
             ompi_datatype_set_args( datatype, 3 * i[0] + 2, a_i, 0, NULL, 1, d, MPI_COMBINER_SUBARRAY);
         }
-#endif
         break;
         /******************************************************************/
     case MPI_COMBINER_DARRAY:
-        /*pos = 3;
-          pArgs->i[0] = i[0][0];
-          pArgs->i[1] = i[1][0];
-          pArgs->i[2] = i[2][0];
-
-          memcpy( pArgs->i + pos, i[3], i[2][0] * sizeof(int) );
-          pos += i[2][0];
-          memcpy( pArgs->i + pos, i[4], i[2][0] * sizeof(int) );
-          pos += i[2][0];
-          memcpy( pArgs->i + pos, i[5], i[2][0] * sizeof(int) );
-          pos += i[2][0];
-          memcpy( pArgs->i + pos, i[6], i[2][0] * sizeof(int) );
-          pos += i[2][0];
-          pArgs->i[pos] = i[7][0];
-        */
-#if 0
+        ompi_datatype_create_darray( i[0] /* size */, i[1] /* rank */, i[2] /* ndims */,
+                                     &i[3 + 0 * i[0]], &i[3 + 1 * i[0]],
+                                     &i[3 + 2 * i[0]], &i[3 + 3 * i[0]],
+                                     i[3 + 4 * i[0]], d[0], &datatype );
         {
-            int* a_i[8]; a_i[0] = &i[0]; a_i[1] = &i[1]; a_i[2] = &i[2];
-            a_i[3] = &i[1 + 0 * i[0]]; a_i[4] = &i[1 + 1 * i[0]];  a_i[5] = &i[1 + 2 * i[0]];
-            a_i[6] = &i[1 + 3 * i[0]]; a_i[7] = &i[1 + 4 * i[0]];
-            ompi_datatype_set_args( datatype, 4 * i[0] + 4,a_i, 0, NULL, 1, d, MPI_COMBINER_DARRAY);
+            const int* a_i[8] = {&i[0], &i[1], &i[2], &i[3 + 0 * i[0]], &i[3 + 1 * i[0]], &i[3 + 2 * i[0]],
+                                 &i[3 + 3 * i[0]], &i[3 + 4 * i[0]]};
+            ompi_datatype_set_args( datatype, 4 * i[2] + 4, a_i, 0, NULL, 1, d, MPI_COMBINER_DARRAY);
         }
-#endif
         break;
         /******************************************************************/
     case MPI_COMBINER_F90_REAL:
@@ -763,10 +778,19 @@ static ompi_datatype_t* __ompi_datatype_create_from_args( int32_t* i, MPI_Aint* 
         break;
         /******************************************************************/
     case MPI_COMBINER_RESIZED:
-        /*ompi_datatype_set_args( datatype, 0, NULL, 2, a, 1, d, MPI_COMBINER_RESIZED );*/
+        ompi_datatype_create_resized(d[0], a[0], a[1], &datatype);
+        ompi_datatype_set_args( datatype, 0, NULL, 2, a, 1, d, MPI_COMBINER_RESIZED );
         break;
         /******************************************************************/
-    default:
+    case MPI_COMBINER_HINDEXED_BLOCK:
+        ompi_datatype_create_hindexed_block( i[0], i[1], a, d[0], &datatype );
+        {
+            const int* a_i[2] = {&i[0], &i[1]};
+            ompi_datatype_set_args( datatype, 2, a_i, i[0], a, 1, d, MPI_COMBINER_HINDEXED_BLOCK );
+        }
+        break;
+        /******************************************************************/
+     default:
         break;
     }
 
@@ -780,8 +804,6 @@ ompi_datatype_t* ompi_datatype_create_from_packed_description( void** packed_buf
 
     datatype = __ompi_datatype_create_from_packed_description( packed_buffer,
                                                                remote_processor );
-    /* Keep the pointer aligned to MPI_Aint */
-    OMPI_DATATYPE_ALIGN_PTR(*packed_buffer, void*);
     if( NULL == datatype ) {
         return NULL;
     }
@@ -799,7 +821,7 @@ ompi_datatype_t* ompi_datatype_get_single_predefined_type_from_args( ompi_dataty
     ompi_datatype_t *predef = NULL, *current_type, *current_predef;
     ompi_datatype_args_t* args = (ompi_datatype_args_t*)type->args;
     int i;
-    
+
     if( ompi_datatype_is_predefined(type) )
         return type;
 

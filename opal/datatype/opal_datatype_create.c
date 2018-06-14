@@ -3,7 +3,7 @@
  * Copyright (c) 2004-2006 The Trustees of Indiana University and Indiana
  *                         University Research and Technology
  *                         Corporation.  All rights reserved.
- * Copyright (c) 2004-2009 The University of Tennessee and The University
+ * Copyright (c) 2004-2013 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
  * Copyright (c) 2004-2006 High Performance Computing Center Stuttgart,
@@ -33,23 +33,28 @@ static void opal_datatype_construct( opal_datatype_t* pData )
     int i;
 
     pData->size               = 0;
-    pData->id                 = 0;
-    pData->nbElems            = 0;
-    pData->bdt_used           = 0;
-    for( i = 0; i < OPAL_DATATYPE_MAX_PREDEFINED; i++ )
-        pData->btypes[i]      = 0;
-    pData->btypes[OPAL_DATATYPE_LOOP]    = 0;
-
-    pData->opt_desc.desc      = NULL;
-    pData->opt_desc.length    = 0;
-    pData->opt_desc.used      = 0;
-    pData->align              = 1;
     pData->flags              = OPAL_DATATYPE_FLAG_CONTIGUOUS;
+    pData->id                 = 0;
+    pData->bdt_used           = 0;
+    pData->size               = 0;
     pData->true_lb            = LONG_MAX;
     pData->true_ub            = LONG_MIN;
     pData->lb                 = LONG_MAX;
     pData->ub                 = LONG_MIN;
-    pData->name[0]            = '\0';
+    pData->align              = 1;
+    pData->nbElems            = 0;
+    memset(pData->name, 0, OPAL_MAX_OBJECT_NAME);
+
+    pData->desc.desc          = NULL;
+    pData->desc.length        = 0;
+    pData->desc.used          = 0;
+
+    pData->opt_desc.desc      = NULL;
+    pData->opt_desc.length    = 0;
+    pData->opt_desc.used      = 0;
+
+    for( i = 0; i < OPAL_DATATYPE_MAX_SUPPORTED; i++ )
+        pData->btypes[i]      = 0;
 }
 
 static void opal_datatype_destruct( opal_datatype_t* datatype )
@@ -60,13 +65,13 @@ static void opal_datatype_destruct( opal_datatype_t* datatype )
             datatype->desc.length = 0;
             datatype->desc.used   = 0;
         }
-        if( datatype->opt_desc.desc != NULL ) {
-            if( datatype->opt_desc.desc != datatype->desc.desc )
-                free( datatype->opt_desc.desc );
-            datatype->opt_desc.length = 0;
-            datatype->opt_desc.used   = 0;
-            datatype->opt_desc.desc   = NULL;
-        }
+    }
+    if( datatype->opt_desc.desc != NULL ) {
+        if( datatype->opt_desc.desc != datatype->desc.desc )
+            free( datatype->opt_desc.desc );
+        datatype->opt_desc.length = 0;
+        datatype->opt_desc.used   = 0;
+        datatype->opt_desc.desc   = NULL;
     }
     /**
      * As the default description and the optimized description can point to the

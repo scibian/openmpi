@@ -11,7 +11,7 @@
  *                         All rights reserved.
  * Copyright (c) 2007      Cisco Systems, Inc.  All rights reserved.
  * Copyright (c) 2007      Los Alamos National Security, LLC.  All rights
- *                         reserved. 
+ *                         reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -22,9 +22,7 @@
 #include "orte_config.h"
 
 #include <stdlib.h>
-#ifdef HAVE_LIMITS_H
 #include <limits.h>
-#endif
 #ifdef HAVE_SYS_TYPES_H
 #include <sys/types.h>
 #endif
@@ -38,7 +36,7 @@
 
 int main(int argc, char *argv[])
 {
-    /* Allow the PLS starters to pass us a umask to use, if required.
+    /* Allow the PLM starters to pass us a umask to use, if required.
        Most starters by default can do something sane with the umask,
        but some (like TM) do not pass on the umask but instead inherit
        it form the root level process starter.  This has to happen

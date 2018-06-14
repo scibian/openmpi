@@ -3,7 +3,7 @@
  * Copyright (c) 2004-2006 The Trustees of Indiana University and Indiana
  *                         University Research and Technology
  *                         Corporation.  All rights reserved.
- * Copyright (c) 2004-2010 The University of Tennessee and The University
+ * Copyright (c) 2004-2013 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
  * Copyright (c) 2004-2006 High Performance Computing Center Stuttgart,
@@ -13,6 +13,8 @@
  * Copyright (c) 2009      Sun Microsystems, Inc. All rights reserved.
  * Copyright (c) 2009      Oak Ridge National Labs.  All rights reserved.
  * Copyright (c) 2010      Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2015      Research Organization for Information Science
+ *                         and Technology (RIST). All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -24,7 +26,6 @@
 
 #include <stddef.h>
 
-#include "ompi/constants.h"
 #include "ompi/datatype/ompi_datatype.h"
 
 
@@ -37,9 +38,7 @@ int32_t ompi_datatype_create_indexed( int count, const int* pBlockLength, const 
     OPAL_PTRDIFF_TYPE extent;
 
     if( 0 == count ) {
-        *newType = ompi_datatype_create( 0 );
-        ompi_datatype_add( *newType, &ompi_mpi_datatype_null.dt, 0, 0, 0);
-        return OMPI_SUCCESS;
+        return ompi_datatype_duplicate( &ompi_mpi_datatype_null.dt, newType);
     }
 
     disp = pDisp[0];
@@ -114,12 +113,13 @@ int32_t ompi_datatype_create_indexed_block( int count, int bLength, const int* p
 
     ompi_datatype_type_extent( oldType, &extent );
     if( (count == 0) || (bLength == 0) ) {
-        *newType = ompi_datatype_create(1);
-        if( 0 == count )
-            ompi_datatype_add( *newType, &ompi_mpi_datatype_null.dt, 0, 0, 0 );
-        else
+        if( 0 == count ) {
+            return ompi_datatype_duplicate(&ompi_mpi_datatype_null.dt, newType);
+        } else {
+            *newType = ompi_datatype_create(1);
             ompi_datatype_add( *newType, oldType, 0, pDisp[0] * extent, extent );
-        return OMPI_SUCCESS;
+            return OMPI_SUCCESS;
+        }
     }
     pdt = ompi_datatype_create( count * (2 + oldType->super.desc.used) );
     disp = pDisp[0];
@@ -138,6 +138,44 @@ int32_t ompi_datatype_create_indexed_block( int count, int bLength, const int* p
         }
     }
     ompi_datatype_add( pdt, oldType, dLength, disp * extent, extent );
+
+    *newType = pdt;
+    return OMPI_SUCCESS;
+}
+
+int32_t ompi_datatype_create_hindexed_block( int count, int bLength, const OPAL_PTRDIFF_TYPE* pDisp,
+                                             const ompi_datatype_t* oldType, ompi_datatype_t** newType )
+{
+    ompi_datatype_t* pdt;
+    int i, dLength;
+    OPAL_PTRDIFF_TYPE extent, disp, endat;
+
+    ompi_datatype_type_extent( oldType, &extent );
+    if( (count == 0) || (bLength == 0) ) {
+        *newType = ompi_datatype_create(1);
+        if( 0 == count )
+            ompi_datatype_add( *newType, &ompi_mpi_datatype_null.dt, 0, 0, 0 );
+        else
+            ompi_datatype_add( *newType, oldType, 0, pDisp[0] * extent, extent );
+        return OMPI_SUCCESS;
+    }
+    pdt = ompi_datatype_create( count * (2 + oldType->super.desc.used) );
+    disp = pDisp[0];
+    dLength = bLength;
+    endat = disp + dLength;
+    for( i = 1; i < count; i++ ) {
+        if( endat == pDisp[i] ) {
+            /* contiguous with the previsious */
+            dLength += bLength;
+            endat += bLength;
+        } else {
+            ompi_datatype_add( pdt, oldType, dLength, disp, extent );
+            disp = pDisp[i];
+            dLength = bLength;
+            endat = disp + bLength;
+        }
+    }
+    ompi_datatype_add( pdt, oldType, dLength, disp, extent );
 
     *newType = pdt;
     return OMPI_SUCCESS;

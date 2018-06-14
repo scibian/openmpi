@@ -1,3 +1,4 @@
+/* -*- Mode: C; c-basic-offset:4 ; indent-tabs-mode:nil -*- */
 /*
  * Copyright (c) 2004-2005 The Trustees of Indiana University and Indiana
  *                         University Research and Technology
@@ -5,17 +6,19 @@
  * Copyright (c) 2004-2005 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
- * Copyright (c) 2007      Los Alamos National Security, LLC.  All rights
- *                         reserved. 
+ * Copyright (c) 2007-2015 Los Alamos National Security, LLC.  All rights
+ *                         reserved.
  * Copyright (c) 2006-2009 Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2013      NVIDIA Corporation.  All rights reserved.
+ * Copyright (c) 2013      Intel, Inc. All rights reserved
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -82,7 +85,7 @@ OMPI_DECLSPEC extern bool ompi_debug_no_free_handles;
 /**
  * Whether or not to print MCA parameters on MPI_INIT
  *
- * This is good debugging for user applications to see exactly which 
+ * This is good debugging for user applications to see exactly which
  * MCA parameters are being used in the current program execution.
  */
 OMPI_DECLSPEC extern bool ompi_mpi_show_mca_params;
@@ -94,12 +97,6 @@ OMPI_DECLSPEC extern bool ompi_mpi_show_mca_params;
  * when the mpi_show_mca_params is set.
  */
 OMPI_DECLSPEC extern char * ompi_mpi_show_mca_params_file;
-
-/**
- * Whether we should keep the string hostnames of all the MPI
- * process peers around or not (eats up a good bit of memory).
- */
-OMPI_DECLSPEC extern bool ompi_mpi_keep_peer_hostnames;
 
 /**
  * Whether an MPI_ABORT should print out a stack trace or not.
@@ -118,17 +115,6 @@ OMPI_DECLSPEC extern bool ompi_mpi_abort_print_stack;
 OMPI_DECLSPEC extern int ompi_mpi_abort_delay;
 
 /**
- * Whether to use the "leave pinned" protocol or not (0 = no, 1 = yes,
- * -1 = determine at runtime).
- */
-OMPI_DECLSPEC extern int ompi_mpi_leave_pinned;
-
-/**
- * Whether to use the "leave pinned pipeline" protocol or not.
- */
-OMPI_DECLSPEC extern bool ompi_mpi_leave_pinned_pipeline;
-
-/**
  * Whether sparse MPI group storage formats are supported or not.
  */
 OMPI_DECLSPEC extern bool ompi_have_sparse_group_storage;
@@ -139,10 +125,14 @@ OMPI_DECLSPEC extern bool ompi_have_sparse_group_storage;
 OMPI_DECLSPEC extern bool ompi_use_sparse_group_storage;
 
 /**
- * Whether we should send notifications during MPI_INIT and
- * MPI_FINALIZE or not.
+ * Cutoff point for retrieving hostnames
  */
-OMPI_DECLSPEC extern bool ompi_notify_init_finalize;
+OMPI_DECLSPEC extern uint32_t ompi_direct_modex_cutoff;
+
+/**
+ * Cutoff point for calling add_procs for all processes
+ */
+OMPI_DECLSPEC extern uint32_t ompi_add_procs_cutoff;
 
 /**
  * Register MCA parameters used by the MPI layer.
@@ -155,8 +145,8 @@ OMPI_DECLSPEC extern bool ompi_notify_init_finalize;
 OMPI_DECLSPEC int ompi_mpi_register_params(void);
 
 /**
- * Display all MCA parameters used 
- * 
+ * Display all MCA parameters used
+ *
  * @returns OMPI_SUCCESS
  *
  * Displays in key = value format

@@ -5,25 +5,22 @@
 # Copyright (c) 2004-2005 The University of Tennessee and The University
 #                         of Tennessee Research Foundation.  All rights
 #                         reserved.
-# Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+# Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
 #                         University of Stuttgart.  All rights reserved.
 # Copyright (c) 2004-2005 The Regents of the University of California.
 #                         All rights reserved.
-# Copyright (c) 2007-2013 Cisco Systems, Inc.  All rights reserved.
+# Copyright (c) 2007-2015 Cisco Systems, Inc.  All rights reserved.
 # $COPYRIGHT$
-# 
+#
 # Additional copyrights may follow
-# 
+#
 # $HEADER$
 #
 
 noinst_LTLIBRARIES = libdebuggers.la libompi_debugger_canary.la
-pkglib_LTLIBRARIES = libompi_dbg_msgq.la
+ompilib_LTLIBRARIES = libompi_dbg_msgq.la
 
-check_PROGRAMS = predefined_gap_test
-if OPAL_HAVE_DLOPEN
-check_PROGRAMS += dlopen_test
-endif
+check_PROGRAMS = predefined_gap_test predefined_pad_test dlopen_test
 
 TESTS = $(check_PROGRAMS)
 
@@ -46,8 +43,10 @@ headers = \
 # Simple checks to ensure that the DSOs are functional
 
 dlopen_test_SOURCES = dlopen_test.c
-dlopen_test_CPPFLAGS = -I$(top_srcdir)/opal/libltdl
-dlopen_test_LDADD = $(top_builddir)/opal/libltdl/libltdlc.la
+dlopen_test_LDADD = \
+        $(top_builddir)/ompi/libmpi.la \
+        $(top_builddir)/opal/lib@OPAL_LIB_PREFIX@open-pal.la
+dlopen_test_DEPENDENCIES = $(ompi_predefined_LDADD)
 
 predefined_gap_test_SOURCES = predefined_gap_test.c
 predefined_gap_test_LDFLAGS = $(WRAPPER_EXTRA_LDFLAGS)
@@ -58,7 +57,7 @@ libdebuggers_la_SOURCES = \
         $(headers) \
         ompi_debuggers.c
 libdebuggers_la_CPPFLAGS = \
-        -DOMPI_MSGQ_DLL=\"$(pkglibdir)/$(OPAL_DYN_LIB_PREFIX)ompi_dbg_msgq.$(OPAL_DYN_LIB_SUFFIX)\" \
+        -DOMPI_MSGQ_DLL=\"$(ompilibdir)/$(OPAL_DYN_LIB_PREFIX)ompi_dbg_msgq.$(OPAL_DYN_LIB_SUFFIX)\" \
         -DOMPI_MSGQ_DLL_PREFIX=\"$(OPAL_DYN_LIB_PREFIX)ompi_dbg_msgq\" \
         -DOMPI_MPIHANDLES_DLL_PREFIX=\"$(OPAL_DYN_LIB_PREFIX)ompi_dbg_mpihandles\"
 
@@ -72,11 +71,19 @@ libompi_dbg_msgq_la_SOURCES = ompi_msgq_dll.c ompi_msgq_dll_defs.h $(common)
 libompi_dbg_msgq_la_CFLAGS = -g
 libompi_dbg_msgq_la_LDFLAGS = -module -avoid-version
 
+# These are checks for the padding on predefined MPI object types.
+# They are here in the debuggers/ directory (vs., for example,
+# runtime/) because a) we already had some canary tests here in this
+# directory, and b) the runtime/ directory is built by subdir objects,
+# and "make check" will *build* a test in runtime/, but it won't *run*
+# it.  :-(
+predefined_pad_test_LDFLAGS = $(WRAPPER_EXTRA_LDFLAGS)
+predefined_pad_test_LDADD = $(top_builddir)/ompi/libmpi.la
+predefined_pad_test_DEPENDENCIES = $(ompi_predefined_LDADD)
+
 # Conditionally install the header files
 
 if WANT_INSTALL_HEADERS
-ompidir = $(includedir)/openmpi/ompi/debuggers
+ompidir = $(ompiincludedir)/$(subdir)
 ompi_HEADERS = $(headers)
-else
-ompidir = $(includedir)
 endif

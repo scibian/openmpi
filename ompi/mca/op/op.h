@@ -1,3 +1,4 @@
+/* -*- Mode: C; c-basic-offset:4 ; indent-tabs-mode:nil -*- */
 /*
  * Copyright (c) 2004-2007 The Trustees of Indiana University and Indiana
  *                         University Research and Technology
@@ -5,18 +6,20 @@
  * Copyright (c) 2004-2010 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
  * Copyright (c) 2006-2007 Los Alamos National Security, LLC.  All rights
- *                         reserved. 
+ *                         reserved.
  * Copyright (c) 2007-2008 UT-Battelle, LLC
  * Copyright (c) 2007-2009 Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2013-2015 Los Alamos National Security, LLC. All rights
+ *                         reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 /**
@@ -81,7 +84,7 @@
 #include "ompi_config.h"
 
 #include "opal/class/opal_object.h"
-#include "opal/mca/mca.h"
+#include "ompi/mca/mca.h"
 
 /*
  * This file includes some basic struct declarations (but not
@@ -153,15 +156,12 @@ enum {
     OMPI_OP_BASE_TYPE_BOOL,
 
     /** Complex */
-    OMPI_OP_BASE_TYPE_COMPLEX,
-    /** Double complex */
-    OMPI_OP_BASE_TYPE_DOUBLE_COMPLEX,
-    /** Complex8 */
-    OMPI_OP_BASE_TYPE_COMPLEX8,
-    /** Complex16 */
-    OMPI_OP_BASE_TYPE_COMPLEX16,
-    /** Complex32 */
-    OMPI_OP_BASE_TYPE_COMPLEX32,
+    /* float complex */
+    OMPI_OP_BASE_TYPE_C_FLOAT_COMPLEX,
+    /* double complex */
+    OMPI_OP_BASE_TYPE_C_DOUBLE_COMPLEX,
+    /* long double complex */
+    OMPI_OP_BASE_TYPE_C_LONG_DOUBLE_COMPLEX,
 
     /** Byte */
     OMPI_OP_BASE_TYPE_BYTE,
@@ -227,6 +227,8 @@ enum {
     OMPI_OP_BASE_FORTRAN_MINLOC,
     /** Corresponds to Fortran MPI_REPLACE */
     OMPI_OP_BASE_FORTRAN_REPLACE,
+    /** Corresponds to Fortran MPI_NO_OP */
+    OMPI_OP_BASE_FORTRAN_NO_OP,
 
     /** Maximum value */
     OMPI_OP_BASE_FORTRAN_OP_MAX
@@ -241,7 +243,7 @@ struct ompi_op_base_module_1_0_0_t;
 typedef struct ompi_op_base_module_1_0_0_t ompi_op_base_module_t;
 
 /**
- * Typedef for 2-buffer op functions.  
+ * Typedef for 2-buffer op functions.
  *
  * We don't use MPI_User_function because this would create a
  * confusing dependency loop between this file and mpi.h.  So this is
@@ -303,7 +305,7 @@ typedef int (*ompi_op_base_component_init_query_fn_t)
  * not wish to run or return an error during module_enable().
  *
  * @param[in] op          The MPI_Op being created
- * @param[out] priority   Priority setting for component on 
+ * @param[out] priority   Priority setting for component on
  *                        this op
  *
  * @returns An initialized module structure if the component can
@@ -383,7 +385,7 @@ OMPI_DECLSPEC OBJ_CLASS_DECLARATION(ompi_op_base_module_1_0_0_t);
 /**
  * Struct that is used in op.h to hold all the function pointers and
  * pointers to the corresopnding modules (so that we can properly
- * RETAIN/RELEASE them) 
+ * RETAIN/RELEASE them)
  */
 typedef struct ompi_op_base_op_fns_1_0_0_t {
     ompi_op_base_handler_fn_1_0_0_t fns[OMPI_OP_BASE_TYPE_MAX];
@@ -395,7 +397,7 @@ typedef ompi_op_base_op_fns_1_0_0_t ompi_op_base_op_fns_t;
 /**
  * Struct that is used in op.h to hold all the function pointers and
  * pointers to the corresopnding modules (so that we can properly
- * RETAIN/RELEASE them) 
+ * RETAIN/RELEASE them)
  */
 typedef struct ompi_op_base_op_3buff_fns_1_0_0_t {
     ompi_op_base_3buff_handler_fn_1_0_0_t fns[OMPI_OP_BASE_TYPE_MAX];
@@ -408,8 +410,7 @@ typedef ompi_op_base_op_3buff_fns_1_0_0_t ompi_op_base_op_3buff_fns_t;
  * Macro for use in modules that are of type op v2.0.0
  */
 #define OMPI_OP_BASE_VERSION_1_0_0 \
-    MCA_BASE_VERSION_2_0_0, \
-    "op", 1, 0, 0
+    OMPI_MCA_BASE_VERSION_2_1_0("op", 1, 0, 0)
 
 END_C_DECLS
 

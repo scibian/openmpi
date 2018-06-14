@@ -1,15 +1,21 @@
 /* -*- Mode: C; c-basic-offset:4 ; -*- */
 /*
- * Copyright (c) 2004-2010 The University of Tennessee and The University
+ * Copyright (c) 2004-2012 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
  * Copyright (c) 2009      Oak Ridge National Labs.  All rights reserved.
+ * Copyright (c) 2015      Research Organization for Information Science
+ *                         and Technology (RIST). All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
  *
  * $HEADER$
  */
+
+#ifdef HAVE_ALLOCA_H
+#include <alloca.h>
+#endif
 
 #if !defined(MEM_OP_NAME)
 #error
@@ -36,7 +42,7 @@
 static inline void _predefined_data( const dt_elem_desc_t* ELEM,
                                      const opal_datatype_t* DATATYPE,
                                      unsigned char* SOURCE_BASE,
-                                     int32_t TOTAL_COUNT,
+                                     size_t TOTAL_COUNT,
                                      uint32_t COUNT,
                                      unsigned char* SOURCE,
                                      unsigned char* DESTINATION,
@@ -79,7 +85,7 @@ static inline void _predefined_data( const dt_elem_desc_t* ELEM,
 static inline void _contiguous_loop( const dt_elem_desc_t* ELEM,
                                      const opal_datatype_t* DATATYPE,
                                      unsigned char* SOURCE_BASE,
-                                     int32_t TOTAL_COUNT,
+                                     size_t TOTAL_COUNT,
                                      uint32_t COUNT,
                                      unsigned char* SOURCE,
                                      unsigned char* DESTINATION,

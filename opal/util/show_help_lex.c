@@ -494,7 +494,8 @@ goto find_rule; \
 #define YY_RESTORE_YY_MORE_OFFSET
 char *opal_show_help_yytext;
 #line 1 "show_help_lex.l"
-#line 2 "show_help_lex.l"
+#define YY_NO_INPUT 1
+#line 5 "show_help_lex.l"
 /*
  * Copyright (c) 2004-2005 The Trustees of Indiana University and Indiana
  *                         University Research and Technology
@@ -502,14 +503,14 @@ char *opal_show_help_yytext;
  * Copyright (c) 2004-2006 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -542,11 +543,8 @@ END_C_DECLS
 int opal_show_help_yynewlines = 1;
 bool opal_show_help_parse_done = false;
 
-#define yyterminate() \
-  return opal_show_help_finish_parsing()
 
-
-#line 550 "show_help_lex.c"
+#line 548 "show_help_lex.c"
 
 #define INITIAL 0
 #define CHOMP 1
@@ -606,8 +604,6 @@ extern int opal_show_help_yywrap (void );
 #endif
 #endif
 
-    static void yyunput (int c,char *buf_ptr  );
-    
 #ifndef yytext_ptr
 static void yy_flex_strncpy (char *,yyconst char *,int );
 #endif
@@ -735,7 +731,7 @@ YY_DECL
 #line 59 "show_help_lex.l"
 
 
-#line 739 "show_help_lex.c"
+#line 735 "show_help_lex.c"
 
 	if ( !(yy_init) )
 		{
@@ -880,7 +876,7 @@ YY_RULE_SETUP
 #line 69 "show_help_lex.l"
 ECHO;
 	YY_BREAK
-#line 884 "show_help_lex.c"
+#line 880 "show_help_lex.c"
 			case YY_STATE_EOF(INITIAL):
 			case YY_STATE_EOF(CHOMP):
 				yyterminate();
@@ -1175,43 +1171,6 @@ static int yy_get_next_buffer (void)
 		*(yy_state_ptr)++ = yy_current_state;
 
 	return yy_is_jam ? 0 : yy_current_state;
-}
-
-    static void yyunput (int c, register char * yy_bp )
-{
-	register char *yy_cp;
-    
-    yy_cp = (yy_c_buf_p);
-
-	/* undo effects of setting up opal_show_help_yytext */
-	*yy_cp = (yy_hold_char);
-
-	if ( yy_cp < YY_CURRENT_BUFFER_LVALUE->yy_ch_buf + 2 )
-		{ /* need to shift things up to make room */
-		/* +2 for EOB chars. */
-		register int number_to_move = (yy_n_chars) + 2;
-		register char *dest = &YY_CURRENT_BUFFER_LVALUE->yy_ch_buf[
-					YY_CURRENT_BUFFER_LVALUE->yy_buf_size + 2];
-		register char *source =
-				&YY_CURRENT_BUFFER_LVALUE->yy_ch_buf[number_to_move];
-
-		while ( source > YY_CURRENT_BUFFER_LVALUE->yy_ch_buf )
-			*--dest = *--source;
-
-		yy_cp += (int) (dest - source);
-		yy_bp += (int) (dest - source);
-		YY_CURRENT_BUFFER_LVALUE->yy_n_chars =
-			(yy_n_chars) = YY_CURRENT_BUFFER_LVALUE->yy_buf_size;
-
-		if ( yy_cp < YY_CURRENT_BUFFER_LVALUE->yy_ch_buf + 2 )
-			YY_FATAL_ERROR( "flex scanner push-back overflow" );
-		}
-
-	*--yy_cp = (char) c;
-
-	(yytext_ptr) = yy_bp;
-	(yy_hold_char) = *yy_cp;
-	(yy_c_buf_p) = yy_cp;
 }
 
 #ifndef YY_NO_INPUT
@@ -1860,15 +1819,16 @@ void opal_show_help_yyfree (void * ptr )
 
 
 
+/* Old flex (2.5.4a? and older) does not define a destroy function */
+#if !defined(YY_FLEX_SUBMINOR_VERSION)
+#define YY_FLEX_SUBMINOR_VERSION 0
+#endif
 
-/*
- * This cleans up at the end of the parse (since, in this case, we
- * always parse the entire file) and prevents a memory leak.
- */
-int opal_show_help_finish_parsing(void) 
+#if (YY_FLEX_MAJOR_VERSION < 2) || (YY_FLEX_MAJOR_VERSION == 2 && (YY_FLEX_MINOR_VERSION < 5 || (YY_FLEX_MINOR_VERSION == 5 && YY_FLEX_SUBMINOR_VERSION < 5)))
+int opal_show_help_yylex_destroy(void)
 {
     if (NULL != YY_CURRENT_BUFFER) {
-        opal_show_help_yy_delete_buffer(YY_CURRENT_BUFFER); 
+        opal_show_help_yy_delete_buffer(YY_CURRENT_BUFFER);
 #if defined(YY_CURRENT_BUFFER_LVALUE)
         YY_CURRENT_BUFFER_LVALUE = NULL;
 #else
@@ -1877,7 +1837,7 @@ int opal_show_help_finish_parsing(void)
     }
     return YY_NULL;
 }
-
+#endif
 
 static int opal_show_help_yywrap(void)
 {

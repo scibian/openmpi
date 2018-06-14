@@ -4,6 +4,7 @@
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
  * Copyright (c) 2009      Oak Ridge National Labs.  All rights reserved.
+ * Copyright (c) 2013 Cisco Systems, Inc.  All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -17,15 +18,15 @@
 
 #include "opal/datatype/opal_convertor_internal.h"
 #include "opal/datatype/opal_datatype_internal.h"
+#include "opal_stdint.h"
 
 #if OPAL_ENABLE_DEBUG
 #include "opal/util/output.h"
 
-extern int opal_pack_debug;
 #define DO_DEBUG(INST)  if( opal_pack_debug ) { INST }
 #else
 #define DO_DEBUG(INST)
-#endif  /* OPAL_ENABLE_DEBUG */
+#endif /* OPAL_ENABLE_DEBUG */
 
 /**
  * This function always work in local representation. This means no representation
@@ -33,7 +34,7 @@ extern int opal_pack_debug;
  * length we're working on are local.
  */
 int32_t
-opal_convertor_raw( opal_convertor_t* pConvertor, 
+opal_convertor_raw( opal_convertor_t* pConvertor,
 		    struct iovec* iov, uint32_t* iov_count,
 		    size_t* length )
 {
@@ -47,6 +48,13 @@ opal_convertor_raw( opal_convertor_t* pConvertor,
     uint32_t index = 0, i;    /* the iov index and a simple counter */
 
     assert( (*iov_count) > 0 );
+    if( OPAL_LIKELY(pConvertor->flags & CONVERTOR_COMPLETED) ) {
+        iov[0].iov_base = NULL;
+        iov[0].iov_len  = 0;
+        *iov_count      = 0;
+        *length         = iov[0].iov_len;
+        return 1;  /* We're still done */
+    }
     if( OPAL_LIKELY(pConvertor->flags & CONVERTOR_NO_OP) ) {
         /* The convertor contain minimal informations, we only use the bConverted
          * to manage the conversion. This function work even after the convertor
@@ -61,8 +69,8 @@ opal_convertor_raw( opal_convertor_t* pConvertor,
         return 1;  /* we're done */
     }
 
-    DO_DEBUG( opal_output( 0, "opal_convertor_raw( %p, {%p, %u}, %lu )\n", (void*)pConvertor,
-                           (void*)iov, *iov_count, (unsigned long)*length ); );
+    DO_DEBUG( opal_output( 0, "opal_convertor_raw( %p, {%p, %" PRIu32 "}, %"PRIsize_t " )\n", (void*)pConvertor,
+                           (void*)iov, *iov_count, *length ); );
 
     description = pConvertor->use_desc->desc;
 
@@ -109,7 +117,7 @@ opal_convertor_raw( opal_convertor_t* pConvertor,
                                            index, source_base, (unsigned long)blength ); );
                     iov[index].iov_base = (IOVBASE_TYPE *) source_base;
                     iov[index].iov_len  = blength;
-                    source_base += blength;
+                    source_base += pElem->elem.extent;
                     raw_data += blength;
                     count_desc--;
                 }

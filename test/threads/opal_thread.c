@@ -1,5 +1,8 @@
 /*
  * Copyright (c) 2010      Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2014      The University of Tennessee and The University
+ *                         of Tennessee Research Foundation.  All rights
+ *                         reserved.
  * $COPYRIGHT$
  */
 
@@ -13,7 +16,7 @@
 #include "opal/sys/atomic.h"
 
 
-#if !OPAL_HAVE_THREAD_SUPPORT
+#if !OPAL_ENABLE_MULTI_THREADS
 
 /* If we don't have thread support, there's no point in running this
    test */
@@ -33,13 +36,13 @@ static volatile int count = 0;
 
 static void* thr1_run(opal_object_t* obj)
 {
-    opal_atomic_add(&count, 1);
+    (void)opal_atomic_add(&count, 1);
     return NULL;
 }
 
 static void* thr2_run(opal_object_t* obj)
 {
-    opal_atomic_add(&count, 2);
+    (void)opal_atomic_add(&count, 2);
     return NULL;
 }
 
@@ -62,7 +65,7 @@ int main(int argc, char** argv)
 
     rc = opal_thread_start(&thr2);
     test_verify_int(OPAL_SUCCESS, rc);
-   
+
     rc = opal_thread_join(&thr1, NULL);
     test_verify_int(OPAL_SUCCESS, rc);
 
@@ -73,4 +76,4 @@ int main(int argc, char** argv)
     return test_finalize();
 }
 
-#endif /* OPAL_HAVE_THREAD_SUPPORT */
+#endif /* OPAL_ENABLE_MULTI_THREADS */

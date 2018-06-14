@@ -1,3 +1,4 @@
+/* -*- Mode: C; c-basic-offset:4 ; indent-tabs-mode:nil -*- */
 /*
  * Copyright (c) 2004-2007 The Trustees of Indiana University and Indiana
  *                         University Research and Technology
@@ -5,15 +6,19 @@
  * Copyright (c) 2004-2005 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
  * Copyright (c) 2008      Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2015      Research Organization for Information Science
+ *                         and Technology (RIST). All rights reserved.
+ * Copyright (c) 2016      Los Alamos National Security, LLC. All rights
+ *                         reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -25,22 +30,19 @@
 #include "ompi/errhandler/errhandler.h"
 #include "ompi/file/file.h"
 
-#if OPAL_HAVE_WEAK_SYMBOLS && OMPI_PROFILING_DEFINES
+#if OMPI_BUILD_MPI_PROFILING
+#if OPAL_HAVE_WEAK_SYMBOLS
 #pragma weak MPI_File_get_errhandler = PMPI_File_get_errhandler
 #endif
-
-#if OMPI_PROFILING_DEFINES
-#include "ompi/mpi/c/profile/defines.h"
+#define MPI_File_get_errhandler PMPI_File_get_errhandler
 #endif
 
 static const char FUNC_NAME[] = "MPI_File_get_errhandler";
 
 
-int MPI_File_get_errhandler( MPI_File file, MPI_Errhandler *errhandler) 
+int MPI_File_get_errhandler( MPI_File file, MPI_Errhandler *errhandler)
 {
     MPI_Errhandler tmp;
-
-    OPAL_CR_NOOP_PROGRESS();
 
   /* Error checking */
 
@@ -64,7 +66,7 @@ int MPI_File_get_errhandler( MPI_File file, MPI_Errhandler *errhandler)
      error_handler became atomic. */
   do {
       tmp = file->error_handler;
-  } while (!OPAL_ATOMIC_CMPSET(&(file->error_handler), tmp, tmp));
+  } while (!OPAL_ATOMIC_CMPSET_PTR(&(file->error_handler), tmp, tmp));
 
   /* Retain the errhandler, corresponding to object refcount
      decrease in errhandler_free.c. */

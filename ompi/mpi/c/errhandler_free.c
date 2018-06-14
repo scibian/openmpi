@@ -5,14 +5,16 @@
  * Copyright (c) 2004-2005 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
+ * Copyright (c) 2015      Research Organization for Information Science
+ *                         and Technology (RIST). All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -23,12 +25,11 @@
 #include "ompi/communicator/communicator.h"
 #include "ompi/errhandler/errhandler.h"
 
-#if OPAL_HAVE_WEAK_SYMBOLS && OMPI_PROFILING_DEFINES
+#if OMPI_BUILD_MPI_PROFILING
+#if OPAL_HAVE_WEAK_SYMBOLS
 #pragma weak MPI_Errhandler_free = PMPI_Errhandler_free
 #endif
-
-#if OMPI_PROFILING_DEFINES
-#include "ompi/mpi/c/profile/defines.h"
+#define MPI_Errhandler_free PMPI_Errhandler_free
 #endif
 
 static const char FUNC_NAME[] = "MPI_Errhandler_free";
@@ -36,8 +37,6 @@ static const char FUNC_NAME[] = "MPI_Errhandler_free";
 
 int MPI_Errhandler_free(MPI_Errhandler *errhandler)
 {
-
-    OPAL_CR_NOOP_PROGRESS();
 
   /* Error checking */
 
@@ -48,7 +47,7 @@ int MPI_Errhandler_free(MPI_Errhandler *errhandler)
        actually free the underlying intrinsic object).  This is ugly
        but necessary -- see below. */
     if (NULL == errhandler ||
-        (ompi_errhandler_is_intrinsic(*errhandler) && 
+        (ompi_errhandler_is_intrinsic(*errhandler) &&
          1 == (*errhandler)->super.obj_reference_count)) {
       return OMPI_ERRHANDLER_INVOKE(MPI_COMM_WORLD, MPI_ERR_ARG,
                                    "MPI_Errhandler_free");
@@ -68,7 +67,7 @@ int MPI_Errhandler_free(MPI_Errhandler *errhandler)
          MPI_Finalize();
          return 0;
      }
-     
+
      So decrease the refcount here. */
 
   OBJ_RELEASE(*errhandler);

@@ -3,41 +3,42 @@
 # Copyright (c) 2004-2005 The Trustees of Indiana University and Indiana
 #                         University Research and Technology
 #                         Corporation.  All rights reserved.
-# Copyright (c) 2004-2005 The University of Tennessee and The University
+# Copyright (c) 2004-2013 The University of Tennessee and The University
 #                         of Tennessee Research Foundation.  All rights
 #                         reserved.
-# Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+# Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
 #                         University of Stuttgart.  All rights reserved.
 # Copyright (c) 2004-2005 The Regents of the University of California.
 #                         All rights reserved.
-# Copyright (c) 2009      Cisco Systems, Inc.  All rights reserved
+# Copyright (c) 2009-2014 Cisco Systems, Inc.  All rights reserved.
+# Copyright (c) 2011      Sandia National Laboratories. All rights reserved.
+# Copyright (c) 2012      Oak Ridge National Laboratory. All rights reserved.
+# Copyright (c) 2012-2013 Inria.  All rights reserved.
+# Copyright (c) 2013      Los Alamos National Security, LLC. All rights
+#                         reserved.
+# Copyright (c) 2015      Research Organization for Information Science
+#                         and Technology (RIST). All rights reserved.
 # $COPYRIGHT$
-# 
+#
 # Additional copyrights may follow
-# 
+#
 # $HEADER$
 #
 
-#
-# OMPI_PROFILING_DEFINES flag s enabled when we want our MPI_* symbols
-# to be replaced by PMPI_*. In other words, this flag decides 
-# whether "profile/defines.h" is included or not. "profile/defines.h"
-# replaces all MPI_* symbols with PMPI_* symbols. In this directory
-# we definately need it to be 1.
-#
-AM_CPPFLAGS = -DOMPI_PROFILING_DEFINES=1
+include $(top_srcdir)/Makefile.ompi-rules
+
+# If OMPI_BUILD_MPI_PROFILING is enabled when we want our generated MPI_* symbols
+# to be replaced by PMPI_*.
+# In this directory, we definately need it to be 1.
+
+AM_CPPFLAGS = -DOMPI_BUILD_MPI_PROFILING=1
 
 #
 # This build needs to go through only if profiling is required.
 # Further, this build HAS to go through if profiling is required.
 #
 
-noinst_LTLIBRARIES =
-if WANT_PMPI_BINDINGS_LAYER
-noinst_LTLIBRARIES += libmpi_c_pmpi.la
-endif
-
-headers = defines.h
+noinst_LTLIBRARIES = libmpi_c_pmpi.la
 
 nodist_libmpi_c_pmpi_la_SOURCES = \
         pabort.c \
@@ -46,17 +47,25 @@ nodist_libmpi_c_pmpi_la_SOURCES = \
         padd_error_string.c \
         paddress.c \
         pallgather.c \
+        piallgather.c \
         pallgatherv.c \
+        piallgatherv.c \
         palloc_mem.c \
         pallreduce.c \
+        piallreduce.c \
         palltoall.c \
+        pialltoall.c \
         palltoallv.c \
+        pialltoallv.c \
         palltoallw.c \
+        pialltoallw.c \
         pattr_delete.c \
         pattr_get.c \
         pattr_put.c \
         pbarrier.c \
+        pibarrier.c \
         pbcast.c \
+        pibcast.c \
         pbsend.c \
         pbsend_init.c \
         pbuffer_attach.c \
@@ -78,15 +87,19 @@ nodist_libmpi_c_pmpi_la_SOURCES = \
         pcomm_connect.c \
         pcomm_create.c \
         pcomm_create_errhandler.c \
+        pcomm_create_group.c \
         pcomm_create_keyval.c \
         pcomm_delete_attr.c \
         pcomm_disconnect.c \
         pcomm_dup.c \
+        pcomm_dup_with_info.c \
+        pcomm_idup.c \
         pcomm_f2c.c \
         pcomm_free.c \
         pcomm_free_keyval.c \
         pcomm_get_attr.c \
         pcomm_get_errhandler.c \
+        pcomm_get_info.c \
         pcomm_get_name.c \
         pcomm_get_parent.c \
         pcomm_group.c \
@@ -95,13 +108,20 @@ nodist_libmpi_c_pmpi_la_SOURCES = \
         pcomm_remote_group.c \
         pcomm_remote_size.c \
         pcomm_set_attr.c \
+        pcomm_set_info.c \
+        pdist_graph_create.c \
+        pdist_graph_create_adjacent.c \
+        pdist_graph_neighbors.c \
+        pdist_graph_neighbors_count.c \
         pcomm_set_errhandler.c \
         pcomm_set_name.c \
         pcomm_size.c \
         pcomm_spawn.c \
         pcomm_spawn_multiple.c \
         pcomm_split.c \
+        pcomm_split_type.c \
         pcomm_test_inter.c \
+	pcompare_and_swap.c \
         pdims_create.c \
         perrhandler_c2f.c \
         perrhandler_create.c \
@@ -112,14 +132,21 @@ nodist_libmpi_c_pmpi_la_SOURCES = \
         perror_class.c \
         perror_string.c \
         pexscan.c \
+	pfetch_and_op.c \
+        piexscan.c \
         pfinalize.c \
         pfinalized.c \
         pfree_mem.c \
         pgather.c \
+        pigather.c \
         pgatherv.c \
+        pigatherv.c \
         pget_address.c \
         pget_count.c \
         pget_elements.c \
+        pget_elements_x.c \
+	pget_accumulate.c \
+        pget_library_version.c \
         pget_processor_name.c \
         pget_version.c \
         pgraph_create.c \
@@ -145,6 +172,8 @@ nodist_libmpi_c_pmpi_la_SOURCES = \
         pgroup_translate_ranks.c \
         pgroup_union.c \
         pibsend.c \
+	pimprobe.c \
+	pimrecv.c \
         pinfo_c2f.c \
         pinfo_create.c \
         pinfo_delete.c \
@@ -170,6 +199,20 @@ nodist_libmpi_c_pmpi_la_SOURCES = \
         pkeyval_create.c \
         pkeyval_free.c \
         plookup_name.c \
+        pmessage_f2c.c \
+        pmessage_c2f.c \
+        pmprobe.c \
+        pmrecv.c \
+        pneighbor_allgather.c \
+        pineighbor_allgather.c \
+        pneighbor_allgatherv.c \
+        pineighbor_allgatherv.c \
+        pneighbor_alltoall.c \
+        pineighbor_alltoall.c \
+        pneighbor_alltoallv.c \
+        pineighbor_alltoallv.c \
+        pneighbor_alltoallw.c \
+        pineighbor_alltoallw.c \
         pop_c2f.c \
         pop_create.c \
         pop_commutative.c \
@@ -184,20 +227,31 @@ nodist_libmpi_c_pmpi_la_SOURCES = \
         pprobe.c \
         ppublish_name.c \
         pquery_thread.c \
+	praccumulate.c \
         precv_init.c \
         precv.c \
         preduce.c \
+        pireduce.c \
         preduce_local.c \
         preduce_scatter.c \
+        pireduce_scatter.c \
+        preduce_scatter_block.c \
+        pireduce_scatter_block.c \
         prequest_c2f.c \
         prequest_f2c.c \
         prequest_free.c \
         prequest_get_status.c \
+	prget.c \
+	prget_accumulate.c \
+	prput.c \
         prsend_init.c \
         prsend.c \
         pscan.c \
+        piscan.c \
         pscatter.c \
+        piscatter.c \
         pscatterv.c \
+        piscatterv.c \
         psend.c \
         psend_init.c \
         psendrecv.c \
@@ -210,6 +264,7 @@ nodist_libmpi_c_pmpi_la_SOURCES = \
         pstatus_f2c.c \
         pstatus_set_cancelled.c \
         pstatus_set_elements.c \
+        pstatus_set_elements_x.c \
         ptestall.c \
         ptestany.c \
         ptest.c \
@@ -226,6 +281,7 @@ nodist_libmpi_c_pmpi_la_SOURCES = \
         ptype_create_hindexed.c \
         ptype_create_hvector.c \
         ptype_create_indexed_block.c \
+        ptype_create_hindexed_block.c \
         ptype_create_keyval.c \
         ptype_create_resized.c \
         ptype_create_struct.c \
@@ -240,8 +296,10 @@ nodist_libmpi_c_pmpi_la_SOURCES = \
         ptype_get_contents.c \
         ptype_get_envelope.c \
         ptype_get_extent.c \
+        ptype_get_extent_x.c \
         ptype_get_name.c \
         ptype_get_true_extent.c \
+        ptype_get_true_extent_x.c \
         ptype_hindexed.c \
         ptype_hvector.c \
         ptype_indexed.c \
@@ -250,6 +308,7 @@ nodist_libmpi_c_pmpi_la_SOURCES = \
         ptype_set_attr.c \
         ptype_set_name.c \
         ptype_size.c \
+        ptype_size_x.c \
         ptype_struct.c \
         ptype_ub.c \
         ptype_vector.c  \
@@ -265,29 +324,44 @@ nodist_libmpi_c_pmpi_la_SOURCES = \
         paccumulate.c \
         pget.c \
         pput.c \
+	pwin_allocate.c \
+	pwin_allocate_shared.c \
+	pwin_attach.c \
         pwin_c2f.c \
         pwin_call_errhandler.c \
         pwin_complete.c  \
         pwin_create_errhandler.c \
         pwin_create_keyval.c \
         pwin_create.c \
+	pwin_create_dynamic.c \
         pwin_delete_attr.c \
+	pwin_detach.c \
         pwin_f2c.c \
         pwin_fence.c \
+	pwin_flush.c \
+	pwin_flush_all.c \
+	pwin_flush_local.c \
+	pwin_flush_local_all.c \
         pwin_free_keyval.c \
         pwin_free.c \
         pwin_get_attr.c \
         pwin_get_errhandler.c \
         pwin_get_group.c \
+        pwin_get_info.c  \
         pwin_get_name.c  \
         pwin_lock.c \
+	pwin_lock_all.c \
         pwin_post.c \
         pwin_set_attr.c \
         pwin_set_errhandler.c \
+        pwin_set_info.c \
         pwin_set_name.c \
+	pwin_shared_query.c \
         pwin_start.c \
+	pwin_sync.c \
         pwin_test.c \
         pwin_unlock.c \
+	pwin_unlock_all.c \
         pwin_wait.c
 
 if OMPI_PROVIDE_MPI_FILE_INTERFACE
@@ -311,9 +385,13 @@ nodist_libmpi_c_pmpi_la_SOURCES += \
         pfile_get_view.c \
         pfile_iread_at.c \
         pfile_iread.c \
+        pfile_iread_at_all.c \
+        pfile_iread_all.c \
         pfile_iread_shared.c \
         pfile_iwrite_at.c \
         pfile_iwrite.c \
+        pfile_iwrite_at_all.c \
+        pfile_iwrite_all.c \
         pfile_iwrite_shared.c \
         pfile_open.c \
         pfile_preallocate.c \
@@ -356,7 +434,7 @@ endif
 # Sym link in the sources from the real MPI directory
 #
 $(nodist_libmpi_c_pmpi_la_SOURCES):
-	if test ! -r $@ ; then \
+	$(OMPI_V_LN_S) if test ! -r $@ ; then \
 		pname=`echo $@ | cut -b '2-'` ; \
 		$(LN_S) $(top_srcdir)/ompi/mpi/c/$$pname $@ ; \
 	fi
@@ -364,10 +442,7 @@ $(nodist_libmpi_c_pmpi_la_SOURCES):
 # Conditionally install the header files
 
 if WANT_INSTALL_HEADERS
-ompidir = $(includedir)/openmpi/ompi/mpi/c/profile
-ompi_HEADERS = $(headers)
-else
-ompidir = $(includedir)
+ompidir = $(ompiincludedir)/$(subdir)
 endif
 
 # These files were created by targets above

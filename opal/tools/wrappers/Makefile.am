@@ -5,39 +5,41 @@
 # Copyright (c) 2004-2006 The University of Tennessee and The University
 #                         of Tennessee Research Foundation.  All rights
 #                         reserved.
-# Copyright (c) 2004-2009 High Performance Computing Center Stuttgart, 
+# Copyright (c) 2004-2009 High Performance Computing Center Stuttgart,
 #                         University of Stuttgart.  All rights reserved.
 # Copyright (c) 2004-2005 The Regents of the University of California.
 #                         All rights reserved.
-# Copyright (c) 2006-2010 Cisco Systems, Inc.  All rights reserved.
+# Copyright (c) 2006-2014 Cisco Systems, Inc.  All rights reserved.
 # Copyright (c) 2008      Sun Microsystems, Inc.  All rights reserved.
+# Copyright (c) 2014      Research Organization for Information Science
+#                         and Technology (RIST). All rights reserved.
 # $COPYRIGHT$
-# 
+#
 # Additional copyrights may follow
-# 
+#
 # $HEADER$
 #
 
 DEFS="-DEXEEXT=\"$(EXEEXT)\""
 
 real_man_pages = generic_wrapper.1 opal_wrapper.1
-EXTRA_DIST = $(real_man_pages:.1=.1in) CMakeLists.txt
+EXTRA_DIST = $(real_man_pages:.1=.1in)
 
-include $(top_srcdir)/Makefile.man-page-rules
+include $(top_srcdir)/Makefile.ompi-rules
 
 if !OPAL_WANT_SCRIPT_WRAPPER_COMPILERS
-if OMPI_INSTALL_BINARIES
+if OPAL_INSTALL_BINARIES
 
 bin_PROGRAMS = opal_wrapper
 
 nodist_man_MANS = opal_wrapper.1
 
-dist_pkgdata_DATA = help-opal-wrapper.txt
+dist_opaldata_DATA = help-opal-wrapper.txt
 
 # Only install the following for developer-level installs
 if WANT_INSTALL_HEADERS
 
-nodist_pkgdata_DATA = \
+nodist_opaldata_DATA = \
 	opalcc-wrapper-data.txt \
 	opalc++-wrapper-data.txt
 
@@ -47,8 +49,8 @@ pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = opal.pc
 
 install-exec-hook:
-	(cd $(DESTDIR)$(bindir); rm -f opalcc$(EXEEXT); $(LN_S) opal_wrapper opalcc)
-	(cd $(DESTDIR)$(bindir); rm -f opalc++$(EXEEXT); $(LN_S) opal_wrapper opalc++)
+	(cd $(DESTDIR)$(bindir); rm -f opalcc$(EXEEXT); $(LN_S) opal_wrapper$(EXEECT) opalcc$(EXEEXT))
+	(cd $(DESTDIR)$(bindir); rm -f opalc++$(EXEEXT); $(LN_S) opal_wrapper$(EXEECT) opalc++$(EXEEXT))
 
 uninstall-local:
 	rm -f $(DESTDIR)$(bindir)/opalcc$(EXEEXT) \
@@ -56,11 +58,11 @@ uninstall-local:
 
 endif # WANT_INSTALL_HEADERS
 
-endif # OMPI_INSTALL_BINARIES
+endif # OPAL_INSTALL_BINARIES
 endif # OPAL_WANT_SCRIPT_WRAPPER_COMPILERS
 
 opal_wrapper_SOURCES = opal_wrapper.c
-opal_wrapper_LDADD = $(top_builddir)/opal/libopen-pal.la
+opal_wrapper_LDADD = $(top_builddir)/opal/lib@OPAL_LIB_PREFIX@open-pal.la
 
 # Ensure that the man pages are rebuilt if the opal_config.h file
 # changes; a "good enough" way to know if configure was run again (and

@@ -5,16 +5,16 @@
  * Copyright (c) 2004-2005 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
  * Copyright (c) 2010      IBM Corporation.  All rights reserved.
  * Copyright (c) 2010      ARM ltd.  All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -28,10 +28,8 @@
  * See Documentation/arm/kernel_user_helpers.txt in the kernel tree for details
  */
 
-#ifndef OMPI_SYS_ARCH_ATOMIC_H
-#define OMPI_SYS_ARCH_ATOMIC_H 1
-
-#if OPAL_WANT_SMP_LOCKS
+#ifndef OPAL_SYS_ARCH_ATOMIC_H
+#define OPAL_SYS_ARCH_ATOMIC_H 1
 
 #if (OPAL_ASM_ARM_VERSION >= 7)
 
@@ -61,16 +59,6 @@
 #define WMB() MB()
 
 #endif
-
-#else
-
-#define MB()
-#define RMB()
-#define WMB()
-
-#endif /* OPAL_WANT_SMP_LOCKS */
-
-
 
 /**********************************************************************
  *
@@ -109,7 +97,7 @@ void opal_atomic_wmb(void)
  *
  *********************************************************************/
 
-#if (OMPI_GCC_INLINE_ASSEMBLY && (OPAL_ASM_ARM_VERSION >= 6))
+#if (OPAL_GCC_INLINE_ASSEMBLY && (OPAL_ASM_ARM_VERSION >= 6))
 
 #define OPAL_HAVE_ATOMIC_CMPSET_32 1
 #define OPAL_HAVE_ATOMIC_MATH_32 1
@@ -280,4 +268,4 @@ static inline int opal_atomic_cmpset_rel_32(volatile int32_t *addr,
 
 #endif
 
-#endif /* ! OMPI_SYS_ARCH_ATOMIC_H */
+#endif /* ! OPAL_SYS_ARCH_ATOMIC_H */

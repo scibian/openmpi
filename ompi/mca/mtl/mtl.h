@@ -1,10 +1,14 @@
+/* -*- Mode: C; c-basic-offset:4 ; indent-tabs-mode:nil -*- */
 /*
  * Copyright (c) 2004-2006 The Regents of the University of California.
  *                         All rights reserved.
+ * Copyright (c) 2012      Sandia National Laboratories.  All rights reserved.
+ * Copyright (c) 2015      Los Alamos National Security, LLC. All rights
+ *                         reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -34,8 +38,8 @@
 
 #include "ompi_config.h"
 #include "mpi.h" /* needed for MPI_ANY_TAG */
-#include "opal/mca/mca.h"
-#include "ompi/mca/pml/pml.h" /* for send_mode enum */
+#include "ompi/mca/mca.h"
+#include "ompi/mca/pml/pml_constants.h" /* for send_mode enum */
 #include "ompi/request/request.h"
 
 BEGIN_C_DECLS
@@ -44,8 +48,6 @@ struct ompi_request_t;
 struct opal_convertor_t;
 
 struct mca_mtl_base_module_t;
-    
-struct mca_mtl_base_endpoint_t;
 
 struct mca_mtl_request_t {
     /** pointer to associated ompi_request_t */
@@ -54,12 +56,18 @@ struct mca_mtl_request_t {
 };
 typedef struct mca_mtl_request_t mca_mtl_request_t;
 
+
+/**
+ * MTL module flags
+ */
+#define MCA_MTL_BASE_FLAG_REQUIRE_WORLD 0x00000001
+
 /**
  * Initialization routine for MTL component
  *
  * Initialization routine for MTL component.  This function should
  * allocate resources for communication and try to do all local setup.
- * It should not attempt to contract it's peers, as that should be
+ * It should not attempt to contact it's peers, as that should be
  * done at add_procs time.  Contact information should be published
  * during this initialization function.  It will be made available
  * during add_procs().
@@ -73,18 +81,18 @@ typedef struct mca_mtl_request_t mca_mtl_request_t;
  *                  user and the component must be capable of coping
  *                  with threads.  If the component can cope with
  *                  MPI_THREAD_MULTIPLE, enable_mpi_thread_multiple
- *                  should be set to true.  Otherwise, it is assumed 
+ *                  should be set to true.  Otherwise, it is assumed
  *                  that only THREAD_FUNNELLED and THREAD_SERIALIZED
  *                  can be used.
  * @param enable_mpi_thread_multiple (OUT) Component does / does not
  *                  support MPI_THREAD_MULTIPLE.  This variable only
- *                  needs to be set if enable_mpi_threads is true.  
+ *                  needs to be set if enable_mpi_threads is true.
  *                  Otherwise, the return value will be ignored.
  *
  * @retval NULL     component can not operate on the current machine
  * @retval non-NULL component interface function
  */
-typedef struct mca_mtl_base_module_t* 
+typedef struct mca_mtl_base_module_t*
 (*mca_mtl_base_component_init_fn_t)(bool enable_progress_threads,
                                     bool enable_mpi_threads);
 
@@ -99,25 +107,25 @@ typedef struct mca_mtl_base_component_2_0_0_t mca_mtl_base_component_t;
 
 
 /**
- * MCA->MTL Clean up any resources held by MTL module 
- *  
+ * MCA->MTL Clean up any resources held by MTL module
+ *
  * Opposite of module_init.  Called when communication will no longer
  * be necessary.  ussually this is during MPI_FINALIZE, but it can be
  * earlier if the component was not selected to run.  Assuming
  * module_init was called, finalize will always be called before the
  * component_close function is called.
- * 
+ *
  * @param mtl (IN)   MTL module returned from call to initialize
  *
  * @retval OMPI_SUCCESS cleanup finished successfully
  * @retval other        failure during cleanup
- * 
+ *
  */
 typedef int (*mca_mtl_base_module_finalize_fn_t)(struct mca_mtl_base_module_t* mtl);
 
 
 /**
- * PML->MTL notification of change in the process list. 
+ * PML->MTL notification of change in the process list.
  *
  * The mca_mtl_base_module_add_procs_fn_t() is used by the PML to
  * notify the MTL that new processes are connected to the current
@@ -128,28 +136,23 @@ typedef int (*mca_mtl_base_module_finalize_fn_t)(struct mca_mtl_base_module_t* m
  * peer process.
  *
  * It is an error for a proc to not be reachable by the given MTL, and
- * an error should be returned if that case is detected.  The PML
- * provides the MTL the option to return a pointer to a data structure
- * defined by the MTL that is passed in with all communication
- * functions.  The array of procinfo pointers will be allocated by the
- * PML, but it is up to the MTL module to create the memory for the
- * procinfo structure itself.  The procinfo structure is opaque to the
- * PML and is only used internally by the MTL.
+ * an error should be returned if that case is detected.  If a MTL
+ * requires per-endpoint data, it must handle storage, either using a
+ * static endpoint tag (MTL is the default tag that should generally
+ * be used) or a dynamic endpoint tag (although it should be noted
+ * that OMPI can be built without dynamic endpoint tag support).
  *
  * @param mtl (IN)            MTL module
  * @param nprocs (IN)         Number of processes
  * @param procs (IN)          Set of processes
- * @param endpoint (OUT)      Array of (optional) mca_mtl_base_procinfo_t 
- *                            structures, one per proc in procs
  *
  * @retval OMPI_SUCCESS successfully connected to processes
  * @retval other failure during setup
  */
 typedef int (*mca_mtl_base_module_add_procs_fn_t)(
-                            struct mca_mtl_base_module_t* mtl, 
+                            struct mca_mtl_base_module_t* mtl,
                             size_t nprocs,
-                            struct ompi_proc_t** procs, 
-                            struct mca_mtl_base_endpoint_t **mtl_peer_data);
+                            struct ompi_proc_t** procs);
 
 
 /**
@@ -157,7 +160,9 @@ typedef int (*mca_mtl_base_module_add_procs_fn_t)(
  *
  * When the process list changes, the PML notifies the MTL of the
  * change, to provide the opportunity to cleanup or release any
- * resources associated with the peer.
+ * resources associated with the peer.  The MTL is responsible for
+ * releasing any memory associated with the endpoint data it may have
+ * stored during add_procs().
  *
  * @param mtl (IN)     MTL module
  * @param nprocs (IN)  Number of processes
@@ -167,10 +172,9 @@ typedef int (*mca_mtl_base_module_add_procs_fn_t)(
  * @return             Status indicating if cleanup was successful
  */
 typedef int (*mca_mtl_base_module_del_procs_fn_t)(
-                            struct mca_mtl_base_module_t* mtl, 
+                            struct mca_mtl_base_module_t* mtl,
                             size_t nprocs,
-                            struct ompi_proc_t** procs, 
-                            struct mca_mtl_base_endpoint_t **mtl_peer_data);
+                            struct ompi_proc_t** procs);
 
 
 /**
@@ -187,7 +191,7 @@ typedef int (*mca_mtl_base_module_del_procs_fn_t)(
  * @param comm (IN)      Communicator used for operation
  * @param dest (IN)      Destination rank for send (relative to comm)
  * @param tag (IN)       MPI tag used for sending.  See note below.
- * @param convertor (IN) Datatype convertor describing send datatype.  
+ * @param convertor (IN) Datatype convertor describing send datatype.
  *                       Already prepared for send.
  * @param mode (IN)      Mode for send operation
  *
@@ -196,9 +200,7 @@ typedef int (*mca_mtl_base_module_del_procs_fn_t)(
  * \note Open MPI is built around non-blocking operations.  This
  * function is provided for networks where progressing events outside
  * of point-to-point (for example, collectives, I/O, one-sided) can
- * occur without a progress function regularily being triggered.  If
- * this is not the case for the given network, this function pointer
- * should be set to NULL and non-blocking sends be used.
+ * occur without a progress function regularily being triggered.
  *
  * \note While MPI does not allow users to specify negative tags, they
  * are used internally in Open MPI to provide a unique channel for
@@ -206,7 +208,7 @@ typedef int (*mca_mtl_base_module_del_procs_fn_t)(
  * if a negative tag is used.
  */
 typedef int (*mca_mtl_base_module_send_fn_t)(
-                          struct mca_mtl_base_module_t* mtl, 
+                          struct mca_mtl_base_module_t* mtl,
                           struct ompi_communicator_t *comm,
                           int dest,
                           int tag,
@@ -233,14 +235,13 @@ typedef int (*mca_mtl_base_module_send_fn_t)(
  * @param comm (IN)      Communicator used for operation
  * @param dest (IN)      Destination rank for send (relative to comm)
  * @param tag (IN)       MPI tag used for sending.  See note below.
- * @param convertor (IN) Datatype convertor describing send datatype.  
+ * @param convertor (IN) Datatype convertor describing send datatype.
  *                       Already prepared for send.
  * @param mode (IN)      Mode for send operation (see pml.h)
- * @param blocking (IN)  True if the call originated from a blocking 
- *                       call, but the PML decided to use a 
- *                       non-blocking operation.  This is either for
- *                       internal performance decisions or because the
- *                       blocking send function is NULL.  This is an
+ * @param blocking (IN)  True if the call originated from a blocking
+ *                       call, but the PML decided to use a
+ *                       non-blocking operation, likely for
+ *                       internal performance decisions This is an
  *                       optimization flag and is not needed for
  *                       correctness.
  * @param mtl_request (IN) Pointer to mtl_request.  The ompi_req field
@@ -255,7 +256,7 @@ typedef int (*mca_mtl_base_module_send_fn_t)(
  * if a negative tag is used.
  */
 typedef int (*mca_mtl_base_module_isend_fn_t)(
-                          struct mca_mtl_base_module_t* mtl, 
+                          struct mca_mtl_base_module_t* mtl,
                           struct ompi_communicator_t *comm,
                           int dest,
                           int tag,
@@ -282,7 +283,7 @@ typedef int (*mca_mtl_base_module_isend_fn_t)(
  * @param comm (IN)      Communicator used for operation
  * @param src (IN)       Source rank for send (relative to comm)
  * @param tag (IN)       MPI tag used for sending.  See note below.
- * @param convertor (IN) Datatype convertor describing receive datatype.  
+ * @param convertor (IN) Datatype convertor describing receive datatype.
  *                       Already prepared for receive.
  * @param mtl_request (IN) Pointer to mtl_request.  The ompi_req field
  *                       will be populated with an initialized
@@ -315,7 +316,7 @@ typedef int (*mca_mtl_base_module_irecv_fn_t)(
  * @param src (IN)       Source rank for send (relative to comm)
  * @param tag (IN)       MPI tag used for sending.  See note below.
  * @param flag (OUT)     true if message available, false otherwise
- * @param status (OUT)   Status structure for information on 
+ * @param status (OUT)   Status structure for information on
  *                       available message
  *
  * \note While MPI does not allow users to specify negative tags, they
@@ -325,13 +326,26 @@ typedef int (*mca_mtl_base_module_irecv_fn_t)(
  * against negative tags.
  */
 typedef int (*mca_mtl_base_module_iprobe_fn_t)(
-                          struct mca_mtl_base_module_t* mtl, 
+                          struct mca_mtl_base_module_t* mtl,
                           struct ompi_communicator_t *comm,
                           int src,
                           int tag,
                           int *flag,
                           struct ompi_status_public_t *status);
 
+
+typedef int (*mca_mtl_base_module_imrecv_fn_t)(struct mca_mtl_base_module_t* mtl,
+                                               struct opal_convertor_t *convertor,
+                                               struct ompi_message_t **message,
+                                               struct mca_mtl_request_t *mtl_request);
+
+typedef int (*mca_mtl_base_module_improbe_fn_t)(struct mca_mtl_base_module_t *mtl,
+                                                struct ompi_communicator_t *comm,
+                                                int src,
+                                                int tag,
+                                                int *matched,
+                                                struct ompi_message_t **message,
+                                                struct ompi_status_public_t *status);
 
 /**
  * Cancel an existing request
@@ -349,7 +363,7 @@ typedef int (*mca_mtl_base_module_iprobe_fn_t)(
  *
  */
 typedef int (*mca_mtl_base_module_cancel_fn_t)(
-                          struct mca_mtl_base_module_t* mtl, 
+                          struct mca_mtl_base_module_t* mtl,
                           mca_mtl_request_t *mtl_request,
                           int flag);
 
@@ -401,6 +415,8 @@ struct mca_mtl_base_module_t {
     mca_mtl_base_module_isend_fn_t       mtl_isend;
     mca_mtl_base_module_irecv_fn_t       mtl_irecv;
     mca_mtl_base_module_iprobe_fn_t      mtl_iprobe;
+    mca_mtl_base_module_imrecv_fn_t      mtl_imrecv;
+    mca_mtl_base_module_improbe_fn_t     mtl_improbe;
 
     /* Optional MTL functions */
     mca_mtl_base_module_cancel_fn_t      mtl_cancel;
@@ -413,25 +429,26 @@ typedef struct mca_mtl_base_module_t mca_mtl_base_module_t;
  * Macro for use in modules that are of type mtl
  */
 #define MCA_MTL_BASE_VERSION_2_0_0 \
-  MCA_BASE_VERSION_2_0_0, \
-  "mtl", 2, 0, 0
+    OMPI_MCA_BASE_VERSION_2_1_0("mtl", 2, 0, 0)
+
+OMPI_DECLSPEC extern mca_mtl_base_module_t *ompi_mtl;
 
 /*
  * macro for doing direct call / call through struct
  */
-#if MCA_mtl_DIRECT_CALL
+#if MCA_ompi_mtl_DIRECT_CALL
 
-#include MCA_mtl_DIRECT_CALL_HEADER
 
 #define OMPI_MTL_CALL_STAMP(a, b) ompi_mtl_ ## a ## _ ## b
 #define OMPI_MTL_CALL_EXPANDER(a, b) OMPI_MTL_CALL_STAMP(a,b)
-#define OMPI_MTL_CALL(a) OMPI_MTL_CALL_EXPANDER(MCA_mtl_DIRECT_CALL_COMPONENT, a)
+#define OMPI_MTL_CALL(a) OMPI_MTL_CALL_EXPANDER(MCA_ompi_mtl_DIRECT_CALL_COMPONENT, a)
+
+#include MCA_ompi_mtl_DIRECT_CALL_HEADER
 
 #else
 #define OMPI_MTL_CALL(a) ompi_mtl->mtl_ ## a
 #endif
 
-OMPI_DECLSPEC extern mca_mtl_base_module_t *ompi_mtl;
 
 END_C_DECLS
 #endif

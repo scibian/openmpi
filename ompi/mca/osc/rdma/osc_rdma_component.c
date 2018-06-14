@@ -1,21 +1,25 @@
+/* -*- Mode: C; c-basic-offset:4 ; indent-tabs-mode:nil -*- */
 /*
  * Copyright (c) 2004-2007 The Trustees of Indiana University.
  *                         All rights reserved.
  * Copyright (c) 2004-2008 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
- * Copyright (c) 2007      Los Alamos National Security, LLC.  All rights
- *                         reserved. 
+ * Copyright (c) 2007-2016 Los Alamos National Security, LLC.  All rights
+ *                         reserved.
  * Copyright (c) 2006-2008 University of Houston.  All rights reserved.
  * Copyright (c) 2010      Oracle and/or its affiliates.  All rights reserved.
+ * Copyright (c) 2012-2015 Sandia National Laboratories.  All rights reserved.
+ * Copyright (c) 2015      NVIDIA Corporation.  All rights reserved.
+ * Copyright (c) 2015      Intel, Inc. All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -24,1359 +28,1217 @@
 #include <string.h>
 
 #include "osc_rdma.h"
-#include "osc_rdma_sendreq.h"
-#include "osc_rdma_replyreq.h"
-#include "osc_rdma_header.h"
-#include "osc_rdma_data_move.h"
-#include "osc_rdma_obj_convert.h"
+#include "osc_rdma_frag.h"
+#include "osc_rdma_request.h"
+#include "osc_rdma_active_target.h"
+#include "osc_rdma_passive_target.h"
+#include "osc_rdma_comm.h"
+#include "osc_rdma_dynamic.h"
+#include "osc_rdma_accumulate.h"
 
-#include "opal/threads/condition.h"
 #include "opal/threads/mutex.h"
 #include "opal/util/arch.h"
+#include "opal/util/argv.h"
 #include "opal/align.h"
+#if OPAL_CUDA_SUPPORT
+#include "opal/datatype/opal_datatype_cuda.h"
+#endif /* OPAL_CUDA_SUPPORT */
 
 #include "ompi/info/info.h"
 #include "ompi/communicator/communicator.h"
 #include "ompi/mca/osc/osc.h"
 #include "ompi/mca/osc/base/base.h"
 #include "ompi/mca/osc/base/osc_base_obj_convert.h"
-#include "ompi/mca/btl/btl.h"
-#include "ompi/mca/bml/bml.h"
+#include "ompi/mca/pml/pml.h"
+#include "opal/mca/btl/base/base.h"
+#include "opal/mca/base/mca_base_pvar.h"
 #include "ompi/mca/bml/base/base.h"
 
-static int component_open(void);
-static void component_fragment_cb(struct mca_btl_base_module_t *btl,
-                                  mca_btl_base_tag_t tag,
-                                  mca_btl_base_descriptor_t *descriptor,
-                                  void *cbdata);
-#if OPAL_ENABLE_PROGRESS_THREADS
-static void* component_thread_fn(opal_object_t *obj);
-#endif
-static int setup_rdma(ompi_osc_rdma_module_t *module);
+static int ompi_osc_rdma_component_register (void);
+static int ompi_osc_rdma_component_init (bool enable_progress_threads, bool enable_mpi_threads);
+static int ompi_osc_rdma_component_finalize (void);
+static int ompi_osc_rdma_component_query (struct ompi_win_t *win, void **base, size_t size, int disp_unit,
+                                          struct ompi_communicator_t *comm, struct ompi_info_t *info,
+                                          int flavor);
+static int ompi_osc_rdma_component_select (struct ompi_win_t *win, void **base, size_t size, int disp_unit,
+                                           struct ompi_communicator_t *comm, struct ompi_info_t *info,
+                                           int flavor, int *model);
+
+static int ompi_osc_rdma_set_info (struct ompi_win_t *win, struct ompi_info_t *info);
+static int ompi_osc_rdma_get_info (struct ompi_win_t *win, struct ompi_info_t **info_used);
+
+static int ompi_osc_rdma_query_btls (ompi_communicator_t *comm, struct mca_btl_base_module_t **btl);
+
+static char *ompi_osc_rdma_btl_names;
 
 ompi_osc_rdma_component_t mca_osc_rdma_component = {
-    { /* ompi_osc_base_component_t */
-        { /* ompi_base_component_t */
-            OMPI_OSC_BASE_VERSION_2_0_0,
-            "rdma",
-            OMPI_MAJOR_VERSION,  /* MCA component major version */
-            OMPI_MINOR_VERSION,  /* MCA component minor version */
-            OMPI_RELEASE_VERSION,  /* MCA component release version */
-            component_open,
-            NULL
+    .super = {
+        .osc_version = {
+            OMPI_OSC_BASE_VERSION_3_0_0,
+            .mca_component_name = "rdma",
+            MCA_BASE_MAKE_VERSION(component, OMPI_MAJOR_VERSION, OMPI_MINOR_VERSION,
+                                  OMPI_RELEASE_VERSION),
+            .mca_register_component_params = ompi_osc_rdma_component_register
         },
-        { /* mca_base_component_data */
+        .osc_data = {
             /* The component is not checkpoint ready */
             MCA_BASE_METADATA_PARAM_NONE
         },
-        ompi_osc_rdma_component_init,
-        ompi_osc_rdma_component_query,
-        ompi_osc_rdma_component_select,
-        ompi_osc_rdma_component_finalize
+        .osc_init = ompi_osc_rdma_component_init,
+        .osc_query = ompi_osc_rdma_component_query,
+        .osc_select = ompi_osc_rdma_component_select,
+        .osc_finalize = ompi_osc_rdma_component_finalize
     }
 };
 
+ompi_osc_base_module_t ompi_osc_rdma_module_rdma_template = {
+    .osc_win_attach = ompi_osc_rdma_attach,
+    .osc_win_detach  = ompi_osc_rdma_detach,
+    .osc_free = ompi_osc_rdma_free,
 
-ompi_osc_rdma_module_t ompi_osc_rdma_module_template = {
-    {
-        ompi_osc_rdma_module_free,
+    .osc_put = ompi_osc_rdma_put,
+    .osc_get = ompi_osc_rdma_get,
+    .osc_accumulate = ompi_osc_rdma_accumulate,
+    .osc_compare_and_swap = ompi_osc_rdma_compare_and_swap,
+    .osc_fetch_and_op = ompi_osc_rdma_fetch_and_op,
+    .osc_get_accumulate = ompi_osc_rdma_get_accumulate,
 
-        ompi_osc_rdma_module_put,
-        ompi_osc_rdma_module_get,
-        ompi_osc_rdma_module_accumulate,
+    .osc_rput = ompi_osc_rdma_rput,
+    .osc_rget = ompi_osc_rdma_rget,
+    .osc_raccumulate = ompi_osc_rdma_raccumulate,
+    .osc_rget_accumulate = ompi_osc_rdma_rget_accumulate,
 
-        ompi_osc_rdma_module_fence,
+    .osc_fence = ompi_osc_rdma_fence_atomic,
 
-        ompi_osc_rdma_module_start,
-        ompi_osc_rdma_module_complete,
-        ompi_osc_rdma_module_post,
-        ompi_osc_rdma_module_wait,
-        ompi_osc_rdma_module_test,
+    .osc_start = ompi_osc_rdma_start_atomic,
+    .osc_complete = ompi_osc_rdma_complete_atomic,
+    .osc_post = ompi_osc_rdma_post_atomic,
+    .osc_wait = ompi_osc_rdma_wait_atomic,
+    .osc_test = ompi_osc_rdma_test_atomic,
 
-        ompi_osc_rdma_module_lock,
-        ompi_osc_rdma_module_unlock,
-    }
+    .osc_lock = ompi_osc_rdma_lock_atomic,
+    .osc_unlock = ompi_osc_rdma_unlock_atomic,
+    .osc_lock_all = ompi_osc_rdma_lock_all_atomic,
+    .osc_unlock_all = ompi_osc_rdma_unlock_all_atomic,
+
+    .osc_sync = ompi_osc_rdma_sync,
+    .osc_flush = ompi_osc_rdma_flush,
+    .osc_flush_all = ompi_osc_rdma_flush_all,
+    .osc_flush_local = ompi_osc_rdma_flush_local,
+    .osc_flush_local_all = ompi_osc_rdma_flush_local_all,
+
+    .osc_set_info = ompi_osc_rdma_set_info,
+    .osc_get_info = ompi_osc_rdma_get_info
 };
-
 
 /* look up parameters for configuring this window.  The code first
-   looks in the info structure passed by the user, then through mca
-   parameters. */
-static bool
-check_config_value_bool(char *key, ompi_info_t *info)
+   looks in the info structure passed by the user, then it checks
+   for a matching MCA variable. */
+static bool check_config_value_bool (char *key, ompi_info_t *info)
 {
-    char *value_string;
-    int value_len, ret, flag, param;
-    bool result;
+    int ret, flag, param;
+    bool result = false;
+    const bool *flag_value = &result;
 
-    ret = ompi_info_get_valuelen(info, key, &value_len, &flag);
-    if (OMPI_SUCCESS != ret) goto info_not_found;
-    if (flag == 0) goto info_not_found;
-    value_len++;
-
-    value_string = (char*)malloc(sizeof(char) * value_len + 1); /* Should malloc 1 char for NUL-termination */
-    if (NULL == value_string) goto info_not_found;
-
-    ret = ompi_info_get(info, key, value_len, value_string, &flag);
-    if (OMPI_SUCCESS != ret) {
-        free(value_string);
-        goto info_not_found;
+    ret = ompi_info_get_bool (info, key, &result, &flag);
+    if (OMPI_SUCCESS == ret && flag) {
+        return result;
     }
-    assert(flag != 0);
-    ret = ompi_info_value_to_bool(value_string, &result);
-    free(value_string);
-    if (OMPI_SUCCESS != ret) goto info_not_found;
-    return result;
 
- info_not_found:
-    param = mca_base_param_find("osc", "rdma", key);
-    if (param == OPAL_ERROR) return false;
+    param = mca_base_var_find("ompi", "osc", "rdma", key);
+    if (0 <= param) {
+        (void) mca_base_var_get_value(param, &flag_value, NULL, NULL);
+    }
 
-    ret = mca_base_param_lookup_int(param, &flag);
-    if (OMPI_SUCCESS != ret) return false;
-
-    return OPAL_INT_TO_BOOL(flag);
+    return flag_value[0];
 }
 
-
-static int
-component_open(void)
+static int ompi_osc_rdma_pvar_read (const struct mca_base_pvar_t *pvar, void *value, void *obj)
 {
-    mca_base_param_reg_int(&mca_osc_rdma_component.super.osc_version,
-                           "eager_send",
-                           "Attempt to start data movement during communication "
-                           "call, instead of at synchrnoization time.  "
-                           "Info key of same name overrides this value.",
-                           false, false, 1, NULL);
+    ompi_win_t *win = (ompi_win_t *) obj;
+    ompi_osc_rdma_module_t *module = GET_MODULE(win);
+    int offset = (int) (intptr_t) pvar->ctx;
 
-     mca_base_param_reg_int(&mca_osc_rdma_component.super.osc_version,
-                            "use_buffers",
-                            "Coalesce messages during an epoch to reduce "
-                            "network utilization.  Info key of same name "
-                            "overrides this value.",
-                            false, false, 1, NULL);
-
-    mca_base_param_reg_int(&mca_osc_rdma_component.super.osc_version,
-                           "use_rdma",
-                           "Use real RDMA operations to transfer data.  "
-                           "Info key of same name overrides this value.",
-                           false, false, 0, NULL);
-
-     mca_base_param_reg_int(&mca_osc_rdma_component.super.osc_version,
-                            "rdma_completion_wait",
-                            "Wait for all completion of rdma events before "
-                            "sending acknowledgment.  Info key of same name "
-                            "overrides this value.",
-                            false, false, 1, NULL);
-
-    mca_base_param_reg_int(&mca_osc_rdma_component.super.osc_version,
-                           "no_locks",
-                           "Enable optimizations available only if MPI_LOCK is "
-                           "not used.  "
-                           "Info key of same name overrides this value.",
-                           false, false, 0, NULL);
+    memcpy (value, (char *) module + offset, sizeof (unsigned long));
 
     return OMPI_SUCCESS;
 }
 
-
-int
-ompi_osc_rdma_component_init(bool enable_progress_threads,
-                             bool enable_mpi_threads)
+static int ompi_osc_rdma_component_register (void)
 {
-    if (!mca_bml_base_inited()) return OMPI_ERROR;
+    mca_osc_rdma_component.no_locks = false;
+    (void) mca_base_component_var_register(&mca_osc_rdma_component.super.osc_version,
+                                           "no_locks", "Enable optimizations available only if MPI_LOCK is "
+                                           "not used. Info key of same name overrides this value (default: false)",
+                                           MCA_BASE_VAR_TYPE_BOOL, NULL, 0, 0, OPAL_INFO_LVL_5,
+                                           MCA_BASE_VAR_SCOPE_GROUP, &mca_osc_rdma_component.no_locks);
 
-    /* we can run with either threads or not threads (may not be able
-       to do win locks)... */
-    mca_osc_rdma_component.c_have_progress_threads = 
-        enable_progress_threads;
+    mca_osc_rdma_component.buffer_size = 32768;
+    (void) mca_base_component_var_register (&mca_osc_rdma_component.super.osc_version, "buffer_size",
+                                            "Size of temporary buffers (default: 32k)", MCA_BASE_VAR_TYPE_UNSIGNED_INT,
+                                            NULL, 0, 0, OPAL_INFO_LVL_3, MCA_BASE_VAR_SCOPE_LOCAL,
+                                            &mca_osc_rdma_component.buffer_size);
 
-    OBJ_CONSTRUCT(&mca_osc_rdma_component.c_lock, opal_mutex_t);
+    mca_osc_rdma_component.max_attach = 32;
+    (void) mca_base_component_var_register (&mca_osc_rdma_component.super.osc_version, "max_attach",
+                                            "Maximum number of buffers that can be attached to a dynamic window. "
+                                            "Keep in mind that each attached buffer will use a potentially limited "
+                                            "resource (default: 32)", MCA_BASE_VAR_TYPE_UNSIGNED_INT, NULL, 0, 0,
+                                            OPAL_INFO_LVL_3, MCA_BASE_VAR_SCOPE_GROUP, &mca_osc_rdma_component.max_attach);
 
-    OBJ_CONSTRUCT(&mca_osc_rdma_component.c_modules,
-                  opal_hash_table_t);
-    opal_hash_table_init(&mca_osc_rdma_component.c_modules, 2);
+    mca_osc_rdma_component.aggregation_limit = 1024;
+    (void) mca_base_component_var_register (&mca_osc_rdma_component.super.osc_version, "aggregation_limit",
+                                            "Maximum size of an aggregated put/get. Messages are aggregated for consecutive"
+                                            "put and get operations. In some cases this may lead to higher latency but "
+                                            "should also lead to higher bandwidth utilization. Set to 0 to disable (default:"
+                                            " 1k)", MCA_BASE_VAR_TYPE_UNSIGNED_INT, NULL, 0, 0, OPAL_INFO_LVL_3,
+                                            MCA_BASE_VAR_SCOPE_GROUP, &mca_osc_rdma_component.aggregation_limit);
 
-    OBJ_CONSTRUCT(&mca_osc_rdma_component.c_request_lock, 
-                  opal_mutex_t);
-    OBJ_CONSTRUCT(&mca_osc_rdma_component.c_request_cond, 
-                  opal_condition_t);
+    mca_osc_rdma_component.priority = 90;
+    (void) mca_base_component_var_register (&mca_osc_rdma_component.super.osc_version, "priority",
+                                            "Priority of the osc/rdma component (default: 90)",
+                                            MCA_BASE_VAR_TYPE_UNSIGNED_INT, NULL, 0, 0, OPAL_INFO_LVL_3,
+                                            MCA_BASE_VAR_SCOPE_GROUP, &mca_osc_rdma_component.priority);
 
-    OBJ_CONSTRUCT(&mca_osc_rdma_component.c_sendreqs, opal_free_list_t);
-    opal_free_list_init(&mca_osc_rdma_component.c_sendreqs,
-                        sizeof(ompi_osc_rdma_sendreq_t),
-                        OBJ_CLASS(ompi_osc_rdma_sendreq_t),
-                        1, -1, 1);
+    ompi_osc_rdma_btl_names = "openib,ugni";
+    (void) mca_base_component_var_register (&mca_osc_rdma_component.super.osc_version, "btls",
+                                            "Comma-delimited list of BTL component names to allow without verifying "
+                                            "connectivity. Do not add a BTL to to this list unless it can reach all "
+                                            "processes in any communicator used with an MPI window (default: openib,ugni)",
+                                            MCA_BASE_VAR_TYPE_STRING, NULL, 0, 0, OPAL_INFO_LVL_3,
+                                            MCA_BASE_VAR_SCOPE_GROUP, &ompi_osc_rdma_btl_names);
 
-    OBJ_CONSTRUCT(&mca_osc_rdma_component.c_replyreqs, opal_free_list_t);
-    opal_free_list_init(&mca_osc_rdma_component.c_replyreqs,
-                        sizeof(ompi_osc_rdma_replyreq_t),
-                        OBJ_CLASS(ompi_osc_rdma_replyreq_t),
-                        1, -1, 1);
 
-    OBJ_CONSTRUCT(&mca_osc_rdma_component.c_longreqs, opal_free_list_t);
-    opal_free_list_init(&mca_osc_rdma_component.c_longreqs,
-                        sizeof(ompi_osc_rdma_longreq_t),
-                        OBJ_CLASS(ompi_osc_rdma_longreq_t),
-                        1, -1, 1);
+    /* register performance variables */
 
-    OBJ_CONSTRUCT(&mca_osc_rdma_component.c_pending_requests,
-                  opal_list_t);
+    (void) mca_base_component_pvar_register (&mca_osc_rdma_component.super.osc_version, "put_retry_count",
+                                             "Number of times put transaction were retried due to resource limitations",
+                                             OPAL_INFO_LVL_4, MCA_BASE_PVAR_CLASS_COUNTER, MCA_BASE_VAR_TYPE_UNSIGNED_LONG,
+                                             NULL, MCA_BASE_VAR_BIND_MPI_WIN, MCA_BASE_PVAR_FLAG_CONTINUOUS,
+                                             ompi_osc_rdma_pvar_read, NULL, NULL,
+                                             (void *) (intptr_t) offsetof (ompi_osc_rdma_module_t, put_retry_count));
 
-#if OPAL_ENABLE_PROGRESS_THREADS
-    OBJ_CONSTRUCT(&mca_osc_rdma_component.c_thread, opal_thread_t);
-    mca_osc_rdma_component.c_thread_run = false;
-#endif
-
-    mca_osc_rdma_component.c_btl_registered = false;
-
-    mca_osc_rdma_component.c_sequence_number = 0;
+    (void) mca_base_component_pvar_register (&mca_osc_rdma_component.super.osc_version, "get_retry_count",
+                                             "Number of times get transaction were retried due to resource limitations",
+                                             OPAL_INFO_LVL_4, MCA_BASE_PVAR_CLASS_COUNTER, MCA_BASE_VAR_TYPE_UNSIGNED_LONG,
+                                             NULL, MCA_BASE_VAR_BIND_MPI_WIN, MCA_BASE_PVAR_FLAG_CONTINUOUS,
+                                             ompi_osc_rdma_pvar_read, NULL, NULL,
+                                             (void *) (intptr_t) offsetof (ompi_osc_rdma_module_t, get_retry_count));
 
     return OMPI_SUCCESS;
 }
 
+static int ompi_osc_rdma_component_init (bool enable_progress_threads,
+                                         bool enable_mpi_threads)
+{
+    int ret;
 
-int 
-ompi_osc_rdma_component_finalize(void)
+    OBJ_CONSTRUCT(&mca_osc_rdma_component.lock, opal_mutex_t);
+    OBJ_CONSTRUCT(&mca_osc_rdma_component.request_gc, opal_list_t);
+    OBJ_CONSTRUCT(&mca_osc_rdma_component.buffer_gc, opal_list_t);
+    OBJ_CONSTRUCT(&mca_osc_rdma_component.modules, opal_hash_table_t);
+
+    opal_hash_table_init(&mca_osc_rdma_component.modules, 2);
+
+    OBJ_CONSTRUCT(&mca_osc_rdma_component.frags, opal_free_list_t);
+    ret = opal_free_list_init (&mca_osc_rdma_component.frags,
+                               sizeof(ompi_osc_rdma_frag_t), 8,
+                               OBJ_CLASS(ompi_osc_rdma_frag_t),
+                               mca_osc_rdma_component.buffer_size, 8,
+                               4, -1, 4, NULL, 0, NULL, NULL, NULL);
+    if (OPAL_SUCCESS != ret) {
+        opal_output_verbose(1, ompi_osc_base_framework.framework_output,
+                            "%s:%d: opal_free_list_init_new failed: %d",
+                            __FILE__, __LINE__, ret);
+        return ret;
+    }
+
+    OBJ_CONSTRUCT(&mca_osc_rdma_component.requests, opal_free_list_t);
+    ret = opal_free_list_init (&mca_osc_rdma_component.requests,
+                               sizeof(ompi_osc_rdma_request_t), 8,
+                               OBJ_CLASS(ompi_osc_rdma_request_t), 0, 0,
+                               0, -1, 32, NULL, 0, NULL, NULL, NULL);
+    if (OPAL_SUCCESS != ret) {
+        opal_output_verbose(1, ompi_osc_base_framework.framework_output,
+                            "%s:%d: opal_free_list_init failed: %d\n",
+                            __FILE__, __LINE__, ret);
+    }
+
+    OBJ_CONSTRUCT(&mca_osc_rdma_component.aggregate, opal_free_list_t);
+
+    if (!enable_mpi_threads && mca_osc_rdma_component.aggregation_limit) {
+        ret = opal_free_list_init (&mca_osc_rdma_component.aggregate,
+                                   sizeof(ompi_osc_rdma_aggregation_t), 8,
+                                   OBJ_CLASS(ompi_osc_rdma_aggregation_t), 0, 0,
+                                   32, 128, 32, NULL, 0, NULL, NULL, NULL);
+
+        if (OPAL_SUCCESS != ret) {
+            opal_output_verbose(1, ompi_osc_base_framework.framework_output,
+                                "%s:%d: opal_free_list_init failed: %d\n",
+                                __FILE__, __LINE__, ret);
+        }
+    } else {
+        /* only enable put aggregation when not using threads */
+        mca_osc_rdma_component.aggregation_limit = 0;
+    }
+
+    return ret;
+}
+
+
+int ompi_osc_rdma_component_finalize (void)
 {
     size_t num_modules;
 
-    if (0 != 
-        (num_modules = opal_hash_table_get_size(&mca_osc_rdma_component.c_modules))) {
-        opal_output(ompi_osc_base_output,
-                    "WARNING: There were %d Windows created but not freed.",
-                    (int) num_modules);
-#if OPAL_ENABLE_PROGRESS_THREADS
-        mca_osc_rdma_component.c_thread_run = false;
-        opal_condition_broadcast(&ompi_request_cond);
-        {
-            void* ret;
-            opal_thread_join(&mca_osc_rdma_component.c_thread, &ret);
-        }
-#else
-        opal_progress_unregister(ompi_osc_rdma_component_progress);
-#endif
+    if (0 != (num_modules = opal_hash_table_get_size(&mca_osc_rdma_component.modules))) {
+        opal_output(ompi_osc_base_framework.framework_output, "WARNING: There were %d Windows created but "
+                    "not freed.", (int) num_modules);
     }
 
-    mca_bml.bml_register(MCA_BTL_TAG_OSC_RDMA, NULL, NULL);
-
-#if OPAL_ENABLE_PROGRESS_THREADS
-    OBJ_DESTRUCT(&mca_osc_rdma_component.c_thread);
-#endif
-    OBJ_DESTRUCT(&mca_osc_rdma_component.c_pending_requests);
-    OBJ_DESTRUCT(&mca_osc_rdma_component.c_longreqs);
-    OBJ_DESTRUCT(&mca_osc_rdma_component.c_replyreqs);
-    OBJ_DESTRUCT(&mca_osc_rdma_component.c_sendreqs);
-    OBJ_DESTRUCT(&mca_osc_rdma_component.c_request_cond);
-    OBJ_DESTRUCT(&mca_osc_rdma_component.c_request_lock);
-    OBJ_DESTRUCT(&mca_osc_rdma_component.c_modules);
-    OBJ_DESTRUCT(&mca_osc_rdma_component.c_lock);
+    OBJ_DESTRUCT(&mca_osc_rdma_component.frags);
+    OBJ_DESTRUCT(&mca_osc_rdma_component.modules);
+    OBJ_DESTRUCT(&mca_osc_rdma_component.lock);
+    OBJ_DESTRUCT(&mca_osc_rdma_component.requests);
+    OBJ_DESTRUCT(&mca_osc_rdma_component.request_gc);
+    OBJ_DESTRUCT(&mca_osc_rdma_component.buffer_gc);
+    OBJ_DESTRUCT(&mca_osc_rdma_component.aggregate);
 
     return OMPI_SUCCESS;
 }
 
 
-int
-ompi_osc_rdma_component_query(ompi_win_t *win,
-                              ompi_info_t *info,
-                              ompi_communicator_t *comm)
+static int ompi_osc_rdma_component_query (struct ompi_win_t *win, void **base, size_t size, int disp_unit,
+                                          struct ompi_communicator_t *comm, struct ompi_info_t *info,
+                                          int flavor)
 {
-    /* if we inited, then the BMLs are available and we have a path to
-       each peer.  Return slightly higher priority than the
-       point-to-point code */
-    return 10;
+
+    if (MPI_WIN_FLAVOR_SHARED == flavor) {
+        return -1;
+    }
+
+#if OPAL_CUDA_SUPPORT
+    /* GPU buffers are not supported by the rdma component */
+    if (MPI_WIN_FLAVOR_CREATE == flavor) {
+        if (opal_cuda_check_bufs(*base, NULL)) {
+            return -1;
+        }
+    }
+#endif /* OPAL_CUDA_SUPPORT */
+
+    if (OMPI_SUCCESS != ompi_osc_rdma_query_btls (comm, NULL)) {
+        return -1;
+    }
+
+
+    return mca_osc_rdma_component.priority;
+}
+
+#define RANK_ARRAY_COUNT(module) ((ompi_comm_size ((module)->comm) + (module)->node_count - 1) / (module)->node_count)
+
+static int ompi_osc_rdma_initialize_region (ompi_osc_rdma_module_t *module, void **base, size_t size) {
+    ompi_osc_rdma_region_t *region = (ompi_osc_rdma_region_t *) module->state->regions;
+    int ret;
+
+    /* store displacement unit */
+    module->state->disp_unit = module->disp_unit;
+
+    /* store region info */
+    module->state->region_count = 1;
+    region->base = (osc_rdma_base_t) (intptr_t) *base;
+    region->len = size;
+
+    if (module->selected_btl->btl_register_mem && size) {
+        if (MPI_WIN_FLAVOR_ALLOCATE != module->flavor || NULL == module->state_handle) {
+            ret = ompi_osc_rdma_register (module, MCA_BTL_ENDPOINT_ANY, *base, size, MCA_BTL_REG_FLAG_ACCESS_ANY,
+                                          &module->base_handle);
+            if (OPAL_UNLIKELY(OMPI_SUCCESS != ret)) {
+                return OMPI_ERR_OUT_OF_RESOURCE;
+            }
+
+            memcpy (region->btl_handle_data, module->base_handle, module->selected_btl->btl_registration_handle_size);
+        } else {
+            memcpy (region->btl_handle_data, module->state_handle, module->selected_btl->btl_registration_handle_size);
+        }
+    }
+
+    return OMPI_SUCCESS;
+}
+
+static int allocate_state_single (ompi_osc_rdma_module_t *module, void **base, size_t size)
+{
+    size_t total_size, local_rank_array_size, leader_peer_data_size;
+    ompi_osc_rdma_peer_t *my_peer;
+    int ret, my_rank;
+
+    OSC_RDMA_VERBOSE(MCA_BASE_VERBOSE_TRACE, "allocating private internal state");
+
+    my_rank = ompi_comm_rank (module->comm);
+
+    local_rank_array_size = sizeof (ompi_osc_rdma_rank_data_t) * RANK_ARRAY_COUNT(module);
+    leader_peer_data_size = module->region_size * module->node_count;
+
+    /* allocate anything that will be accessed remotely in the same region. this cuts down on the number of
+     * registration handles needed to access this data. */
+    total_size = module->state_size + local_rank_array_size + leader_peer_data_size;
+
+    if (MPI_WIN_FLAVOR_ALLOCATE == module->flavor) {
+        total_size += size;
+    }
+
+    /* the local data is ordered as follows: rank array (leader, offset mapping), state, leader peer data, and base
+     * (if using MPI_Win_allocate). In this case the leader peer data array does not need to be stored in the same
+     * segment but placing it there simplifies the peer data fetch and cleanup code. */
+
+    module->rank_array = calloc (total_size, 1);
+    if (OPAL_UNLIKELY(NULL == module->rank_array)) {
+        return OMPI_ERR_OUT_OF_RESOURCE;
+    }
+
+    module->state_offset = local_rank_array_size;
+
+    module->state = (ompi_osc_rdma_state_t *) ((intptr_t) module->rank_array + module->state_offset);
+    module->node_comm_info = (unsigned char *) ((intptr_t) module->state + module->state_size);
+
+    if (MPI_WIN_FLAVOR_ALLOCATE == module->flavor) {
+        *base = (void *) ((intptr_t) module->node_comm_info + leader_peer_data_size);
+    }
+
+    /* just go ahead and register the whole segment */
+    ret = ompi_osc_rdma_register (module, MCA_BTL_ENDPOINT_ANY, module->rank_array, total_size,
+                                  MCA_BTL_REG_FLAG_ACCESS_ANY, &module->state_handle);
+    if (OPAL_UNLIKELY(OMPI_SUCCESS != ret)) {
+        return ret;
+    }
+
+    if (MPI_WIN_FLAVOR_DYNAMIC != module->flavor) {
+        ret = ompi_osc_rdma_initialize_region (module, base, size);
+        if (OMPI_SUCCESS != ret) {
+            return ret;
+        }
+    }
+
+    ret = ompi_osc_rdma_new_peer (module, my_rank, &my_peer);
+    if (OPAL_UNLIKELY(OMPI_SUCCESS != ret)) {
+        return ret;
+    }
+
+    ret = ompi_osc_module_add_peer (module, my_peer);
+    if (OPAL_UNLIKELY(OPAL_SUCCESS != ret)) {
+        OBJ_RELEASE(my_peer);
+        return ret;
+    }
+
+    module->free_after = module->rank_array;
+    my_peer->flags |= OMPI_OSC_RDMA_PEER_LOCAL_BASE;
+    my_peer->state = (uint64_t) (uintptr_t) module->state;
+
+    if (module->selected_btl->btl_flags & MCA_BTL_ATOMIC_SUPPORTS_GLOB) {
+        /* all peers are local or it is safe to mix cpu and nic atomics */
+        my_peer->flags |= OMPI_OSC_RDMA_PEER_LOCAL_STATE;
+    } else {
+        /* use my endpoint handle to modify the peer's state */
+        my_peer->state_handle = module->state_handle;
+        my_peer->state_endpoint = ompi_osc_rdma_peer_btl_endpoint (module, my_rank);
+    }
+
+    if (MPI_WIN_FLAVOR_DYNAMIC != module->flavor) {
+        ompi_osc_rdma_peer_extended_t *ex_peer = (ompi_osc_rdma_peer_extended_t *) my_peer;
+
+        ex_peer->super.base = (intptr_t) *base;
+
+        if (!module->same_size) {
+            ex_peer->size = size;
+        }
+
+        if (MPI_WIN_FLAVOR_ALLOCATE == module->flavor) {
+            ex_peer->super.base_handle = module->state_handle;
+        }
+    }
+
+    return OMPI_SUCCESS;
+}
+
+struct _local_data {
+    int    rank;
+    size_t size;
+};
+
+static int allocate_state_shared (ompi_osc_rdma_module_t *module, void **base, size_t size)
+{
+    ompi_communicator_t *shared_comm;
+    unsigned long offset, total_size;
+    unsigned long state_base, data_base;
+    int local_rank, local_size, ret;
+    size_t local_rank_array_size, leader_peer_data_size;
+    int my_rank = ompi_comm_rank (module->comm);
+    int global_size = ompi_comm_size (module->comm);
+    ompi_osc_rdma_region_t *state_region;
+    int my_base_offset = 0;
+    struct _local_data *temp;
+    char *data_file;
+
+    shared_comm = module->shared_comm;
+
+    local_rank = ompi_comm_rank (shared_comm);
+    local_size = ompi_comm_size (shared_comm);
+
+    if (1 == local_size) {
+        /* no point using a shared segment if there are no other processes on this node */
+        return allocate_state_single (module, base, size);
+    }
+
+    OSC_RDMA_VERBOSE(MCA_BASE_VERBOSE_TRACE, "allocating shared internal state");
+
+    local_rank_array_size = sizeof (ompi_osc_rdma_rank_data_t) * RANK_ARRAY_COUNT (module);
+    leader_peer_data_size = module->region_size * module->node_count;
+
+    /* calculate base offsets */
+    module->state_offset = state_base = local_rank_array_size + module->region_size;
+    data_base = state_base + leader_peer_data_size + module->state_size * local_size;
+
+    do {
+        temp = calloc (local_size, sizeof (temp[0]));
+        if (NULL == temp) {
+            ret = OMPI_ERR_OUT_OF_RESOURCE;
+            break;
+        }
+
+        temp[local_rank].rank = my_rank;
+        temp[local_rank].size = size;
+
+        /* gather the local sizes and ranks */
+        ret = shared_comm->c_coll.coll_allgather (MPI_IN_PLACE, sizeof (*temp), MPI_BYTE, temp, sizeof (*temp),
+                                                  MPI_BYTE, shared_comm, shared_comm->c_coll.coll_allgather_module);
+        if (OMPI_SUCCESS != ret) {
+            break;
+        }
+
+        total_size = data_base;
+
+        if (MPI_WIN_FLAVOR_ALLOCATE == module->flavor) {
+            for (int i = 0 ; i < local_size ; ++i) {
+                if (local_rank == i) {
+                    my_base_offset = total_size;
+                }
+                total_size += temp[i].size;
+            }
+        }
+
+        /* allocate the shared memory segment */
+        ret = asprintf (&data_file, "%s"OPAL_PATH_SEP"window_%d.%s",
+                        ompi_process_info.job_session_dir, ompi_comm_get_cid (module->comm),
+                        ompi_process_info.nodename);
+        if (0 > ret) {
+            ret = OMPI_ERR_OUT_OF_RESOURCE;
+            break;
+        }
+
+        if (0 == local_rank) {
+            /* allocate enough space for the state + data for all local ranks */
+            ret = opal_shmem_segment_create (&module->seg_ds, data_file, total_size);
+            free (data_file);
+            if (OPAL_SUCCESS != ret) {
+                OSC_RDMA_VERBOSE(MCA_BASE_VERBOSE_ERROR, "failed to create shared memory segment");
+                break;
+            }
+        }
+
+        ret = module->comm->c_coll.coll_bcast (&module->seg_ds, sizeof (module->seg_ds), MPI_BYTE, 0,
+                                               shared_comm, shared_comm->c_coll.coll_bcast_module);
+        if (OMPI_SUCCESS != ret) {
+            break;
+        }
+
+        module->segment_base = opal_shmem_segment_attach (&module->seg_ds);
+        if (NULL == module->segment_base) {
+            OSC_RDMA_VERBOSE(MCA_BASE_VERBOSE_ERROR, "failed to attach to the shared memory segment");
+            ret = OPAL_ERROR;
+            break;
+        }
+
+        if (size && MPI_WIN_FLAVOR_ALLOCATE == module->flavor) {
+            *base = (void *)((intptr_t) module->segment_base + my_base_offset);
+        }
+
+        module->rank_array = (ompi_osc_rdma_rank_data_t *) module->segment_base;
+        /* put local state region data after the rank array */
+        state_region = (ompi_osc_rdma_region_t *) ((uintptr_t) module->segment_base + local_rank_array_size);
+        module->state = (ompi_osc_rdma_state_t *) ((uintptr_t) module->segment_base + state_base + module->state_size * local_rank);
+
+        /* all local ranks share the array containing the peer data of leader ranks */
+        module->node_comm_info = (unsigned char *) ((uintptr_t) module->segment_base + state_base + module->state_size * local_size);
+
+        /* initialize my state */
+        memset (module->state, 0, module->state_size);
+
+        if (0 == local_rank) {
+            /* just go ahead and register the whole segment */
+            ret = ompi_osc_rdma_register (module, MCA_BTL_ENDPOINT_ANY, module->segment_base, total_size, MCA_BTL_REG_FLAG_ACCESS_ANY,
+                                          &module->state_handle);
+            if (OPAL_UNLIKELY(OMPI_SUCCESS != ret)) {
+                break;
+            }
+
+            state_region->base = (intptr_t) module->segment_base;
+            if (module->state_handle) {
+                memcpy (state_region->btl_handle_data, module->state_handle, module->selected_btl->btl_registration_handle_size);
+            }
+        }
+
+        if (MPI_WIN_FLAVOR_DYNAMIC != module->flavor) {
+            ret = ompi_osc_rdma_initialize_region (module, base, size);
+            if (OMPI_SUCCESS != ret) {
+                break;
+            }
+        }
+
+        /* barrier to make sure all ranks have attached */
+        shared_comm->c_coll.coll_barrier(shared_comm, shared_comm->c_coll.coll_barrier_module);
+
+        /* unlink the shared memory backing file */
+        if (0 == local_rank) {
+            opal_shmem_unlink (&module->seg_ds);
+        }
+
+        offset = data_base;
+        for (int i = 0 ; i < local_size ; ++i) {
+            ompi_osc_rdma_peer_extended_t *ex_peer;
+            ompi_osc_rdma_state_t *peer_state;
+            ompi_osc_rdma_peer_t *peer;
+            int peer_rank = temp[i].rank;
+
+            ret = ompi_osc_rdma_new_peer (module, peer_rank, &peer);
+            if (OPAL_UNLIKELY(OMPI_SUCCESS != ret)) {
+                break;
+            }
+
+            ex_peer = (ompi_osc_rdma_peer_extended_t *) peer;
+
+            /* peer state local pointer */
+            peer_state = (ompi_osc_rdma_state_t *) ((uintptr_t) module->segment_base + state_base + module->state_size * i);
+
+            if (local_size == global_size || (module->selected_btl->btl_flags & MCA_BTL_ATOMIC_SUPPORTS_GLOB)) {
+                /* all peers are local or it is safe to mix cpu and nic atomics */
+                peer->flags |= OMPI_OSC_RDMA_PEER_LOCAL_STATE;
+                peer->state = (osc_rdma_counter_t) peer_state;
+            } else {
+                /* use my endpoint handle to modify the peer's state */
+                if (module->selected_btl->btl_register_mem) {
+                    peer->state_handle = (mca_btl_base_registration_handle_t *) state_region->btl_handle_data;
+                }
+                peer->state = (osc_rdma_counter_t) ((uintptr_t) state_region->base + state_base + module->state_size * i);
+                peer->state_endpoint = ompi_osc_rdma_peer_btl_endpoint (module, temp[0].rank);
+            }
+
+            /* finish setting up the local peer structure */
+            if (MPI_WIN_FLAVOR_DYNAMIC != module->flavor) {
+                if (!module->same_disp_unit) {
+                    ex_peer->disp_unit = peer_state->disp_unit;
+                }
+
+                if (!module->same_size) {
+                    ex_peer->size = temp[i].size;
+                }
+
+                if (my_rank == peer_rank) {
+                    peer->flags |= OMPI_OSC_RDMA_PEER_LOCAL_BASE;
+                }
+
+                if (MPI_WIN_FLAVOR_ALLOCATE == module->flavor) {
+                    if (temp[i].size) {
+                        ex_peer->super.base = (uint64_t) (uintptr_t) module->segment_base + offset;
+                    } else {
+                        ex_peer->super.base = 0;
+                    }
+
+                    peer->flags |= OMPI_OSC_RDMA_PEER_LOCAL_BASE;
+
+                    offset += temp[i].size;
+                } else {
+                    ompi_osc_rdma_region_t *peer_region = (ompi_osc_rdma_region_t *) peer_state->regions;
+
+                    ex_peer->super.base = peer_region->base;
+                    if (module->selected_btl->btl_register_mem) {
+                        ex_peer->super.base_handle = (mca_btl_base_registration_handle_t *) peer_region->btl_handle_data;
+                    }
+                }
+            }
+
+            ompi_osc_module_add_peer (module, peer);
+        }
+    } while (0);
+
+    free (temp);
+
+    return ret;
+}
+
+static int ompi_osc_rdma_query_btls (ompi_communicator_t *comm, struct mca_btl_base_module_t **btl)
+{
+    struct mca_btl_base_module_t **possible_btls = NULL;
+    int comm_size = ompi_comm_size (comm);
+    int rc = OMPI_SUCCESS, max_btls = 0;
+    unsigned int selected_latency = INT_MAX;
+    struct mca_btl_base_module_t *selected_btl = NULL;
+    mca_btl_base_selected_module_t *item;
+    int *btl_counts = NULL;
+    char **btls_to_use;
+    void *tmp;
+
+    btls_to_use = opal_argv_split (ompi_osc_rdma_btl_names, ',');
+    if (btls_to_use) {
+        /* rdma and atomics are only supported with BTLs at the moment */
+        OPAL_LIST_FOREACH(item, &mca_btl_base_modules_initialized, mca_btl_base_selected_module_t) {
+            for (int i = 0 ; btls_to_use[i] ; ++i) {
+                if (0 != strcmp (btls_to_use[i], item->btl_module->btl_component->btl_version.mca_component_name)) {
+                    continue;
+                }
+
+                if ((item->btl_module->btl_flags & (MCA_BTL_FLAGS_RDMA)) == MCA_BTL_FLAGS_RDMA &&
+                    (item->btl_module->btl_flags & (MCA_BTL_FLAGS_ATOMIC_FOPS | MCA_BTL_FLAGS_ATOMIC_OPS))) {
+                    if (!selected_btl || item->btl_module->btl_latency < selected_btl->btl_latency) {
+                        selected_btl = item->btl_module;
+                    }
+                }
+            }
+        }
+
+        opal_argv_free (btls_to_use);
+    }
+
+    if (btl) {
+        *btl = selected_btl;
+    }
+
+    if (NULL != selected_btl) {
+        OSC_RDMA_VERBOSE(MCA_BASE_VERBOSE_INFO, "selected btl: %s",
+                         selected_btl->btl_component->btl_version.mca_component_name);
+        return OMPI_SUCCESS;
+    }
+
+    for (int i = 0 ; i < comm_size ; ++i) {
+        ompi_proc_t *proc = ompi_comm_peer_lookup (comm, i);
+        mca_bml_base_endpoint_t *endpoint;
+        int num_btls, prev_max;
+
+        endpoint = mca_bml_base_get_endpoint (proc);
+        if (NULL == endpoint) {
+            /* can't continue if some peer is unreachable */
+            rc = OMPI_ERR_UNREACH;
+            break;
+        }
+
+        num_btls = mca_bml_base_btl_array_get_size (&endpoint->btl_rdma);
+        if (0 == num_btls) {
+            rc = OMPI_ERR_NOT_AVAILABLE;
+            /* at least one rank doesn't have an RDMA capable btl */
+            break;
+        }
+
+        prev_max = max_btls;
+
+        max_btls = (max_btls > num_btls) ? max_btls : num_btls;
+
+        tmp = realloc (possible_btls, sizeof (void *) * max_btls);
+        if (NULL == tmp) {
+            rc = OMPI_ERR_OUT_OF_RESOURCE;
+            break;
+        }
+        possible_btls = tmp;
+
+        for (int j = prev_max ; j < max_btls ; ++j) {
+            possible_btls[j] = NULL;
+        }
+
+        tmp = realloc (btl_counts, sizeof (int) * max_btls);
+        if (NULL == tmp) {
+            rc = OMPI_ERR_OUT_OF_RESOURCE;
+            break;
+        }
+        btl_counts = tmp;
+
+        for (int i_btl = 0 ; i_btl < num_btls ; ++i_btl) {
+            /* for this implementation we need only compare-and-swap and fetch-and-add */
+            if ((endpoint->btl_rdma.bml_btls[i_btl].btl->btl_flags & (MCA_BTL_FLAGS_RDMA | MCA_BTL_FLAGS_ATOMIC_FOPS)) ==
+                (MCA_BTL_FLAGS_RDMA | MCA_BTL_FLAGS_ATOMIC_FOPS) && (endpoint->btl_rdma.bml_btls[i_btl].btl->btl_atomic_flags &
+                                                                     MCA_BTL_ATOMIC_SUPPORTS_ADD)) {
+                for (int j = 0 ; j < max_btls ; ++j) {
+                    if (endpoint->btl_rdma.bml_btls[i_btl].btl == possible_btls[j]) {
+                        ++btl_counts[j];
+                        break;
+                    } else if (NULL == possible_btls[j]) {
+                        possible_btls[j] = endpoint->btl_rdma.bml_btls[i_btl].btl;
+                        btl_counts[j] = 1;
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    if (OMPI_SUCCESS != rc) {
+        free (possible_btls);
+        free (btl_counts);
+
+        /* no btl = no rdma/atomics */
+        return OMPI_ERR_NOT_AVAILABLE;
+    }
+
+    for (int i = 0 ; i < max_btls ; ++i) {
+        if (NULL == possible_btls[i]) {
+            break;
+        }
+
+        if (btl_counts[i] == comm_size && possible_btls[i]->btl_latency < selected_latency) {
+            selected_btl = possible_btls[i];
+            selected_latency = possible_btls[i]->btl_latency;
+        }
+    }
+
+    free (possible_btls);
+    free (btl_counts);
+
+    if (btl) {
+        *btl = selected_btl;
+    }
+
+    if (NULL == selected_btl) {
+        OSC_RDMA_VERBOSE(MCA_BASE_VERBOSE_INFO, "no suitable btls found");
+        /* no btl = no rdma/atomics */
+        return OMPI_ERR_NOT_AVAILABLE;
+    }
+
+    OSC_RDMA_VERBOSE(MCA_BASE_VERBOSE_INFO, "selected btl: %s",
+                     selected_btl->btl_component->btl_version.mca_component_name);
+
+    return OMPI_SUCCESS;
+}
+
+static int ompi_osc_rdma_share_data (ompi_osc_rdma_module_t *module)
+{
+    ompi_osc_rdma_region_t *my_data;
+    int ret, global_result;
+    int my_rank = ompi_comm_rank (module->comm);
+    int comm_size = ompi_comm_size (module->comm);
+    ompi_osc_rdma_rank_data_t *temp;
+
+    do {
+        temp = malloc (sizeof (*temp) * comm_size);
+        if (NULL == temp) {
+            ret = OMPI_ERR_OUT_OF_RESOURCE;
+            break;
+        }
+
+        /* fill in rank -> node translation */
+        temp[my_rank].node_id = module->node_id;
+        temp[my_rank].rank = ompi_comm_rank (module->shared_comm);
+
+        ret = module->comm->c_coll.coll_allgather (MPI_IN_PLACE, 1, MPI_2INT, temp, 1, MPI_2INT,
+                                                   module->comm, module->comm->c_coll.coll_allgather_module);
+        if (OMPI_SUCCESS != ret) {
+            break;
+        }
+
+        if (0 == ompi_comm_rank (module->shared_comm)) {
+            /* fill in my part of the node array */
+            my_data = (ompi_osc_rdma_region_t *) ((intptr_t) module->node_comm_info + ompi_comm_rank (module->local_leaders) *
+                                                  module->region_size);
+
+            my_data->base = (uint64_t) (intptr_t) module->rank_array;
+            /* store my rank in the length field */
+            my_data->len = (osc_rdma_size_t) my_rank;
+
+            if (module->selected_btl->btl_register_mem) {
+                memcpy (my_data->btl_handle_data, module->state_handle, module->selected_btl->btl_registration_handle_size);
+            }
+
+            /* gather state data at each node leader */
+            if (ompi_comm_size (module->local_leaders) > 1) {
+                ret = module->local_leaders->c_coll.coll_allgather (MPI_IN_PLACE, module->region_size, MPI_BYTE, module->node_comm_info,
+                                                                    module->region_size, MPI_BYTE, module->local_leaders,
+                                                                    module->local_leaders->c_coll.coll_gather_module);
+                if (OMPI_SUCCESS != ret) {
+                    OSC_RDMA_VERBOSE(MCA_BASE_VERBOSE_ERROR, "leader allgather failed with ompi error code %d", ret);
+                    break;
+                }
+            }
+
+            int base_rank = ompi_comm_rank (module->local_leaders) * ((comm_size + module->node_count - 1) / module->node_count);
+
+            /* fill in the local part of the rank -> node map */
+            for (int i = 0 ; i < RANK_ARRAY_COUNT(module) ; ++i) {
+                int save_rank = base_rank + i;
+                if (save_rank >= comm_size) {
+                    break;
+                }
+
+                module->rank_array[i] = temp[save_rank];
+            }
+        }
+
+        free (temp);
+    } while (0);
+
+
+    ret = module->comm->c_coll.coll_allreduce (&ret, &global_result, 1, MPI_INT, MPI_MIN, module->comm,
+                                               module->comm->c_coll.coll_allreduce_module);
+
+    if (OMPI_SUCCESS != ret) {
+        global_result = ret;
+    }
+
+    /* none of these communicators are needed anymore so free them now*/
+    if (MPI_COMM_NULL != module->local_leaders) {
+        ompi_comm_free (&module->local_leaders);
+    }
+
+    if (MPI_COMM_NULL != module->shared_comm) {
+        ompi_comm_free (&module->shared_comm);
+    }
+
+    return global_result;
+}
+
+static int ompi_osc_rdma_create_groups (ompi_osc_rdma_module_t *module)
+{
+    int comm_rank, ret, local_rank;
+    int values[2] = {0, 0};
+
+    /* create a shared communicator to handle communication about the local segment */
+    ret = ompi_comm_split_type (module->comm, MPI_COMM_TYPE_SHARED, 0, NULL, &module->shared_comm);
+    if (OPAL_UNLIKELY(OMPI_SUCCESS != ret)) {
+        OSC_RDMA_VERBOSE(MCA_BASE_VERBOSE_ERROR, "failed to create a shared memory communicator. error code %d", ret);
+        return ret;
+    }
+
+    local_rank = ompi_comm_rank (module->shared_comm);
+
+    comm_rank = ompi_comm_rank (module->comm);
+
+    ret = ompi_comm_split (module->comm, (0 == local_rank) ? 0 : MPI_UNDEFINED, comm_rank, &module->local_leaders,
+                           false);
+    if (OPAL_UNLIKELY(OMPI_SUCCESS != ret)) {
+        OSC_RDMA_VERBOSE(MCA_BASE_VERBOSE_ERROR, "failed to create local leaders communicator. error code %d", ret);
+        return ret;
+    }
+
+    if (0 == local_rank) {
+        values[0] = ompi_comm_size (module->local_leaders);
+        values[1] = ompi_comm_rank (module->local_leaders);
+    }
+
+    if (ompi_comm_size (module->shared_comm) > 1) {
+        ret = module->shared_comm->c_coll.coll_bcast (values, 2, MPI_INT, 0, module->shared_comm,
+                                                      module->shared_comm->c_coll.coll_bcast_module);
+        if (OMPI_SUCCESS != ret) {
+            OSC_RDMA_VERBOSE(MCA_BASE_VERBOSE_ERROR, "failed to broadcast local data. error code %d", ret);
+            return ret;
+        }
+    }
+
+    module->node_count = values[0];
+    module->node_id = values[1];
+
+    return OMPI_SUCCESS;
+}
+
+/**
+ * @brief check the displacement unit and size against peers
+ *
+ * @param[in] module      osc rdma module
+ * @param[in] disp_unit   the displacement unit for this process
+ * @param[in] size        the window size for this process
+ *
+ * This function checks if all ranks have the same displacement unit or size and sets the appropriate
+ * flags on the module.
+ */
+static int ompi_osc_rdma_check_parameters (ompi_osc_rdma_module_t *module, int disp_unit, size_t size)
+{
+    long values[4];
+    int ret;
+
+    if (MPI_WIN_FLAVOR_DYNAMIC == module->flavor || (module->same_size && module->same_disp_unit)) {
+        /* done */
+        return OMPI_SUCCESS;
+    }
+
+    /* check displacements and sizes */
+    values[0] = disp_unit;
+    values[1] = -disp_unit;
+    values[2] = size;
+    values[3] = -(ssize_t) size;
+
+    ret = module->comm->c_coll.coll_allreduce (MPI_IN_PLACE, values, 4, MPI_LONG, MPI_MIN, module->comm,
+                                               module->comm->c_coll.coll_allreduce_module);
+    if (OMPI_SUCCESS != ret) {
+        return ret;
+    }
+
+    if (values[0] == -values[1]) {
+        /* same displacement */
+        module->same_disp_unit = true;
+    }
+
+    if (values[2] == -values[3]) {
+        /* same size */
+        module->same_size = true;
+    }
+
+    return OMPI_SUCCESS;
 }
 
 
-int 
-ompi_osc_rdma_component_select(ompi_win_t *win,
-                               ompi_info_t *info,
-                               ompi_communicator_t *comm)
+static int ompi_osc_rdma_component_select (struct ompi_win_t *win, void **base, size_t size, int disp_unit,
+                                           struct ompi_communicator_t *comm, struct ompi_info_t *info,
+                                           int flavor, int *model)
 {
     ompi_osc_rdma_module_t *module = NULL;
-    int ret, i;
-    char *tmp;
+    int world_size = ompi_comm_size (comm);
+    int init_limit = 256;
+    int ret;
+    char *name;
 
-    /* create module structure */
-    module = (ompi_osc_rdma_module_t*)
-        calloc(1, sizeof(ompi_osc_rdma_module_t));
-    if (NULL == module) return OMPI_ERR_TEMP_OUT_OF_RESOURCE;
+    /* the osc/sm component is the exclusive provider for support for shared
+     * memory windows */
+    if (MPI_WIN_FLAVOR_SHARED == flavor) {
+        return OMPI_ERR_NOT_SUPPORTED;
+    }
+
+    /* create module structure with all fields initialized to zero */
+    module = (ompi_osc_rdma_module_t *) calloc (1, sizeof (ompi_osc_rdma_module_t));
+    if (NULL == module) {
+        return OMPI_ERR_OUT_OF_RESOURCE;
+    }
+
+    /* initialize the objects, so that always free in cleanup */
+    OBJ_CONSTRUCT(&module->lock, opal_recursive_mutex_t);
+    OBJ_CONSTRUCT(&module->outstanding_locks, opal_hash_table_t);
+    OBJ_CONSTRUCT(&module->pending_posts, opal_list_t);
+    OBJ_CONSTRUCT(&module->peer_lock, opal_mutex_t);
+    OBJ_CONSTRUCT(&module->all_sync, ompi_osc_rdma_sync_t);
+
+    module->same_disp_unit = check_config_value_bool ("same_disp_unit", info);
+    module->same_size      = check_config_value_bool ("same_size", info);
+    module->no_locks       = check_config_value_bool ("no_locks", info);
+
+    module->all_sync.module = module;
+
+    module->flavor = flavor;
+    module->win = win;
+    module->disp_unit = disp_unit;
+    module->size = size;
+
+    /* set the module so we properly cleanup */
+    win->w_osc_module = (ompi_osc_base_module_t*) module;
+
+    if (!module->no_locks) {
+        if (world_size > init_limit) {
+            ret = opal_hash_table_init (&module->outstanding_locks, init_limit);
+            if (OPAL_SUCCESS != ret) {
+                ompi_osc_rdma_free (win);
+                return ret;
+            }
+        } else {
+            module->outstanding_lock_array = calloc (world_size, sizeof (module->outstanding_lock_array[0]));
+            if (NULL == module->outstanding_lock_array) {
+                ompi_osc_rdma_free (win);
+                return OMPI_ERR_OUT_OF_RESOURCE;
+            }
+        }
+    }
+
+    /* options */
+    /* FIX ME: should actually check this value... */
+#if 1
+    module->accumulate_ordering = 1;
+#else
+    ompi_osc_base_config_value_equal("accumulate_ordering", info, "none");
+#endif
+
+    ret = ompi_comm_dup(comm, &module->comm);
+    if (OMPI_SUCCESS != ret) {
+        ompi_osc_rdma_free (win);
+        return ret;
+    }
+
+    OSC_RDMA_VERBOSE(MCA_BASE_VERBOSE_INFO, "creating osc/rdma window of flavor %d with id %d",
+                     flavor, ompi_comm_get_cid(module->comm));
+
+    /* peer data */
+    if (world_size > init_limit) {
+        OBJ_CONSTRUCT(&module->peer_hash, opal_hash_table_t);
+        ret = opal_hash_table_init (&module->peer_hash, init_limit);
+    } else {
+        module->peer_array = calloc (world_size, sizeof (ompi_osc_rdma_peer_t *));
+        if (NULL == module->peer_array) {
+            ret = OMPI_ERR_OUT_OF_RESOURCE;
+        }
+    }
+
+    if (OPAL_SUCCESS != ret) {
+        ompi_osc_rdma_free (win);
+        return ret;
+    }
+
+    /* find rdma capable endpoints */
+    ret = ompi_osc_rdma_query_btls (module->comm, &module->selected_btl);
+    if (OMPI_SUCCESS != ret) {
+        ompi_osc_rdma_free (win);
+        return ret;
+    }
+
+    /* calculate and store various structure sizes */
+
+    module->region_size = module->selected_btl->btl_registration_handle_size + sizeof (ompi_osc_rdma_region_t);
+
+    module->state_size = sizeof (ompi_osc_rdma_state_t);
+
+    if (MPI_WIN_FLAVOR_DYNAMIC != module->flavor) {
+        module->state_size += module->region_size;
+    } else {
+        module->state_size += mca_osc_rdma_component.max_attach * module->region_size;
+    }
 
     /* fill in the function pointer part */
-    memcpy(module, &ompi_osc_rdma_module_template, 
-           sizeof(ompi_osc_base_module_t));
+    memcpy(&module->super, &ompi_osc_rdma_module_rdma_template, sizeof(module->super));
 
-    /* initialize the module part */
-    OBJ_CONSTRUCT(&module->m_lock, opal_mutex_t);
-    OBJ_CONSTRUCT(&module->m_cond, opal_condition_t);
-    OBJ_CONSTRUCT(&module->m_acc_lock, opal_mutex_t);
-    OBJ_CONSTRUCT(&module->m_pending_sendreqs, opal_list_t);
-    OBJ_CONSTRUCT(&module->m_copy_pending_sendreqs, opal_list_t);
-    OBJ_CONSTRUCT(&module->m_queued_sendreqs, opal_list_t);
-    OBJ_CONSTRUCT(&module->m_locks_pending, opal_list_t);
-    OBJ_CONSTRUCT(&module->m_unlocks_pending, opal_list_t);
-
-    module->m_win = win;
-
-    OPAL_THREAD_LOCK(&mca_osc_rdma_component.c_lock);
-    module->m_sequence_number = (mca_osc_rdma_component.c_sequence_number++);
-    OPAL_THREAD_UNLOCK(&mca_osc_rdma_component.c_lock);
-
-    ret = ompi_comm_dup(comm, &module->m_comm);
-    if (ret != OMPI_SUCCESS) goto cleanup;
-
-    opal_output_verbose(1, ompi_osc_base_output,
-                        "rdma component creating window with id %d",
-                        ompi_comm_get_cid(module->m_comm));
-
-    asprintf(&tmp, "%d", ompi_comm_get_cid(module->m_comm));
-    ompi_win_set_name(win, tmp);
-    free(tmp);
-
-    module->m_num_pending_sendreqs = (unsigned int*)
-        malloc(sizeof(unsigned int) * ompi_comm_size(module->m_comm));
-    if (NULL == module->m_num_pending_sendreqs) {
-        ret = OMPI_ERR_TEMP_OUT_OF_RESOURCE;
-        goto cleanup;
-    }
-    memset(module->m_num_pending_sendreqs, 0, 
-           sizeof(unsigned int) * ompi_comm_size(module->m_comm));
-
-    module->m_num_pending_out = 0;
-    module->m_num_pending_in = 0;
-    module->m_num_post_msgs = 0;
-    module->m_num_complete_msgs = 0;
-    module->m_tag_counter = 0;
-
-    module->m_copy_num_pending_sendreqs = (unsigned int*)
-        malloc(sizeof(unsigned int) * ompi_comm_size(module->m_comm));
-    if (NULL == module->m_copy_num_pending_sendreqs) {
-        ret = OMPI_ERR_TEMP_OUT_OF_RESOURCE;
-        goto cleanup;
-    }
-    memset(module->m_num_pending_sendreqs, 0, 
-           sizeof(unsigned int) * ompi_comm_size(module->m_comm));
-
-    module->m_eager_send_ok = check_config_value_bool("eager_send", info);
-    /* initially, we're in that pseudo-fence state, so we allow eager
-       sends (yay for Fence).  Other protocols will disable before
-       they start their epochs, so this isn't a problem. */
-    module->m_eager_send_active = module->m_eager_send_ok;
-
-    /* allocate space for rdma information */
-    module->m_use_rdma = check_config_value_bool("use_rdma", info);
-    module->m_rdma_wait_completion = check_config_value_bool("rdma_completion_wait", info);
-    module->m_setup_info = NULL;
-    module->m_peer_info = NULL;
-
-    /* buffer setup */
-    module->m_use_buffers = check_config_value_bool("use_buffers", info);
-    module->m_pending_buffers = (ompi_osc_rdma_buffer_t *) malloc(sizeof(ompi_osc_rdma_buffer_t) *
-                                       ompi_comm_size(module->m_comm));
-    memset(module->m_pending_buffers, 0, 
-           sizeof(ompi_osc_rdma_buffer_t) * ompi_comm_size(module->m_comm));
-
-    /* fence data */
-    module->m_fence_coll_counts = (int*)
-        malloc(sizeof(int) * ompi_comm_size(module->m_comm));
-    if (NULL == module->m_fence_coll_counts) {
-        ret = OMPI_ERR_TEMP_OUT_OF_RESOURCE;
-        goto cleanup;
-    }
-    for (i = 0 ; i < ompi_comm_size(module->m_comm) ; ++i) {
-        module->m_fence_coll_counts[i] = 1;
+    ret = ompi_osc_rdma_check_parameters (module, disp_unit, size);
+    if (OPAL_UNLIKELY(OMPI_SUCCESS != ret)) {
+        ompi_osc_rdma_free (win);
+        return ret;
     }
 
-    /* pwsc data */
-    module->m_pw_group = NULL;
-    module->m_sc_group = NULL;
-    module->m_sc_remote_active_ranks = (bool*)
-        malloc(sizeof(bool) * ompi_comm_size(module->m_comm));
-    if (NULL == module->m_sc_remote_active_ranks) {
-        ret = OMPI_ERR_TEMP_OUT_OF_RESOURCE;
-        goto cleanup;
+    ret = ompi_osc_rdma_create_groups (module);
+    if (OPAL_UNLIKELY(OMPI_SUCCESS != ret)) {
+        ompi_osc_rdma_free (win);
+        return ret;
     }
-    module->m_sc_remote_ranks = (int*)
-        malloc(sizeof(int) * ompi_comm_size(module->m_comm));
-    if (NULL == module->m_sc_remote_ranks) {
-        ret = OMPI_ERR_TEMP_OUT_OF_RESOURCE;
-        goto cleanup;
+
+    /* fill in our part */
+    ret = allocate_state_shared (module, base, size);
+    if (OPAL_UNLIKELY(OMPI_SUCCESS != ret)) {
+        OSC_RDMA_VERBOSE(MCA_BASE_VERBOSE_ERROR, "failed to allocate internal state");
+        ompi_osc_rdma_free (win);
+        return ret;
     }
+
+    if (MPI_WIN_FLAVOR_DYNAMIC == flavor) {
+        /* allocate space to store local btl handles for attached regions */
+        module->dynamic_handles = (ompi_osc_rdma_handle_t *) calloc (mca_osc_rdma_component.max_attach,
+                                                                     sizeof (module->dynamic_handles[0]));
+        if (NULL == module->dynamic_handles) {
+            ompi_osc_rdma_free (win);
+            return OMPI_ERR_OUT_OF_RESOURCE;
+        }
+    }
+
+    ret = ompi_osc_rdma_share_data (module);
+    if (OMPI_SUCCESS != ret) {
+        OSC_RDMA_VERBOSE(MCA_BASE_VERBOSE_ERROR, "failed to share window data with peers");
+        ompi_osc_rdma_free (win);
+        return ret;
+    }
+
+
+    /* for now the leader is always rank 0 in the communicator */
+    module->leader = ompi_osc_rdma_module_peer (module, 0);
 
     /* lock data */
-    module->m_lock_status = 0;
-    module->m_shared_count = 0;
-    module->m_lock_received_ack = 0;
-
-    /* update component data */
-    OPAL_THREAD_LOCK(&mca_osc_rdma_component.c_lock);
-    opal_hash_table_set_value_uint32(&mca_osc_rdma_component.c_modules,
-                                     ompi_comm_get_cid(module->m_comm),
-                                     module);
-    ret = opal_hash_table_get_size(&mca_osc_rdma_component.c_modules);
-    if (ret == 1) {
-#if OPAL_ENABLE_PROGRESS_THREADS
-        mca_osc_rdma_component.c_thread_run = true;
-        mca_osc_rdma_component.c_thread.t_run = component_thread_fn;
-        mca_osc_rdma_component.c_thread.t_arg = NULL;
-        ret = opal_thread_start(&mca_osc_rdma_component.c_thread);
-#else
-        ret = opal_progress_register(ompi_osc_rdma_component_progress);
-#endif
-    } else {
-        ret = OMPI_SUCCESS;
-    }
-    OPAL_THREAD_UNLOCK(&mca_osc_rdma_component.c_lock);
-    if (OMPI_SUCCESS != ret) goto cleanup;
-
-    /* fill in window information */
-    win->w_osc_module = (ompi_osc_base_module_t*) module;
-    if (check_config_value_bool("no_locks", info)) {
+    if (module->no_locks) {
         win->w_flags |= OMPI_WIN_NO_LOCKS;
     }
 
-    /* register to receive fragment callbacks, if not already done */
-    OPAL_THREAD_LOCK(&mca_osc_rdma_component.c_lock);
-    if (!mca_osc_rdma_component.c_btl_registered) {
-        mca_osc_rdma_component.c_btl_registered = true;
-        ret = mca_bml.bml_register(MCA_BTL_TAG_OSC_RDMA,
-                                   component_fragment_cb,
-                                   NULL);
+    if (module->same_size) {
+        win->w_flags |= OMPI_WIN_SAME_SIZE;
     }
-    OPAL_THREAD_UNLOCK(&mca_osc_rdma_component.c_lock);
-    if (OMPI_SUCCESS != ret) goto cleanup;
+
+    if (module->same_disp_unit) {
+        win->w_flags |= OMPI_WIN_SAME_DISP;
+    }
+
+    /* update component data */
+    OPAL_THREAD_LOCK(&mca_osc_rdma_component.lock);
+    ret = opal_hash_table_set_value_uint32(&mca_osc_rdma_component.modules,
+                                           ompi_comm_get_cid(module->comm),
+                                           module);
+    OPAL_THREAD_UNLOCK(&mca_osc_rdma_component.lock);
+    if (OMPI_SUCCESS != ret) {
+        ompi_osc_rdma_free (win);
+        return ret;
+    }
+
+    /* fill in window information */
+    *model = MPI_WIN_UNIFIED;
+    win->w_osc_module = (ompi_osc_base_module_t*) module;
+    asprintf(&name, "rdma window %d", ompi_comm_get_cid(module->comm));
+    ompi_win_set_name(win, name);
+    free(name);
 
     /* sync memory - make sure all initialization completed */
     opal_atomic_mb();
 
-    if (module->m_use_rdma) {
-        /* fill in rdma information - involves barrier semantics */
-        ret = setup_rdma(module);
-    } else {
-        /* barrier to prevent arrival of lock requests before we're
-           fully created */
-        ret = module->m_comm->c_coll.coll_barrier(module->m_comm,
-                                                  module->m_comm->c_coll.coll_barrier_module);
+    /* barrier to prevent arrival of lock requests before we're
+       fully created */
+    ret = module->comm->c_coll.coll_barrier(module->comm,
+                                            module->comm->c_coll.coll_barrier_module);
+    if (OMPI_SUCCESS != ret) {
+        ompi_osc_rdma_free (win);
+        return ret;
     }
-    if (OMPI_SUCCESS != ret) goto cleanup;
 
-    OPAL_OUTPUT_VERBOSE((50, ompi_osc_base_output,
-                         "done creating window %d", ompi_comm_get_cid(module->m_comm)));
+
+    OSC_RDMA_VERBOSE(MCA_BASE_VERBOSE_INFO, "finished creating osc/rdma window with id %d",
+                     ompi_comm_get_cid(module->comm));
 
     return OMPI_SUCCESS;
-
- cleanup:
-    OBJ_DESTRUCT(&module->m_unlocks_pending);
-    OBJ_DESTRUCT(&module->m_locks_pending);
-    OBJ_DESTRUCT(&module->m_queued_sendreqs);
-    OBJ_DESTRUCT(&module->m_copy_pending_sendreqs);
-    OBJ_DESTRUCT(&module->m_pending_sendreqs);
-    OBJ_DESTRUCT(&module->m_acc_lock);
-    OBJ_DESTRUCT(&module->m_cond);
-    OBJ_DESTRUCT(&module->m_lock);
-
-    if (NULL != module->m_sc_remote_ranks) {
-        free(module->m_sc_remote_ranks);
-    }
-    if (NULL != module->m_sc_remote_active_ranks) {
-        free(module->m_sc_remote_active_ranks);
-    }
-    if (NULL != module->m_fence_coll_counts) {
-        free(module->m_fence_coll_counts);
-    }
-    if (NULL != module->m_copy_num_pending_sendreqs) {
-        free(module->m_copy_num_pending_sendreqs);
-    }
-    if (NULL != module->m_num_pending_sendreqs) {
-        free(module->m_num_pending_sendreqs);
-    }
-    if (NULL != module->m_peer_info) {
-        for (i = 0 ; i < ompi_comm_size(module->m_comm) ; ++i) {
-            ompi_osc_rdma_peer_info_free(&module->m_peer_info[i]);
-        }
-        free(module->m_peer_info);
-    }
-    if (NULL != module->m_comm) ompi_comm_free(&module->m_comm);
-    if (NULL != module) free(module);
-
-    return ret;
 }
 
 
-/* dispatch for callback on message completion */
-static void
-component_fragment_cb(struct mca_btl_base_module_t *btl,
-                      mca_btl_base_tag_t tag,
-                      mca_btl_base_descriptor_t *descriptor,
-                      void *cbdata)
+static int ompi_osc_rdma_set_info (struct ompi_win_t *win, struct ompi_info_t *info)
 {
-    int ret;
-    ompi_osc_rdma_module_t *module;
-    void *payload;
-    bool done = false;
-    ompi_osc_rdma_base_header_t *base_header = 
-        (ompi_osc_rdma_base_header_t*) descriptor->des_dst[0].seg_addr.pval;
-
-    assert(descriptor->des_dst[0].seg_len >= 
-           sizeof(ompi_osc_rdma_base_header_t));
-
-    /* handle message */
-    while (!done) {
-        switch (base_header->hdr_type) {
-        case OMPI_OSC_RDMA_HDR_PUT:
-            {
-                ompi_osc_rdma_send_header_t *header;
-
-                /* get our header and payload */
-                header = (ompi_osc_rdma_send_header_t*) base_header;
-                payload = (void*) (header + 1);
-
-#if !defined(WORDS_BIGENDIAN) && OPAL_ENABLE_HETEROGENEOUS_SUPPORT
-                if (header->hdr_base.hdr_flags & OMPI_OSC_RDMA_HDR_FLAG_NBO) {
-                    OMPI_OSC_RDMA_SEND_HDR_NTOH(*header);
-                }
-#endif
-
-                /* get our module pointer */
-                module = ompi_osc_rdma_windx_to_module(header->hdr_windx);
-                if (NULL == module) return;
-
-                if (!ompi_win_exposure_epoch(module->m_win)) {
-                    if (OMPI_WIN_FENCE & ompi_win_get_mode(module->m_win)) {
-                        /* well, we're definitely in an access epoch now */
-                        ompi_win_set_mode(module->m_win, 
-                                          OMPI_WIN_FENCE | 
-                                          OMPI_WIN_ACCESS_EPOCH |
-                                          OMPI_WIN_EXPOSE_EPOCH);
-                    }
-                }
-
-                ret = ompi_osc_rdma_sendreq_recv_put(module, header, &payload);
-            }
-            break;
-
-        case OMPI_OSC_RDMA_HDR_ACC: 
-            {
-                ompi_osc_rdma_send_header_t *header;
-
-                /* get our header and payload */
-                header = (ompi_osc_rdma_send_header_t*) base_header;
-                payload = (void*) (header + 1);
-
-#if !defined(WORDS_BIGENDIAN) && OPAL_ENABLE_HETEROGENEOUS_SUPPORT
-                if (header->hdr_base.hdr_flags & OMPI_OSC_RDMA_HDR_FLAG_NBO) {
-                    OMPI_OSC_RDMA_SEND_HDR_NTOH(*header);
-                }
-#endif
-
-                /* get our module pointer */
-                module = ompi_osc_rdma_windx_to_module(header->hdr_windx);
-                if (NULL == module) return;
-
-                if (!ompi_win_exposure_epoch(module->m_win)) {
-                    if (OMPI_WIN_FENCE & ompi_win_get_mode(module->m_win)) {
-                        /* well, we're definitely in an access epoch now */
-                        ompi_win_set_mode(module->m_win, 
-                                          OMPI_WIN_FENCE | 
-                                          OMPI_WIN_ACCESS_EPOCH |
-                                          OMPI_WIN_EXPOSE_EPOCH);
-                    }
-                }
-
-                /* receive into temporary buffer */
-                ret = ompi_osc_rdma_sendreq_recv_accum(module, header, &payload);
-            }
-            break;
-
-        case OMPI_OSC_RDMA_HDR_GET:
-            {
-                ompi_datatype_t *datatype;
-                ompi_osc_rdma_send_header_t *header;
-                ompi_osc_rdma_replyreq_t *replyreq;
-                ompi_proc_t *proc;
-
-                /* get our header and payload */
-                header = (ompi_osc_rdma_send_header_t*) base_header;
-                payload = (void*) (header + 1);
-
-#if !defined(WORDS_BIGENDIAN) && OPAL_ENABLE_HETEROGENEOUS_SUPPORT
-                if (header->hdr_base.hdr_flags & OMPI_OSC_RDMA_HDR_FLAG_NBO) {
-                    OMPI_OSC_RDMA_SEND_HDR_NTOH(*header);
-                }
-#endif
-
-                /* get our module pointer */
-                module = ompi_osc_rdma_windx_to_module(header->hdr_windx);
-                if (NULL == module) return;
-
-                if (!ompi_win_exposure_epoch(module->m_win)) {
-                    if (OMPI_WIN_FENCE & ompi_win_get_mode(module->m_win)) {
-                        /* well, we're definitely in an access epoch now */
-                        ompi_win_set_mode(module->m_win, 
-                                          OMPI_WIN_FENCE | 
-                                          OMPI_WIN_ACCESS_EPOCH |
-                                          OMPI_WIN_EXPOSE_EPOCH);
-                    }
-                }
-
-                /* create or get a pointer to our datatype */
-                proc = ompi_comm_peer_lookup( module->m_comm, header->hdr_origin );
-                datatype = ompi_osc_base_datatype_create(proc, &payload);
-
-                if (NULL == datatype) {
-                    opal_output(ompi_osc_base_output,
-                                "Error recreating datatype.  Aborting.");
-                    ompi_mpi_abort(module->m_comm, 1, false);
-                }
-
-                /* create replyreq sendreq */
-                ret = ompi_osc_rdma_replyreq_alloc_init(module,
-                                                        header->hdr_origin,
-                                                        header->hdr_origin_sendreq,
-                                                        header->hdr_target_disp,
-                                                        header->hdr_target_count,
-                                                        datatype,
-                                                        &replyreq);
-
-                /* send replyreq */
-                ompi_osc_rdma_replyreq_send(module, replyreq);
-
-                /* sendreq does the right retain, so we can release safely */
-                OBJ_RELEASE(datatype);
-            }
-            break;
-
-        case OMPI_OSC_RDMA_HDR_REPLY:
-            {
-                ompi_osc_rdma_reply_header_t *header;
-                ompi_osc_rdma_sendreq_t *sendreq;
-
-                /* get our header and payload */
-                header = (ompi_osc_rdma_reply_header_t*) base_header;
-                payload = (void*) (header + 1);
-
-#if !defined(WORDS_BIGENDIAN) && OPAL_ENABLE_HETEROGENEOUS_SUPPORT
-                if (header->hdr_base.hdr_flags & OMPI_OSC_RDMA_HDR_FLAG_NBO) {
-                    OMPI_OSC_RDMA_REPLY_HDR_NTOH(*header);
-                }
-#endif
-
-                /* get original sendreq pointer */
-                sendreq = (ompi_osc_rdma_sendreq_t*) header->hdr_origin_sendreq.pval;
-                module = sendreq->req_module;
-
-                /* receive data */
-                ompi_osc_rdma_replyreq_recv(module, sendreq, header, &payload);
-            }
-            break;
-        case OMPI_OSC_RDMA_HDR_POST:
-            {
-                ompi_osc_rdma_control_header_t *header = 
-                    (ompi_osc_rdma_control_header_t*) base_header;
-                int32_t count;
-                payload = (void*) (header + 1);
-
-#if !defined(WORDS_BIGENDIAN) && OPAL_ENABLE_HETEROGENEOUS_SUPPORT
-                if (header->hdr_base.hdr_flags & OMPI_OSC_RDMA_HDR_FLAG_NBO) {
-                    OMPI_OSC_RDMA_CONTROL_HDR_NTOH(*header);
-                }
-#endif
-
-                /* get our module pointer */
-                module = ompi_osc_rdma_windx_to_module(header->hdr_windx);
-                if (NULL == module) return;
-
-                OPAL_THREAD_LOCK(&module->m_lock);
-                count = (module->m_num_post_msgs -= 1);
-                OPAL_THREAD_UNLOCK(&module->m_lock);
-                if (count == 0) {
-                    module->m_eager_send_active = module->m_eager_send_ok;
-
-                    while (module->m_eager_send_active && 
-                           opal_list_get_size(&module->m_pending_sendreqs)) {
-                        ompi_osc_rdma_sendreq_t *sendreq;
-
-                        OPAL_THREAD_LOCK(&module->m_lock);
-                        sendreq = (ompi_osc_rdma_sendreq_t*) 
-                            opal_list_remove_first(&module->m_pending_sendreqs);
-
-                        if (NULL == sendreq) {
-                            OPAL_THREAD_UNLOCK(&module->m_lock);
-                            break;
-                        }
-
-                        sendreq->req_module->m_num_pending_out += 1;
-                        OPAL_THREAD_UNLOCK(&module->m_lock);
-
-                        ret = ompi_osc_rdma_sendreq_send(module, sendreq);
-
-                        if (OMPI_SUCCESS != ret) {
-                            OPAL_THREAD_LOCK(&module->m_lock);
-                            sendreq->req_module->m_num_pending_out -= 1;
-                            opal_list_append(&(module->m_pending_sendreqs),
-                                             (opal_list_item_t*) sendreq);
-                            OPAL_THREAD_UNLOCK(&module->m_lock);
-                            break;
-                        }
-                    }
-
-                    opal_condition_broadcast(&module->m_cond);
-                }
-            }
-            break;
-
-        case OMPI_OSC_RDMA_HDR_COMPLETE:
-            {
-                ompi_osc_rdma_control_header_t *header = 
-                    (ompi_osc_rdma_control_header_t*) base_header;
-                int32_t count;
-                payload = (void*) (header + 1);
-
-#if !defined(WORDS_BIGENDIAN) && OPAL_ENABLE_HETEROGENEOUS_SUPPORT
-                if (header->hdr_base.hdr_flags & OMPI_OSC_RDMA_HDR_FLAG_NBO) {
-                    OMPI_OSC_RDMA_CONTROL_HDR_NTOH(*header);
-                }
-#endif
-
-                /* get our module pointer */
-                module = ompi_osc_rdma_windx_to_module(header->hdr_windx);
-                if (NULL == module) return;
-
-                /* we've heard from one more place, and have value reqs to
-                   process */
-                OPAL_THREAD_LOCK(&module->m_lock);
-                count = (module->m_num_complete_msgs -= 1);
-                count += (module->m_num_pending_in += header->hdr_value[0]);
-                OPAL_THREAD_UNLOCK(&module->m_lock);
-
-                if (count == 0) opal_condition_broadcast(&module->m_cond);
-            }
-            break;
-
-        case OMPI_OSC_RDMA_HDR_LOCK_REQ:
-            {
-                ompi_osc_rdma_control_header_t *header = 
-                    (ompi_osc_rdma_control_header_t*) base_header;
-                int32_t count;
-                payload = (void*) (header + 1);
-
-#if !defined(WORDS_BIGENDIAN) && OPAL_ENABLE_HETEROGENEOUS_SUPPORT
-                if (header->hdr_base.hdr_flags & OMPI_OSC_RDMA_HDR_FLAG_NBO) {
-                    OMPI_OSC_RDMA_CONTROL_HDR_NTOH(*header);
-                }
-#endif
-
-                /* get our module pointer */
-                module = ompi_osc_rdma_windx_to_module(header->hdr_windx);
-                if (NULL == module) return;
-
-                if (header->hdr_value[1] > 0) {
-                    ompi_osc_rdma_passive_lock(module, header->hdr_value[0], 
-                                               header->hdr_value[1]);
-                } else {
-                    OPAL_THREAD_LOCK(&module->m_lock);
-                    count = (module->m_lock_received_ack += 1);
-                    OPAL_THREAD_UNLOCK(&module->m_lock);
-
-                    if (count != 0) opal_condition_broadcast(&module->m_cond);
-                }
-            }
-            break;
-
-        case OMPI_OSC_RDMA_HDR_UNLOCK_REQ:
-            {
-                ompi_osc_rdma_control_header_t *header = 
-                    (ompi_osc_rdma_control_header_t*) base_header;
-                payload = (void*) (header + 1);
-
-#if !defined(WORDS_BIGENDIAN) && OPAL_ENABLE_HETEROGENEOUS_SUPPORT
-                if (header->hdr_base.hdr_flags & OMPI_OSC_RDMA_HDR_FLAG_NBO) {
-                    OMPI_OSC_RDMA_CONTROL_HDR_NTOH(*header);
-                }
-#endif
-
-                /* get our module pointer */
-                module = ompi_osc_rdma_windx_to_module(header->hdr_windx);
-                if (NULL == module) return;
-
-                ompi_osc_rdma_passive_unlock(module, header->hdr_value[0],
-                                             header->hdr_value[1]);
-            }
-            break;
-
-        case OMPI_OSC_RDMA_HDR_UNLOCK_REPLY:
-            {
-                ompi_osc_rdma_control_header_t *header = 
-                    (ompi_osc_rdma_control_header_t*) base_header;
-                int32_t count;
-                payload = (void*) (header + 1);
-
-#if !defined(WORDS_BIGENDIAN) && OPAL_ENABLE_HETEROGENEOUS_SUPPORT
-                if (header->hdr_base.hdr_flags & OMPI_OSC_RDMA_HDR_FLAG_NBO) {
-                    OMPI_OSC_RDMA_CONTROL_HDR_NTOH(*header);
-                }
-#endif
-
-                /* get our module pointer */
-                module = ompi_osc_rdma_windx_to_module(header->hdr_windx);
-                if (NULL == module) return;
-
-                OPAL_THREAD_LOCK(&module->m_lock);
-                count = (module->m_num_pending_out -= 1);
-                OPAL_THREAD_UNLOCK(&module->m_lock);
-                if (count == 0) opal_condition_broadcast(&module->m_cond);
-            }
-            break;
-
-        case OMPI_OSC_RDMA_HDR_RDMA_COMPLETE:
-            {
-                ompi_osc_rdma_control_header_t *header = 
-                    (ompi_osc_rdma_control_header_t*) base_header;
-                int32_t count;
-                payload = (void*) (header + 1);
-
-#if !defined(WORDS_BIGENDIAN) && OPAL_ENABLE_HETEROGENEOUS_SUPPORT
-                if (header->hdr_base.hdr_flags & OMPI_OSC_RDMA_HDR_FLAG_NBO) {
-                    OMPI_OSC_RDMA_CONTROL_HDR_NTOH(*header);
-                }
-#endif
-
-                /* get our module pointer */
-                module = ompi_osc_rdma_windx_to_module(header->hdr_windx);
-                if (NULL == module) return;
-
-                OPAL_THREAD_LOCK(&module->m_lock);
-                count = (module->m_num_pending_in -= header->hdr_value[0]);
-                OPAL_THREAD_UNLOCK(&module->m_lock);
-                if (count == 0) opal_condition_broadcast(&module->m_cond);
-            }
-            break;
-
-        case OMPI_OSC_RDMA_HDR_RDMA_INFO:
-            {
-                ompi_osc_rdma_rdma_info_header_t *header = 
-                    (ompi_osc_rdma_rdma_info_header_t*) base_header;
-                ompi_proc_t *proc = NULL;
-                mca_bml_base_endpoint_t *endpoint = NULL;
-                mca_bml_base_btl_t *bml_btl;
-                ompi_osc_rdma_btl_t *rdma_btl;
-                int origin, index;
-                payload = (void*) (header + 1);
-
-#if !defined(WORDS_BIGENDIAN) && OPAL_ENABLE_HETEROGENEOUS_SUPPORT
-                if (header->hdr_base.hdr_flags & OMPI_OSC_RDMA_HDR_FLAG_NBO) {
-                    OMPI_OSC_RDMA_RDMA_INFO_HDR_NTOH(*header);
-                }
-#endif
-
-                /* get our module pointer */
-                module = ompi_osc_rdma_windx_to_module(header->hdr_windx);
-                if (NULL == module) return;
-
-                origin = header->hdr_origin;
-
-                /* find the bml_btl */
-                proc = ompi_comm_peer_lookup(module->m_comm, origin);
-                endpoint = (mca_bml_base_endpoint_t*) proc->proc_bml;
-                bml_btl = mca_bml_base_btl_array_find(&endpoint->btl_rdma, btl);
-                if (NULL == bml_btl) {
-                    opal_output(ompi_osc_base_output,
-                                "received rdma info for unknown btl from rank %d",
-                                origin);
-                    return;
-                } else {
-                    OPAL_OUTPUT_VERBOSE((1, ompi_osc_base_output,
-                                         "received rdma info from rank %d for BTL %s",
-                                         origin,
-                                         bml_btl->btl->
-                                         btl_component->btl_version.
-                                         mca_component_name));
-                }
-
-                OPAL_THREAD_LOCK(&module->m_lock);
-                index = module->m_peer_info[origin].peer_num_btls++;
-                rdma_btl = &(module->m_peer_info[origin].peer_btls[index]);
-
-                rdma_btl->peer_seg_key = header->hdr_segkey;
-                rdma_btl->bml_btl = bml_btl;
-                rdma_btl->rdma_order = MCA_BTL_NO_ORDER;
-                rdma_btl->num_sent = 0;
-
-                module->m_setup_info->num_btls_callin++;
-                OPAL_THREAD_UNLOCK(&module->m_lock);
-            
-                opal_condition_broadcast(&module->m_cond);
-            }
-            break;
-
-        case OMPI_OSC_RDMA_HDR_MULTI_END:
-            payload = base_header;
-            done = true;
-            break;
-
-        default:
-            /* BWB - FIX ME - this sucks */
-            opal_output(ompi_osc_base_output,
-                        "received packet for Window with unknown type");
+    ompi_osc_rdma_module_t *module = GET_MODULE(win);
+    bool temp;
+
+    temp = check_config_value_bool ("no_locks", info);
+    if (temp && !module->no_locks) {
+        /* clean up the lock hash. it is up to the user to ensure no lock is
+         * outstanding from this process when setting the info key */
+        OBJ_DESTRUCT(&module->outstanding_locks);
+        OBJ_CONSTRUCT(&module->outstanding_locks, opal_hash_table_t);
+
+        module->no_locks = true;
+        win->w_flags |= OMPI_WIN_NO_LOCKS;
+    } else if (!temp && module->no_locks) {
+        int world_size = ompi_comm_size (module->comm);
+        int init_limit = world_size > 256 ? 256 : world_size;
+        int ret;
+
+        ret = opal_hash_table_init (&module->outstanding_locks, init_limit);
+        if (OPAL_SUCCESS != ret) {
+            return ret;
         }
 
-        if ((base_header->hdr_flags & OMPI_OSC_RDMA_HDR_FLAG_MULTI) != 0) {
-            /* The next header starts at the next aligned address in
-             * the buffer.  Therefore, check the hdr_flags to see if
-             * any extra alignment is necessary, and if so, pull value
-             * from the flags. */
-            if (base_header->hdr_flags & OMPI_OSC_RDMA_HDR_FLAG_ALIGN_MASK) {
-                payload = (char *)payload + (base_header->hdr_flags & OMPI_OSC_RDMA_HDR_FLAG_ALIGN_MASK);
-            }
-            base_header = (ompi_osc_rdma_base_header_t*) payload;
-        } else {
-            done = true;
-        }
+        module->no_locks = false;
+        win->w_flags &= ~OMPI_WIN_NO_LOCKS;
     }
+
+    /* enforce collectiveness... */
+    return module->comm->c_coll.coll_barrier(module->comm,
+                                             module->comm->c_coll.coll_barrier_module);
 }
 
-int
-ompi_osc_rdma_component_progress(void)
+
+static int ompi_osc_rdma_get_info (struct ompi_win_t *win, struct ompi_info_t **info_used)
 {
-    opal_list_item_t *item;
-    int ret, done = 0;
+    ompi_info_t *info = OBJ_NEW(ompi_info_t);
 
-#if OPAL_ENABLE_PROGRESS_THREADS
-    OPAL_THREAD_LOCK(&mca_osc_rdma_component.c_lock);
-#else
-    ret = OPAL_THREAD_TRYLOCK(&mca_osc_rdma_component.c_lock);
-    if (ret != 0) return 0;
-#endif
-
-    for (item = opal_list_get_first(&mca_osc_rdma_component.c_pending_requests) ;
-         item != opal_list_get_end(&mca_osc_rdma_component.c_pending_requests) ;
-         item = opal_list_get_next(item)) {
-        ompi_osc_rdma_longreq_t *longreq = 
-            (ompi_osc_rdma_longreq_t*) item;
-
-        /* BWB - FIX ME */
-#if OPAL_ENABLE_PROGRESS_THREADS == 0
-        if (longreq->request->req_state == OMPI_REQUEST_INACTIVE ||
-            longreq->request->req_complete) {
-            ret = ompi_request_test(&longreq->request,
-                                    &done,
-                                    0);
-        } else {
-            done = 0;
-            ret = OMPI_SUCCESS;
-        }
-#else
-        ret = ompi_request_test(&longreq->request,
-                                &done,
-                                0);
-#endif
-        if (OMPI_SUCCESS == ret && 0 != done) {
-            opal_list_remove_item(&mca_osc_rdma_component.c_pending_requests,
-                                  item);
-            OPAL_THREAD_UNLOCK(&mca_osc_rdma_component.c_lock);
-            longreq->cbfunc(longreq);
-            OPAL_THREAD_LOCK(&mca_osc_rdma_component.c_lock);
-            break;
-        }
+    if (NULL == info) {
+        return OMPI_ERR_TEMP_OUT_OF_RESOURCE;
     }
-        
-    OPAL_THREAD_UNLOCK(&mca_osc_rdma_component.c_lock);
 
-    return done;
+    *info_used = info;
+
+    return OMPI_SUCCESS;
 }
 
-
-#if OPAL_ENABLE_PROGRESS_THREADS
-static void*
-component_thread_fn(opal_object_t *obj)
-{
-    struct timespec waittime;
-
-    while (mca_osc_rdma_component.c_thread_run) {
-        /* wake up whenever a request completes, to make sure it's not
-           for us */
-        waittime.tv_sec = 1;
-        waittime.tv_nsec = 0;
-        OPAL_THREAD_LOCK(&ompi_request_lock);
-        opal_condition_timedwait(&ompi_request_cond, &ompi_request_lock, &waittime);
-        OPAL_THREAD_UNLOCK(&ompi_request_lock);
-        ompi_osc_rdma_component_progress();
-    }
-
-    return NULL;
-}
-#endif
-
-
-/*********** RDMA setup stuff ***********/
-
-
-struct peer_rdma_send_info_t{
-    opal_list_item_t super;
-    ompi_osc_rdma_module_t *module;
-    ompi_proc_t *proc;
-    mca_bml_base_btl_t *bml_btl;
-    uint64_t seg_key;
-};
-typedef struct peer_rdma_send_info_t peer_rdma_send_info_t;
-OBJ_CLASS_INSTANCE(peer_rdma_send_info_t, opal_list_item_t, NULL, NULL);
-
-
-static void
-rdma_send_info_send_complete(struct mca_btl_base_module_t* btl, 
-                             struct mca_btl_base_endpoint_t *endpoint,
-                             struct mca_btl_base_descriptor_t* descriptor,
-                             int status)
-{
-    peer_rdma_send_info_t *peer_send_info = 
-        (peer_rdma_send_info_t*) descriptor->des_cbdata;
-
-    if (OMPI_SUCCESS == status) {
-        btl->btl_free(btl, descriptor);
-
-        OPAL_THREAD_LOCK(&peer_send_info->module->m_lock);
-        peer_send_info->module->m_setup_info->num_btls_outgoing--;
-        OPAL_THREAD_UNLOCK(&peer_send_info->module->m_lock);
-
-        opal_condition_broadcast(&(peer_send_info->module->m_cond));
-
-        OBJ_RELEASE(peer_send_info);
-    } else {
-        /* BWB - fix me */
-        abort();
-    }
-}
-
-static int
-rdma_send_info_send(ompi_osc_rdma_module_t *module,
-                    peer_rdma_send_info_t *peer_send_info)
-{
-    int ret = OMPI_SUCCESS;
-    mca_bml_base_btl_t *bml_btl = NULL;
-    mca_btl_base_descriptor_t *descriptor = NULL;
-    ompi_osc_rdma_rdma_info_header_t *header = NULL;
-        
-    bml_btl = peer_send_info->bml_btl;
-    mca_bml_base_alloc(bml_btl, &descriptor, MCA_BTL_NO_ORDER,
-                       sizeof(ompi_osc_rdma_rdma_info_header_t),
-                       MCA_BTL_DES_FLAGS_PRIORITY | MCA_BTL_DES_SEND_ALWAYS_CALLBACK);
-    if (NULL == descriptor) {
-        ret = OMPI_ERR_TEMP_OUT_OF_RESOURCE;
-        goto cleanup;
-    }
-
-    /* verify at least enough space for header */
-    if (descriptor->des_src[0].seg_len < sizeof(ompi_osc_rdma_rdma_info_header_t)) {
-        ret = OMPI_ERR_OUT_OF_RESOURCE;
-        goto cleanup;
-    }
-
-    /* setup descriptor */
-    descriptor->des_cbfunc = rdma_send_info_send_complete;
-    descriptor->des_cbdata = peer_send_info;
-    descriptor->des_src[0].seg_len = sizeof(ompi_osc_rdma_rdma_info_header_t);
-
-    /* pack header */
-    header = (ompi_osc_rdma_rdma_info_header_t*) descriptor->des_src[0].seg_addr.pval;
-    header->hdr_base.hdr_type = OMPI_OSC_RDMA_HDR_RDMA_INFO;
-    header->hdr_base.hdr_flags = 0;
-    header->hdr_segkey = peer_send_info->seg_key;
-    header->hdr_origin = ompi_comm_rank(module->m_comm);
-    header->hdr_windx = ompi_comm_get_cid(module->m_comm);
-
-#ifdef WORDS_BIGENDIAN
-    header->hdr_base.hdr_flags |= OMPI_OSC_RDMA_HDR_FLAG_NBO;
-#elif OPAL_ENABLE_HETEROGENEOUS_SUPPORT
-    if (peer_send_info->proc->proc_arch & OPAL_ARCH_ISBIGENDIAN) {
-        header->hdr_base.hdr_flags |= OMPI_OSC_RDMA_HDR_FLAG_NBO;
-        OMPI_OSC_RDMA_RDMA_INFO_HDR_HTON(*header);
-    }
-#endif
-
-    /* send fragment */
-    ret = mca_bml_base_send(bml_btl, descriptor, MCA_BTL_TAG_OSC_RDMA);
-    if (1 == ret) ret = OMPI_SUCCESS;
-    goto done;
-
- cleanup:
-    if (descriptor != NULL) {
-        mca_bml_base_free(bml_btl, descriptor);
-    }
-
- done:
-    return ret;
-}
-
-
-static bool
-is_valid_rdma(mca_bml_base_btl_t *bml_btl)
-{
-    if ((bml_btl->btl->btl_put != NULL) &&
-        (bml_btl->btl->btl_get != NULL) &&
-        ((bml_btl->btl_flags & MCA_BTL_FLAGS_RDMA_MATCHED) == 0)) {
-        return true;
-    }
-
-    return false;
-}
-
-
-static int
-setup_rdma(ompi_osc_rdma_module_t *module)
-{
-
-    uint64_t local;
-    uint64_t *remote = NULL;
-    MPI_Datatype ui64_type;
-    int ret = OMPI_SUCCESS;
-    int i;
-    
-#if SIZEOF_LONG == 8
-    ui64_type = MPI_LONG;
-#else
-    ui64_type = MPI_LONG_LONG;
-#endif
-
-    /* create a setup info structure */
-    module->m_setup_info = (ompi_osc_rdma_setup_info_t *) malloc(sizeof(ompi_osc_rdma_setup_info_t));
-    if (NULL == module->m_setup_info) {
-        ret = OMPI_ERR_TEMP_OUT_OF_RESOURCE;
-        goto cleanup;
-    }
-    module->m_setup_info->num_btls_callin = 0;
-    module->m_setup_info->num_btls_expected = -1;
-    module->m_setup_info->num_btls_outgoing = 0;
-    module->m_setup_info->outstanding_btl_requests = 
-        (opal_list_t *) malloc(sizeof(opal_list_t) * ompi_comm_size(module->m_comm));
-    if (NULL == module->m_setup_info->outstanding_btl_requests) {
-        ret = OMPI_ERR_TEMP_OUT_OF_RESOURCE;
-        goto cleanup;
-    }
-    for (i = 0 ; i < ompi_comm_size(module->m_comm) ; ++i) {
-        OBJ_CONSTRUCT(&(module->m_setup_info->outstanding_btl_requests[i]),
-                      opal_list_t);
-    }
-    
-    /* create peer info array */
-    module->m_peer_info = (ompi_osc_rdma_peer_info_t*)
-        malloc(sizeof(ompi_osc_rdma_peer_info_t) * 
-               ompi_comm_size(module->m_comm));
-    if (NULL == module->m_peer_info) {
-        ret = OMPI_ERR_TEMP_OUT_OF_RESOURCE;
-        goto cleanup;
-    }
-    memset(module->m_peer_info, 0, 
-           sizeof(ompi_osc_rdma_peer_info_t) * ompi_comm_size(module->m_comm));
-
-    /* get number of btls to each peer, descriptors for the window for
-       each peer */
-    for (i = 0 ; i < ompi_comm_size(module->m_comm) ; ++i) {
-        ompi_proc_t *proc = ompi_comm_peer_lookup(module->m_comm, i);
-        ompi_osc_rdma_peer_info_t *peer_info = &module->m_peer_info[i];
-        mca_bml_base_endpoint_t *endpoint = 
-            (mca_bml_base_endpoint_t*) proc->proc_bml;
-        int num_avail =
-            mca_bml_base_btl_array_get_size(&endpoint->btl_rdma);
-        size_t j, size;
-        opal_convertor_t convertor;
-        
-        /* skip peer if heterogeneous */
-        if (ompi_proc_local()->proc_arch != proc->proc_arch) {
-            continue;
-        }
-
-        /* get a rough estimation of how many BTLs we'll be able to
-           use, and exit if the answer is none */
-        for (j = 0 ; 
-             j < mca_bml_base_btl_array_get_size(&endpoint->btl_rdma) ;
-             ++j) {
-            mca_bml_base_btl_t *bml_btl =
-                mca_bml_base_btl_array_get_index(&endpoint->btl_rdma, j);
-            if (!is_valid_rdma(bml_btl)) num_avail--;
-        }
-        if (0 == num_avail) continue;
-
-        /* Allocate space for all the useable BTLs.  They might not
-           all end up useable, if we can't pin memory for the btl or
-           the like.  But the number of elements to start with should
-           be small and the number that fail the pin test should be
-           approximately 0, so this isn't too big of a waste */
-        peer_info->peer_btls = (ompi_osc_rdma_btl_t*)
-            malloc(sizeof(ompi_osc_rdma_btl_t) * num_avail);
-        peer_info->local_btls = (mca_bml_base_btl_t**)
-            malloc(sizeof(mca_bml_base_btl_t*) * num_avail);
-        peer_info->local_registrations = (mca_mpool_base_registration_t**)
-            malloc(sizeof(mca_mpool_base_registration_t*) * num_avail);
-        peer_info->local_descriptors = (mca_btl_base_descriptor_t**)
-            malloc(sizeof(mca_btl_base_descriptor_t*) * num_avail);
-        if (NULL == peer_info->peer_btls ||
-            NULL == peer_info->local_btls ||
-            NULL == peer_info->local_registrations ||
-            NULL == peer_info->local_descriptors) {
-            ret = OMPI_ERR_TEMP_OUT_OF_RESOURCE;
-            goto cleanup;
-        }
-        memset(peer_info->peer_btls, 0,
-               sizeof(ompi_osc_rdma_btl_t) * num_avail);
-        memset(peer_info->local_registrations, 0,
-               sizeof(mca_mpool_base_registration_t*) * num_avail);
-        memset(peer_info->local_descriptors, 0,
-               sizeof(mca_btl_base_descriptor_t*) * num_avail);
-
-        OBJ_CONSTRUCT(&convertor, opal_convertor_t);
-
-        /* Find all useable btls, try to do the descriptor thing for
-           them, and store all that information */
-        for (j = 0 ;
-             j < mca_bml_base_btl_array_get_size(&endpoint->btl_rdma) ;
-             ++j) {
-            mca_bml_base_btl_t *bml_btl =
-                mca_bml_base_btl_array_get_index(&endpoint->btl_rdma, j);
-            mca_mpool_base_module_t *btl_mpool = bml_btl->btl->btl_mpool;
-            int index = peer_info->local_num_btls;
-
-            if (!is_valid_rdma(bml_btl)) continue;
-
-            if (NULL != btl_mpool) {
-                ret = btl_mpool->mpool_register(btl_mpool, module->m_win->w_baseptr,
-                                                module->m_win->w_size, 0,
-                                                &(peer_info->local_registrations[index]));
-                if (OMPI_SUCCESS != ret) continue;
-            } else {
-                peer_info->local_registrations[index] = NULL;
-            }
-
-            size = module->m_win->w_size;
-
-            opal_convertor_copy_and_prepare_for_send(proc->proc_convertor,
-                                                     &(ompi_mpi_byte.dt.super),
-                                                     module->m_win->w_size,
-                                                     module->m_win->w_baseptr,
-                                                     0,
-                                                     &convertor);
-
-            mca_bml_base_prepare_dst(bml_btl,
-                    peer_info->local_registrations[index],
-                    &convertor, MCA_BTL_NO_ORDER, 0, &size, 0,
-                    &peer_info->local_descriptors[index]);
-
-            if (NULL == peer_info->local_descriptors[index]) {
-                if (NULL != peer_info->local_registrations[index]) {
-                    btl_mpool->mpool_deregister(btl_mpool,
-                                                peer_info->local_registrations[index]);
-                }
-                opal_convertor_cleanup(&convertor);
-                continue;
-            }
-
-            peer_info->local_btls[index] = bml_btl;
-
-            opal_convertor_cleanup(&convertor);
-
-            peer_info->local_num_btls++;
-            module->m_setup_info->num_btls_outgoing++;
-        }
-
-        OBJ_DESTRUCT(&convertor);
-    }
-
-    /* fill in information about remote peers */
-    remote = (uint64_t *) malloc(sizeof(uint64_t) * ompi_comm_size(module->m_comm));
-    if (NULL == remote) {
-        ret = OMPI_ERR_TEMP_OUT_OF_RESOURCE;
-        goto cleanup;
-    }
-
-    local = ompi_ptr_ptol(module->m_win->w_baseptr);
-    ret = module->m_comm->c_coll.coll_allgather(&local, 1, ui64_type,
-                                                remote, 1, ui64_type,
-                                                module->m_comm,
-                                                module->m_comm->c_coll.coll_allgather_module);
-    if (OMPI_SUCCESS != ret) goto cleanup;
-    for (i = 0 ; i < ompi_comm_size(module->m_comm) ; ++i) {
-        module->m_peer_info[i].peer_base = remote[i];
-    }
-
-    local = module->m_win->w_size;
-    ret = module->m_comm->c_coll.coll_allgather(&local, 1, ui64_type,
-                                                remote, 1, ui64_type,
-                                                module->m_comm,
-                                                module->m_comm->c_coll.coll_allgather_module);
-    if (OMPI_SUCCESS != ret) goto cleanup;
-    for (i = 0 ; i < ompi_comm_size(module->m_comm) ; ++i) {
-        module->m_peer_info[i].peer_len = remote[i];
-    }
-
-    /* get number of btls we're expecting from everyone */
-    for (i = 0 ; i < ompi_comm_size(module->m_comm) ; ++i) {
-        remote[i] = module->m_peer_info[i].local_num_btls;
-    }
-    ret = module->m_comm->c_coll.coll_reduce_scatter(remote,
-                                                     &local,
-                                                     module->m_fence_coll_counts,
-                                                     ui64_type,
-                                                     MPI_SUM,
-                                                     module->m_comm,
-                                                     module->m_comm->c_coll.coll_reduce_scatter_module);
-    if (OMPI_SUCCESS != ret) goto cleanup;
-    module->m_setup_info->num_btls_expected = (int32_t)local;
-    /* end fill in information about remote peers */
-
-    /* send our contact info to everyone... */
-    for (i = 0 ; i < ompi_comm_size(module->m_comm) ; ++i) {
-        ompi_osc_rdma_peer_info_t *peer_info = &module->m_peer_info[i];
-        int j;
-
-        for (j = 0 ; j < peer_info->local_num_btls ; ++j) {
-            peer_rdma_send_info_t *peer_send_info = 
-                OBJ_NEW(peer_rdma_send_info_t);
-            peer_send_info->module = module;
-            peer_send_info->proc = ompi_comm_peer_lookup(module->m_comm, i);
-            peer_send_info->bml_btl = peer_info->local_btls[j];
-            peer_send_info->seg_key = 
-                peer_info->local_descriptors[j]->des_dst[0].seg_key.key64;
-
-            ret = rdma_send_info_send(module, peer_send_info);
-            if (OMPI_SUCCESS != ret) {
-                opal_list_append(&(module->m_setup_info->outstanding_btl_requests[i]),
-                                 &peer_send_info->super);
-            }
-        }
-    }
-
-    OPAL_THREAD_LOCK(&module->m_lock);
-    while ((module->m_setup_info->num_btls_outgoing != 0) ||
-           (module->m_setup_info->num_btls_expected !=
-            module->m_setup_info->num_btls_callin)) {
-        for (i = 0 ; i < ompi_comm_size(module->m_comm) ; ++i) {
-            peer_rdma_send_info_t *peer_send_info = 
-                (peer_rdma_send_info_t*) opal_list_remove_first(&module->m_setup_info->outstanding_btl_requests[i]);
-            if (NULL != peer_send_info) {
-                ret = rdma_send_info_send(module, peer_send_info);
-                if (OMPI_SUCCESS != ret) {
-                    opal_list_append(&(module->m_setup_info->outstanding_btl_requests[i]),
-                                     &peer_send_info->super);
-                }
-            }
-        }
-        opal_condition_wait(&module->m_cond, &module->m_lock);
-    }
-    OPAL_THREAD_UNLOCK(&module->m_lock);
- 
-    ret = OMPI_SUCCESS;
-
- cleanup:
-    if (NULL != module->m_setup_info) {
-        if (NULL != module->m_setup_info->outstanding_btl_requests) {
-            for (i = 0 ; i < ompi_comm_size(module->m_comm) ; ++i) {
-                OBJ_DESTRUCT(&(module->m_setup_info->outstanding_btl_requests[i]));
-            }
-            free(module->m_setup_info->outstanding_btl_requests);
-        }
-        free(module->m_setup_info);
-    }
-    if (NULL != remote) free(remote);
-
-    return ret;
-}
-
+OBJ_CLASS_INSTANCE(ompi_osc_rdma_aggregation_t, opal_list_item_t, NULL, NULL);

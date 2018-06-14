@@ -1,10 +1,14 @@
-/*   
- * Copyright (c) 2009      Sun Microsystems, Inc.  All rights reserved.
- * Copyright (c) 2009      Cisco Systems, Inc.  All rights reserved.
+/*
+ * Copyright (c) 2009      Sun Microsystems, Inc  All rights reserved.
+ * Copyright (c) 2009-2013 Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2012-2013 The University of Tennessee and The University
+ *                         of Tennessee Research Foundation.  All rights
+ *                         reserved.
+ * Copyright (c) 2012-2013 Inria.  All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -20,13 +24,19 @@
 
 #include <stdlib.h>
 
-#define GAP_CHECK(NAME, BASE, F1, F2, CGAP) {      \
-   offset = (size_t)&BASE.F1 - (size_t)&BASE;       \
-   exp_offset = ((size_t)&BASE.F2 - (size_t)&BASE) + sizeof(BASE.F2);	\
-   printf(NAME" = %lu, %lu ", offset, sizeof(BASE.F1)); \
-   if (CGAP && offset != exp_offset) printf("***"); \
-   printf("\n"); \
-   }
+/*
+ * See if there is a gap between two fields in a given struct
+ */
+#define GAP_CHECK(NAME, BASE, F1, F2, CGAP) \
+    {                                                                   \
+        offset = (size_t)&BASE.F1 - (size_t)&BASE;                      \
+        exp_offset = ((size_t)&BASE.F2 - (size_t)&BASE) + sizeof(BASE.F2); \
+        printf(NAME " offset from base = %lu, sizeof %lu ", offset, sizeof(BASE.F1)); \
+        if (CGAP && offset != exp_offset) {                             \
+            printf("(*** gap between " #F1 " and " #F2 " ***)");        \
+        }                                                               \
+        printf("\n");                                                   \
+    }
 
 
 int main(int argc, char **argv) {
@@ -54,11 +64,8 @@ int main(int argc, char **argv) {
     GAP_CHECK("c_local_comm", test_comm, c_local_comm,  c_remote_group,  1);
     GAP_CHECK("c_keyhash", test_comm, c_keyhash, c_local_comm,  1);
     GAP_CHECK("c_cube_dim", test_comm, c_cube_dim, c_keyhash,  1);
-    GAP_CHECK("c_topo_component", test_comm, c_topo_component, c_cube_dim,  1);
-    GAP_CHECK("c_topo", test_comm, c_topo, c_topo_component,  1);
-    GAP_CHECK("c_topo_comm", test_comm, c_topo_comm, c_topo,  1);
-    GAP_CHECK("c_topo_module", test_comm, c_topo_module, c_topo_comm,  1);
-    GAP_CHECK("c_f_to_c_index", test_comm, c_f_to_c_index, c_topo_module, 1);
+    GAP_CHECK("c_topo", test_comm, c_topo, c_cube_dim,  1);
+    GAP_CHECK("c_f_to_c_index", test_comm, c_f_to_c_index, c_topo, 1);
 #ifdef OMPI_WANT_PERUSE
     GAP_CHECK("c_peruse_handles", test_comm, c_peruse_handles, c_f_to_c_index, 1);
     GAP_CHECK("error_handler", test_comm, error_handler, c_peruse_handles, 1);
@@ -122,11 +129,7 @@ int main(int argc, char **argv) {
     GAP_CHECK("w_f_to_c_index", test_win, w_f_to_c_index, w_keyhash, 1);
     GAP_CHECK("error_handler", test_win, error_handler, w_f_to_c_index, 1);
     GAP_CHECK("errhandler_type", test_win, errhandler_type, error_handler, 1);
-    GAP_CHECK("w_disp_unit", test_win, w_disp_unit, errhandler_type, 1);
-    GAP_CHECK("w_baseptr", test_win, w_baseptr, w_disp_unit, 1);
-    GAP_CHECK("w_size", test_win, w_size, w_baseptr, 1);
-    GAP_CHECK("w_mode", test_win, w_mode, w_size, 1);
-    GAP_CHECK("w_osc_module", test_win, w_osc_module, w_size, 1);
+    GAP_CHECK("w_osc_module", test_win, w_osc_module, errhandler_type, 1);
 
     /* Test Predefined info sizes */
     printf("=============================================\n");
@@ -154,6 +157,6 @@ int main(int argc, char **argv) {
     GAP_CHECK("f_io_selected_component", test_file, f_io_selected_component, f_io_version, 1);
     GAP_CHECK("f_io_selected_module", test_file, f_io_selected_module, f_io_selected_component, 1);
     GAP_CHECK("f_io_selected_data", test_file, f_io_selected_data, f_io_selected_module, 1);
-    
+
     return 0;
 }

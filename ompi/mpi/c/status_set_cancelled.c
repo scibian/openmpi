@@ -5,14 +5,16 @@
  * Copyright (c) 2004-2005 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2008 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2008 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
+ * Copyright (c) 2015      Research Organization for Information Science
+ *                         and Technology (RIST). All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 #include "ompi_config.h"
@@ -24,18 +26,17 @@
 #include "ompi/errhandler/errhandler.h"
 #include "ompi/memchecker.h"
 
-#if OPAL_HAVE_WEAK_SYMBOLS && OMPI_PROFILING_DEFINES
+#if OMPI_BUILD_MPI_PROFILING
+#if OPAL_HAVE_WEAK_SYMBOLS
 #pragma weak MPI_Status_set_cancelled = PMPI_Status_set_cancelled
 #endif
-
-#if OMPI_PROFILING_DEFINES
-#include "ompi/mpi/c/profile/defines.h"
+#define MPI_Status_set_cancelled PMPI_Status_set_cancelled
 #endif
 
 static const char FUNC_NAME[] = "MPI_Status_set_cancelled";
 
 
-int MPI_Status_set_cancelled(MPI_Status *status, int flag) 
+int MPI_Status_set_cancelled(MPI_Status *status, int flag)
 {
     MEMCHECKER(
         if(status != MPI_STATUSES_IGNORE) {
@@ -48,13 +49,11 @@ int MPI_Status_set_cancelled(MPI_Status *status, int flag)
         }
     );
 
-    OPAL_CR_NOOP_PROGRESS();
-
     if (MPI_PARAM_CHECK) {
         int rc = MPI_SUCCESS;
         OMPI_ERR_INIT_FINALIZE(FUNC_NAME);
         if (NULL == status ||
-            MPI_STATUS_IGNORE == status || 
+            MPI_STATUS_IGNORE == status ||
             MPI_STATUSES_IGNORE == status) {
             rc = MPI_ERR_ARG;
         }

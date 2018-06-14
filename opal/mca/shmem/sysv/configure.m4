@@ -13,6 +13,8 @@
 # Copyright (c) 2010      Cisco Systems, Inc.  All rights reserved.
 # Copyright (c) 2010-2011 Los Alamos National Security, LLC.
 #                         All rights reserved.
+# Copyright (c) 2015      Research Organization for Information Science
+#                         and Technology (RIST). All rights reserved.
 # $COPYRIGHT$
 #
 # Additional copyrights may follow
@@ -20,10 +22,12 @@
 # $HEADER$
 #
 
-# MCA_shmem_sysv_CONFIG(action-if-can-compile,
-#                       [action-if-cant-compile])
+# MCA_opal_shmem_sysv_CONFIG(action-if-can-compile,
+#                        [action-if-cant-compile])
 # ------------------------------------------------
-AC_DEFUN([MCA_shmem_sysv_CONFIG],[
+AC_DEFUN([MCA_opal_shmem_sysv_CONFIG],[
+    AC_CONFIG_FILES([opal/mca/shmem/sysv/Makefile])
+
     # do we have the sysv shm stuff?
     AC_MSG_CHECKING([if want SYSV shared memory support])
     AC_ARG_ENABLE(sysv-shmem,
@@ -36,7 +40,7 @@ AC_DEFUN([MCA_shmem_sysv_CONFIG],[
           AC_CHECK_FUNC(shmget,
                   [shmem_sysv_sm_build_sysv=1],
                   [shmem_sysv_sm_build_sysv=0])])
-    AS_IF([test "$enable_sysv_shmem" = "yes" -a "$shmem_sysv_sm_build_sysv" = "0"],
+    AS_IF([test "$enable_sysv_shmem" = "yes" && test "$shmem_sysv_sm_build_sysv" = "0"],
           [AC_MSG_WARN([SYSV shared memory support requested but not found])
            AC_MSG_ERROR([Cannot continue])])
 

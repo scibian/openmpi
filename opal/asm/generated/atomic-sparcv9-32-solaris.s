@@ -2,7 +2,7 @@
 
 	.align 4
 
-	
+
 	.globl opal_atomic_mb
 	.type opal_atomic_mb, #function
 opal_atomic_mb:
@@ -89,10 +89,10 @@ opal_atomic_cmpset_64:
 	st	%i1, [%fp-32]
 	st	%i2, [%fp-28]
 	std	%o4, [%fp-24]
-	ldx [%fp-24], %g1               
-	ldx [%fp-32], %g2               
-	casxa [%i0] 0x80, %g2, %g1 
-	stx %g1, [%fp-24]               
+	ldx [%fp-24], %g1
+	ldx [%fp-32], %g2
+	casxa [%i0] 0x80, %g2, %g1
+	stx %g1, [%fp-24]
 
 	ld	[%fp-24], %i5
 	ld	[%fp-32], %g1
@@ -122,10 +122,10 @@ opal_atomic_cmpset_acq_64:
 	mov	%i4, %o3
 	std	%o4, [%fp-32]
 	std	%o2, [%fp-24]
-	ldx [%fp-24], %g1               
-	ldx [%fp-32], %g2               
-	casxa [%i0] 0x80, %g2, %g1 
-	stx %g1, [%fp-24]               
+	ldx [%fp-24], %g1
+	ldx [%fp-32], %g2
+	casxa [%i0] 0x80, %g2, %g1
+	stx %g1, [%fp-24]
 
 	ld	[%fp-24], %i5
 	ld	[%fp-32], %g1
@@ -157,10 +157,10 @@ opal_atomic_cmpset_rel_64:
 	membar #StoreStore
 	std	%o4, [%fp-32]
 	std	%o2, [%fp-24]
-	ldx [%fp-24], %g1               
-	ldx [%fp-32], %g2               
-	casxa [%i0] 0x80, %g2, %g1 
-	stx %g1, [%fp-24]               
+	ldx [%fp-24], %g1
+	ldx [%fp-32], %g2
+	casxa [%i0] 0x80, %g2, %g1
+	stx %g1, [%fp-24]
 
 	ld	[%fp-24], %i5
 	ld	[%fp-32], %g1

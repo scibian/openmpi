@@ -1,3 +1,4 @@
+/* -*- Mode: C; c-basic-offset:4 ; indent-tabs-mode:nil -*- */
 /*
  * Copyright (c) 2004-2007 The Trustees of Indiana University and Indiana
  *                         University Research and Technology
@@ -5,16 +6,20 @@
  * Copyright (c) 2004-2005 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2008 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2008 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
  * Copyright (c) 2007      Cisco Systems, Inc.  All rights reserved.
  * Copyright (c) 2010      University of Houston.  All rights reserved.
+ * Copyright (c) 2013      Los Alamos National Security, LLC. All rights
+ *                         reserved.
+ * Copyright (c) 2015      Research Organization for Information Science
+ *                         and Technology (RIST). All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -28,18 +33,17 @@
 #include "ompi/datatype/ompi_datatype.h"
 #include "ompi/memchecker.h"
 
-#if OPAL_HAVE_WEAK_SYMBOLS && OMPI_PROFILING_DEFINES
+#if OMPI_BUILD_MPI_PROFILING
+#if OPAL_HAVE_WEAK_SYMBOLS
 #pragma weak MPI_Allgather = PMPI_Allgather
 #endif
-
-#if OMPI_PROFILING_DEFINES
-#include "ompi/mpi/c/profile/defines.h"
+#define MPI_Allgather PMPI_Allgather
 #endif
 
 static const char FUNC_NAME[] = "MPI_Allgather";
 
 
-int MPI_Allgather(void *sendbuf, int sendcount, MPI_Datatype sendtype, 
+int MPI_Allgather(const void *sendbuf, int sendcount, MPI_Datatype sendtype,
                   void *recvbuf, int recvcount, MPI_Datatype recvtype,
                   MPI_Comm comm)
 {
@@ -56,8 +60,8 @@ int MPI_Allgather(void *sendbuf, int sendcount, MPI_Datatype sendtype,
         memchecker_comm(comm);
         /* check whether the actual send buffer is defined. */
         if (MPI_IN_PLACE == sendbuf) {
-            memchecker_call(&opal_memchecker_base_isdefined, 
-                            (char *)(recvbuf)+rank*ext, 
+            memchecker_call(&opal_memchecker_base_isdefined,
+                            (char *)(recvbuf)+rank*ext,
                             recvcount, recvtype);
         } else {
             memchecker_datatype(sendtype);
@@ -91,7 +95,7 @@ int MPI_Allgather(void *sendbuf, int sendcount, MPI_Datatype sendtype,
     /* Do we need to do anything?  Everyone had to give the same send
        signature, which means that everyone must have given a
        sendcount > 0 if there's anything to send for the intra-communicator
-       case.  If we're doing IN_PLACE, however, check recvcount, 
+       case.  If we're doing IN_PLACE, however, check recvcount,
        not sendcount. */
     if ( OMPI_COMM_IS_INTRA(comm) ) {
        if ((MPI_IN_PLACE != sendbuf && 0 == sendcount) ||
@@ -110,11 +114,9 @@ int MPI_Allgather(void *sendbuf, int sendcount, MPI_Datatype sendtype,
 	}
     }
 
-    OPAL_CR_ENTER_LIBRARY();
-
     /* Invoke the coll component to perform the back-end operation */
 
-    err = comm->c_coll.coll_allgather(sendbuf, sendcount, sendtype, 
+    err = comm->c_coll.coll_allgather(sendbuf, sendcount, sendtype,
                                       recvbuf, recvcount, recvtype, comm,
                                       comm->c_coll.coll_allgather_module);
     OMPI_ERRHANDLER_RETURN(err, comm, err, FUNC_NAME);

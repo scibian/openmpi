@@ -1,8 +1,13 @@
+/* -*- Mode: C; c-basic-offset:4 ; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2007      Los Alamos National Security, LLC.
- *                         All rights reserved. 
+ * Copyright (c) 2007-2015 Los Alamos National Security, LLC. All rights
+ *                         reserved.
  * Copyright (c) 2004-2008 The Trustees of Indiana University.
  *                         All rights reserved.
+ * Copyright (c) 2004-2011 The University of Tennessee and The University
+ *                         of Tennessee Research Foundation.  All rights
+ *                         reserved.
+ * Copyright (c) 2014      Intel, Inc. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -10,7 +15,7 @@
  * $HEADER$
  */
 
-/** 
+/**
  * @file
  *
  * Routing table for the RML
@@ -30,12 +35,9 @@
 #endif
 
 #include "orte/types.h"
-#include "opal/mca/mca.h"
+#include "orte/mca/mca.h"
 
 #include "opal/dss/dss_types.h"
-
-#include "opal/mca/crs/crs.h"
-#include "opal/mca/crs/base/base.h"
 
 #include "orte/mca/routed/routed_types.h"
 
@@ -46,7 +48,6 @@ BEGIN_C_DECLS
 
 
 struct opal_buffer_t;
-struct orte_process_name_t;
 struct orte_rml_module_t;
 
 
@@ -117,7 +118,7 @@ typedef int (*orte_routed_module_delete_route_fn_t)(orte_process_name_t *proc);
  * cellid entries, but before any wildcard cellid and jobid entries.
  *
  * @retval ORTE_SUCCESS Success
- * @retval ORTE_ERR_NOT_SUPPORTED The updated is not supported.  This 
+ * @retval ORTE_ERR_NOT_SUPPORTED The updated is not supported.  This
  *                      is likely due to using partially-specified
  *                      names with a component that does not support
  *                      such functionality
@@ -180,31 +181,27 @@ typedef bool (*orte_routed_module_route_is_defined_fn_t)(const orte_process_name
  * Get wireup data for daemons
  *
  * Add whatever routing data
- * this module requires to allow inter-process messaging. Only callable by HNP.
+ * this module requires to allow inter-process messaging.
  */
 typedef int (*orte_routed_module_get_wireup_info_fn_t)(opal_buffer_t *buf);
 
 /*
- * Update the module's routing tree for this process
+ * Update the module's routing plan
  *
- * Called only by a daemon and the HNP, this function creates a list
- * of "leaves" for this process and identifies the vpid of the parent
- * sitting above this process in the tree.
- *
- * @retval ORTE_SUCCESS The operation completed successfully
- * @retval ORTE_ERROR_xxx   The specifed error occurred
+ * Called only by a daemon and the HNP, this function creates a plan
+ * for routing messages within ORTE, especially for routing collectives
+ * used during wireup
  */
-typedef int (*orte_routed_module_update_routing_tree_fn_t)(void);
+typedef void (*orte_routed_module_update_routing_plan_fn_t)(void);
 
 /*
- * Get the routing tree for this process
+ * Get the routing list for an xcast collective
  *
- * Fills the provided list with the direct children of this process
- * in the routing tree, and returns the vpid of the parent. Only valid
- * when called by a daemon or the HNP. Passing a NULL pointer will result
- * in onlly the parent vpid being returned.
+ * Fills the target list with orte_namelist_t so that
+ * the grpcomm framework will know who to send xcast to
+ * next
  */
-typedef orte_vpid_t (*orte_routed_module_get_routing_tree_fn_t)(opal_list_t *children);
+typedef void (*orte_routed_module_get_routing_list_fn_t)(opal_list_t *coll);
 
 /*
  * Set lifeline process
@@ -214,6 +211,13 @@ typedef orte_vpid_t (*orte_routed_module_get_routing_tree_fn_t)(opal_list_t *chi
  * in termination of the process and job.
  */
 typedef int (*orte_routed_module_set_lifeline_fn_t)(orte_process_name_t *proc);
+
+/*
+ * Get the number of routes supported by this process
+ *
+ * Returns the size of the routing tree using an O(1) function
+ */
+typedef size_t (*orte_routed_module_num_routes_fn_t)(void);
 
 /**
  * Handle fault tolerance updates
@@ -248,9 +252,10 @@ struct orte_routed_module_t {
     orte_routed_module_route_is_defined_fn_t        route_is_defined;
     orte_routed_module_set_lifeline_fn_t            set_lifeline;
     /* fns for daemons */
-    orte_routed_module_update_routing_tree_fn_t     update_routing_tree;
-    orte_routed_module_get_routing_tree_fn_t        get_routing_tree;
+    orte_routed_module_update_routing_plan_fn_t     update_routing_plan;
+    orte_routed_module_get_routing_list_fn_t        get_routing_list;
     orte_routed_module_get_wireup_info_fn_t         get_wireup_info;
+    orte_routed_module_num_routes_fn_t              num_routes;
     /* FT Notification */
     orte_routed_module_ft_event_fn_t                ft_event;
 };
@@ -266,8 +271,7 @@ ORTE_DECLSPEC extern orte_routed_module_t orte_routed;
 
 /** Macro for use in components that are of type routed  */
 #define ORTE_ROUTED_BASE_VERSION_2_0_0 \
-  MCA_BASE_VERSION_2_0_0, \
-  "routed", 2, 0, 0
+    ORTE_MCA_BASE_VERSION_2_1_0("routed", 2, 0, 0)
 
 
 /* ******************************************************************** */

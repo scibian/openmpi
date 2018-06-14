@@ -2,17 +2,20 @@
  * Copyright (c) 2004-2005 The Trustees of Indiana University and Indiana
  *                         University Research and Technology
  *                         Corporation.  All rights reserved.
- * Copyright (c) 2004-2005 The University of Tennessee and The University
+ * Copyright (c) 2004-2016 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
+ * Copyright (c) 2015      Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2016      Research Organization for Information Science
+ *                         and Technology (RIST). All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -27,78 +30,6 @@
 #include "coll_basic.h"
 #include "ompi/mca/pml/pml.h"
 #include "opal/util/bit_ops.h"
-
-
-/*
- *	bcast_lin_intra
- *
- *	Function:	- broadcast using O(N) algorithm
- *	Accepts:	- same arguments as MPI_Bcast()
- *	Returns:	- MPI_SUCCESS or error code
- */
-int
-mca_coll_basic_bcast_lin_intra(void *buff, int count,
-                               struct ompi_datatype_t *datatype, int root,
-                               struct ompi_communicator_t *comm,
-                               mca_coll_base_module_t *module)
-{
-    int i;
-    int size;
-    int rank;
-    int err;
-    ompi_request_t **preq;
-    mca_coll_basic_module_t *basic_module = (mca_coll_basic_module_t*) module;
-    ompi_request_t **reqs = basic_module->mccb_reqs;
-
-    size = ompi_comm_size(comm);
-    rank = ompi_comm_rank(comm);
-
-    /* Non-root receive the data. */
-
-    if (rank != root) {
-        return MCA_PML_CALL(recv(buff, count, datatype, root,
-                                 MCA_COLL_BASE_TAG_BCAST, comm,
-                                 MPI_STATUS_IGNORE));
-    }
-
-    /* Root sends data to all others. */
-
-    for (i = 0, preq = reqs; i < size; ++i) {
-        if (i == rank) {
-            continue;
-        }
-
-        err = MCA_PML_CALL(isend_init(buff, count, datatype, i,
-                                      MCA_COLL_BASE_TAG_BCAST,
-                                      MCA_PML_BASE_SEND_STANDARD,
-                                      comm, preq++));
-        if (MPI_SUCCESS != err) {
-            return err;
-        }
-    }
-    --i;
-
-    /* Start your engines.  This will never return an error. */
-
-    MCA_PML_CALL(start(i, reqs));
-
-    /* Wait for them all.  If there's an error, note that we don't
-     * care what the error was -- just that there *was* an error.  The
-     * PML will finish all requests, even if one or more of them fail.
-     * i.e., by the end of this call, all the requests are free-able.
-     * So free them anyway -- even if there was an error, and return
-     * the error after we free everything. */
-
-    err = ompi_request_wait_all(i, reqs, MPI_STATUSES_IGNORE);
-
-    /* Free the reqs */
-
-    mca_coll_basic_free_reqs(reqs, i);
-
-    /* All done */
-
-    return err;
-}
 
 
 /*
@@ -124,9 +55,7 @@ mca_coll_basic_bcast_log_intra(void *buff, int count,
     int mask;
     int err;
     int nreqs;
-    ompi_request_t **preq;
-    mca_coll_basic_module_t *basic_module = (mca_coll_basic_module_t*) module;
-    ompi_request_t **reqs = basic_module->mccb_reqs;
+    ompi_request_t **preq, **reqs;
 
     size = ompi_comm_size(comm);
     rank = ompi_comm_rank(comm);
@@ -139,6 +68,7 @@ mca_coll_basic_bcast_log_intra(void *buff, int count,
     /* Receive data from parent in the tree. */
 
     if (vrank > 0) {
+        assert(hibit >= 0);
         peer = ((vrank & ~(1 << hibit)) + root) % size;
 
         err = MCA_PML_CALL(recv(buff, count, datatype, peer,
@@ -151,6 +81,9 @@ mca_coll_basic_bcast_log_intra(void *buff, int count,
 
     /* Send data to the children. */
 
+    reqs = coll_base_comm_get_reqs(module->base_data, size);
+    if( NULL == reqs ) { return OMPI_ERR_OUT_OF_RESOURCE; }
+
     err = MPI_SUCCESS;
     preq = reqs;
     nreqs = 0;
@@ -160,12 +93,12 @@ mca_coll_basic_bcast_log_intra(void *buff, int count,
             peer = (peer + root) % size;
             ++nreqs;
 
-            err = MCA_PML_CALL(isend_init(buff, count, datatype, peer,
-                                          MCA_COLL_BASE_TAG_BCAST,
-                                          MCA_PML_BASE_SEND_STANDARD,
-                                          comm, preq++));
+            err = MCA_PML_CALL(isend(buff, count, datatype, peer,
+                                     MCA_COLL_BASE_TAG_BCAST,
+                                     MCA_PML_BASE_SEND_STANDARD,
+                                     comm, preq++));
             if (MPI_SUCCESS != err) {
-                mca_coll_basic_free_reqs(reqs, nreqs);
+                ompi_coll_base_free_reqs(reqs, nreqs);
                 return err;
             }
         }
@@ -175,10 +108,6 @@ mca_coll_basic_bcast_log_intra(void *buff, int count,
 
     if (nreqs > 0) {
 
-        /* Start your engines.  This will never return an error. */
-
-        MCA_PML_CALL(start(nreqs, reqs));
-
         /* Wait for them all.  If there's an error, note that we don't
          * care what the error was -- just that there *was* an error.
          * The PML will finish all requests, even if one or more of them
@@ -187,10 +116,9 @@ mca_coll_basic_bcast_log_intra(void *buff, int count,
          * error, and return the error after we free everything. */
 
         err = ompi_request_wait_all(nreqs, reqs, MPI_STATUSES_IGNORE);
-
-        /* Free the reqs */
-
-        mca_coll_basic_free_reqs(reqs, nreqs);
+        if( MPI_SUCCESS != err ) {
+            ompi_coll_base_free_reqs(reqs, nreqs);
+        }
     }
 
     /* All done */
@@ -215,8 +143,7 @@ mca_coll_basic_bcast_lin_inter(void *buff, int count,
     int i;
     int rsize;
     int err;
-    mca_coll_basic_module_t *basic_module = (mca_coll_basic_module_t*) module;
-    ompi_request_t **reqs = basic_module->mccb_reqs;
+    ompi_request_t **reqs = NULL;
 
     rsize = ompi_comm_remote_size(comm);
 
@@ -229,6 +156,9 @@ mca_coll_basic_bcast_lin_inter(void *buff, int count,
                                 MCA_COLL_BASE_TAG_BCAST, comm,
                                 MPI_STATUS_IGNORE));
     } else {
+        reqs = coll_base_comm_get_reqs(module->base_data, rsize);
+        if( NULL == reqs ) { return OMPI_ERR_OUT_OF_RESOURCE; }
+
         /* root section */
         for (i = 0; i < rsize; i++) {
             err = MCA_PML_CALL(isend(buff, count, datatype, i,
@@ -236,10 +166,14 @@ mca_coll_basic_bcast_lin_inter(void *buff, int count,
                                      MCA_PML_BASE_SEND_STANDARD,
                                      comm, &(reqs[i])));
             if (OMPI_SUCCESS != err) {
+                ompi_coll_base_free_reqs(reqs, i + 1);
                 return err;
             }
         }
         err = ompi_request_wait_all(rsize, reqs, MPI_STATUSES_IGNORE);
+        if (OMPI_SUCCESS != err) {
+            ompi_coll_base_free_reqs(reqs, rsize);
+        }
     }
 
 

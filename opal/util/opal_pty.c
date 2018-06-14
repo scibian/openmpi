@@ -5,14 +5,14 @@
  * Copyright (c) 2004-2005 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 /*-
@@ -71,9 +71,7 @@
 # include <unistd.h>
 #endif
 #include <stdio.h>
-#ifdef HAVE_STRING_H
 # include <string.h>
-#endif
 #ifdef HAVE_GRP_H
 #include <grp.h>
 #endif
@@ -108,20 +106,9 @@ int opal_openpty(int *amaster, int *aslave, char *name,
     return -1;
 }
 
-#elif defined(__WINDOWS__)
-
-/* yeah, let's assume for the moment that ptys don't work on windows */
-
-int opal_openpty(int *amaster, int *aslave, char *name, 
-                 struct termios *termp, struct winsize *winp)
-{
-    return -1;
-}
-
-
 #elif defined(HAVE_OPENPTY)
 
-int opal_openpty(int *amaster, int *aslave, char *name, 
+int opal_openpty(int *amaster, int *aslave, char *name,
                  struct termios *termp, struct winsize *winp)
 {
     return openpty(amaster, aslave, name, termp, winp);
@@ -171,7 +158,11 @@ static int ptym_open(char *pts_name)
 #ifdef HAVE_PTSNAME
     char *ptr;
 
+#ifdef _AIX
+    strcpy(pts_name, "/dev/ptc");
+#else
     strcpy(pts_name, "/dev/ptmx");
+#endif
     fdm = open(pts_name, O_RDWR);
     if (fdm < 0) {
         return -1;
@@ -228,6 +219,7 @@ static int ptys_open(int fdm, char *pts_name)
         close(fdm);
         return -5;
     }
+#if defined(__SVR4) && defined(__sun)
     if (ioctl(fds, I_PUSH, "ptem") < 0) {
         close(fdm);
         close(fds);
@@ -238,6 +230,7 @@ static int ptys_open(int fdm, char *pts_name)
         close(fds);
         return -7;
     }
+#endif
 
     return fds;
 #else

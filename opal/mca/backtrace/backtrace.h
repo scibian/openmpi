@@ -1,3 +1,4 @@
+/* -*- Mode: C; c-basic-offset:4 ; indent-tabs-mode:nil -*- */
 /*
  * Copyright (c) 2004-2005 The Trustees of Indiana University and Indiana
  *                         University Research and Technology
@@ -5,14 +6,16 @@
  * Copyright (c) 2004-2005 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2006 The Regents of the University of California.
  *                         All rights reserved.
+ * Copyright (c) 2015      Los Alamos National Security, LLC. All rights
+ *                         reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -34,11 +37,12 @@ BEGIN_C_DECLS
 
 
 /*
- * print back trace to FILE file
+ * Print back trace to FILE file with a prefix for each line.
+ * First strip lines are not printed.
  *
  * \note some attempts made to be signal safe.
  */
-OPAL_DECLSPEC void opal_backtrace_print(FILE *file);
+OPAL_DECLSPEC int opal_backtrace_print(FILE *file, char *prefix, int strip);
 
 /*
  * Return back trace in buffer.  buffer will be allocated by the
@@ -68,8 +72,7 @@ typedef struct opal_backtrace_base_component_2_0_0_t opal_backtrace_base_compone
  * Macro for use in components that are of type backtrace
  */
 #define OPAL_BACKTRACE_BASE_VERSION_2_0_0 \
-    MCA_BASE_VERSION_2_0_0, \
-    "backtrace", 2, 0, 0
+    OPAL_MCA_BASE_VERSION_2_1_0("backtrace", 2, 0, 0)
 
 END_C_DECLS
 

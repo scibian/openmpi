@@ -2,16 +2,17 @@
  * Copyright (c) 2004-2007 The Trustees of Indiana University and Indiana
  *                         University Research and Technology
  *                         Corporation.  All rights reserved.
- * Copyright (c) 2004-2006 The University of Tennessee and The University
+ * Copyright (c) 2004-2011 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
  * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
- * Copyright (c) 2007      Cisco Systems, Inc.  All rights reserved.
- * Copyright (c) 2007      Los Alamos National Security, LLC.  All rights
- *                         reserved. 
+ * Copyright (c) 2007-2012 Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2007-2013 Los Alamos National Security, LLC.  All rights
+ *                         reserved.
+ * Copyright (c) 2015      Intel, Inc. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -39,10 +40,12 @@
 
 #include "opal/util/cmd_line.h"
 #include "opal/util/argv.h"
+#include "opal/util/show_help.h"
+#include "opal/util/opal_environ.h"
 #include "opal/dss/dss.h"
 #include "opal/mca/base/base.h"
-#include "opal/util/opal_environ.h"
 #include "opal/runtime/opal.h"
+#include "opal/mca/event/event.h"
 
 #include "orte/mca/errmgr/errmgr.h"
 #include "orte/mca/rml/rml.h"
@@ -55,19 +58,19 @@
 #include "orte/util/proc_info.h"
 #include "orte/runtime/orte_wait.h"
 #include "orte/mca/rml/base/rml_contact.h"
+#include "orte/runtime/orte_quit.h"
 
 /*
  * Local variables & functions
  */
 static void abort_exit_callback(int fd, short flags, void *arg);
-static struct opal_event term_handler;
-static struct opal_event int_handler;
+static opal_event_t term_handler;
+static opal_event_t int_handler;
 static opal_list_t hnp_list;
 static bool all_recvd;
 static int32_t num_replies;
 static int32_t num_recvd;
 static opal_buffer_t cmdbuf;
-static opal_event_t *my_exit_event;
 static FILE *fp = NULL;
 static bool help;
 static char *hnppidstr;
@@ -93,7 +96,6 @@ static int thrfield = 0;
 static int vsizefield = 0;
 static int rssfield = 0;
 static int pkvfield = 0;
-static int shfield = 0;
 static int pfield = 0;
 
 /* flag what fields were actually found */
@@ -102,63 +104,62 @@ static bool thr_found = false;
 static bool vsize_found = false;
 static bool rss_found = false;
 static bool pkv_found = false;
-static bool sh_found = false;
 static bool p_found = false;
 
 #define MAX_LINES 20
 
 opal_cmd_line_init_t cmd_line_opts[] = {
-    { NULL, NULL, NULL, 
-      'h', NULL, "help", 
+    { NULL,
+      'h', NULL, "help",
       0,
       &help, OPAL_CMD_LINE_TYPE_BOOL,
       "This help message" },
 
-    { NULL, NULL, NULL, 
-      '\0', "pid", "pid", 
+    { NULL,
+      '\0', "pid", "pid",
       1,
       &hnppidstr, OPAL_CMD_LINE_TYPE_STRING,
       "The pid of the mpirun that you wish to query/monitor" },
 
-    { NULL, NULL, NULL, 
-      '\0', "uri", "uri", 
+    { NULL,
+      '\0', "uri", "uri",
       1,
       &hnpuristr, OPAL_CMD_LINE_TYPE_STRING,
       "The uri of the mpirun that you wish to query/monitor" },
-    
-    { NULL, NULL, NULL, 
-      '\0', "rank", "rank", 
+
+    { NULL,
+      '\0', "rank", "rank",
       1,
       &ranks, OPAL_CMD_LINE_TYPE_STRING,
       "Rank whose resource usage is to be displayed/monitored" },
 
-    { NULL, NULL, NULL, 
-      '\0', "update-rate", "update-rate", 
+    { NULL,
+      '\0', "update-rate", "update-rate",
       1,
       &update_rate, OPAL_CMD_LINE_TYPE_INT,
       "Number of seconds between updates" },
-    
-    { NULL, NULL, NULL, 
-      '\0', "timestamp", "timestamp", 
+
+    { NULL,
+      '\0', "timestamp", "timestamp",
       0,
       &timestamp, OPAL_CMD_LINE_TYPE_BOOL,
       "Time stamp each sample" },
-    
-    { NULL, NULL, NULL, 
-      '\0', "log-file", "log-file", 
+
+    { NULL,
+      '\0', "log-file", "log-file",
       1,
       &logfile, OPAL_CMD_LINE_TYPE_STRING,
       "Output file for returned statistics" },
- 
-    { NULL, NULL, NULL, 
-      '\0', "bynode", "bynode", 
+
+    { NULL,
+      '\0', "bynode", "bynode",
       0,
       &bynode, OPAL_CMD_LINE_TYPE_BOOL,
       "Group statistics by node, sorted by rank within each node" },
 
     /* End of list */
-    { NULL, NULL, NULL, 
-      '\0', NULL, NULL, 
+    { NULL,
+      '\0', NULL, NULL,
       0,
       NULL, OPAL_CMD_LINE_TYPE_NULL,
       NULL }
@@ -175,28 +176,20 @@ static void print_headers(void);
 static void send_cmd(int fd, short dummy, void *arg)
 {
     int ret;
+    opal_buffer_t *buf;
+
     all_recvd = false;
     num_replies = INT_MAX;
     num_recvd = 0;
-    if (0 > (ret = orte_rml.send_buffer(&(target_hnp->name), &cmdbuf, ORTE_RML_TAG_DAEMON, 0))) {
+    buf = OBJ_NEW(opal_buffer_t);
+    opal_dss.copy_payload(buf, &cmdbuf);
+    if (0 > (ret = orte_rml.send_buffer_nb(&(target_hnp->name), buf,
+                                           ORTE_RML_TAG_DAEMON,
+                                           orte_rml_send_callback, NULL))) {
         ORTE_ERROR_LOG(ret);
-        orte_trigger_event(&orteds_exit);
+        OBJ_RELEASE(buf);
+        orte_quit(0,0,NULL);
         return;
-    }
-    
-    ORTE_PROGRESSED_WAIT(all_recvd, 0, 1);
-    
-    /* flag that field sizes are set */
-    fields_set = true;
-    
-    /* pretty-print what we got */
-    pretty_print();
-
-    /* see if we want to do it again */
-    if (0 < update_rate) {
-        ORTE_TIMER_EVENT(update_rate, 0, send_cmd);
-    } else {
-        orte_trigger_event(&orte_exit);
     }
 }
 
@@ -213,11 +206,11 @@ main(int argc, char *argv[])
     int i;
     orte_vpid_t vstart, vend;
     int vint;
-    
+
     /***************
      * Initialize
      ***************/
-    
+
     /*
      * Make sure to init util before parse_args
      * to ensure installdirs is setup properly
@@ -226,7 +219,7 @@ main(int argc, char *argv[])
     if( ORTE_SUCCESS != (ret = opal_init_util(&argc, &argv)) ) {
         return ret;
     }
-    
+
     /* initialize the globals */
     help = false;
     hnppidstr = NULL;
@@ -235,25 +228,42 @@ main(int argc, char *argv[])
     update_rate = -1;
     timestamp = false;
     logfile = NULL;
-    
+
     /* Parse the command line options */
     opal_cmd_line_create(&cmd_line, cmd_line_opts);
-    
+
     mca_base_open();
     mca_base_cmd_line_setup(&cmd_line);
-    ret = opal_cmd_line_parse(&cmd_line, true, argc, argv);
-    
+    ret = opal_cmd_line_parse(&cmd_line, false, argc, argv);
+    if (OPAL_SUCCESS != ret) {
+        if (OPAL_ERR_SILENT != ret) {
+            fprintf(stderr, "%s: command line error (%s)\n", argv[0],
+                    opal_strerror(ret));
+        }
+        return 1;
+    }
+
     /**
      * Now start parsing our specific arguments
      */
-    if (OPAL_SUCCESS != ret || help) {
-        char *args = NULL;
+    if (help) {
+        char *str, *args = NULL;
         args = opal_cmd_line_get_usage_msg(&cmd_line);
-        orte_show_help("help-orte-top.txt", "orte-top:usage", true, "orte-top", args);
+        str = opal_show_help_string("help-orte-top.txt", "orte-top:usage",
+                                    true, "orte-top", args);
+        if (NULL != str) {
+            printf("%s", str);
+            free(str);
+        }
         free(args);
-        return ORTE_ERROR;
+        /* If we show the help message, that should be all we do */
+        return 0;
     }
-    
+
+    /* we are never allowed to operate as a distributed tool,
+     * so insist on the ess/tool component */
+    opal_setenv("OMPI_MCA_ess", "tool", true, &environ);
+
     /***************************
      * We need all of OPAL and the TOOL portion of ORTE
      ***************************/
@@ -261,28 +271,21 @@ main(int argc, char *argv[])
         orte_finalize();
         return 1;
     }
-    
-    OBJ_CONSTRUCT(&orte_exit, orte_trigger_event_t);
-    
-    if (ORTE_SUCCESS != orte_wait_event(&my_exit_event, &orte_exit, "job_complete", abort_exit_callback)) {
-        orte_finalize();
-        exit(1);
-    }
-    
-    /* setup the list for recvd stats */
+
+   /* setup the list for recvd stats */
     OBJ_CONSTRUCT(&recvd_stats, opal_list_t);
-    
+
     /** setup callbacks for abort signals - from this point
      * forward, we need to abort in a manner that allows us
      * to cleanup
      */
-    opal_signal_set(&term_handler, SIGTERM,
-                    abort_exit_callback, &term_handler);
-    opal_signal_add(&term_handler, NULL);
-    opal_signal_set(&int_handler, SIGINT,
-                    abort_exit_callback, &int_handler);
-    opal_signal_add(&int_handler, NULL);
-    
+    opal_event_signal_set(orte_event_base, &term_handler, SIGTERM,
+                          abort_exit_callback, &term_handler);
+    opal_event_signal_add(&term_handler, NULL);
+    opal_event_signal_set(orte_event_base, &int_handler, SIGINT,
+                          abort_exit_callback, &int_handler);
+    opal_event_signal_add(&int_handler, NULL);
+
     /*
      * Must specify the mpirun pid
      */
@@ -291,7 +294,7 @@ main(int argc, char *argv[])
             0 == strncmp(hnppidstr, "FILE", strlen("FILE"))) {
             char input[1024], *filename;
             FILE *fp;
-            
+
             /* it is a file - get the filename */
             filename = strchr(hnppidstr, ':');
             if (NULL == filename) {
@@ -301,14 +304,14 @@ main(int argc, char *argv[])
                 exit(1);
             }
             ++filename; /* space past the : */
-            
+
             if (0 >= strlen(filename)) {
                 /* they forgot to give us the name! */
                 orte_show_help("help-orte-top.txt", "orte-top:hnp-filename-bad", true, "pid", hnppidstr);
                 orte_finalize();
                 exit(1);
             }
-            
+
             /* open the file and extract the pid */
             fp = fopen(filename, "r");
             if (NULL == fp) { /* can't find or read file! */
@@ -341,7 +344,7 @@ main(int argc, char *argv[])
             orte_finalize();
             exit(1);
         }
-        
+
         /*
          * For each hnp in the listing
          */
@@ -356,7 +359,7 @@ main(int argc, char *argv[])
             OBJ_RELEASE(hnp);
         }
         OBJ_DESTRUCT(&hnp_list);
-        
+
         /* if we get here without finding the one we wanted, then abort */
         if (NULL == target_hnp) {
             orte_show_help("help-orte-top.txt", "orte-top:pid-not-found", true, hnppid);
@@ -368,7 +371,7 @@ main(int argc, char *argv[])
             0 == strncmp(hnpuristr, "FILE", strlen("FILE"))) {
             char input[1024], *filename;
             FILE *fp;
-            
+
             /* it is a file - get the filename */
             filename = strchr(hnpuristr, ':');
             if (NULL == filename) {
@@ -378,14 +381,14 @@ main(int argc, char *argv[])
                 exit(1);
             }
             ++filename; /* space past the : */
-            
+
             if (0 >= strlen(filename)) {
                 /* they forgot to give us the name! */
                 orte_show_help("help-orte-top.txt", "orte-top:hnp-filename-bad", true, "uri", hnpuristr);
                 orte_finalize();
                 exit(1);
             }
-            
+
             /* open the file and extract the uri */
             fp = fopen(filename, "r");
             if (NULL == fp) { /* can't find or read file! */
@@ -411,11 +414,7 @@ main(int argc, char *argv[])
             target_hnp->rml_uri = strdup(hnpuristr);
         }
         /* set the info in our contact table */
-        if (ORTE_SUCCESS != orte_rml.set_contact_info(target_hnp->rml_uri)) {
-            orte_show_help("help-orte-top.txt", "orte-top:hnp-uri-bad", true, target_hnp->rml_uri);
-            orte_finalize();
-            exit(1);
-        }
+        orte_rml.set_contact_info(target_hnp->rml_uri);
         /* extract the name */
         if (ORTE_SUCCESS != orte_rml_base_parse_uris(target_hnp->rml_uri, &target_hnp->name, NULL)) {
             orte_show_help("help-orte-top.txt", "orte-top:hnp-uri-bad", true, target_hnp->rml_uri);
@@ -433,10 +432,10 @@ main(int argc, char *argv[])
         orte_finalize();
         exit(1);
     }
-    
+
     /* set the target hnp as our lifeline so we will terminate if it exits */
     orte_routed.set_lifeline(&target_hnp->name);
-    
+
     /* if an output file was specified, open it */
     if (NULL != logfile) {
         fp = fopen(logfile, "w");
@@ -448,19 +447,15 @@ main(int argc, char *argv[])
     } else {
         fp = stdout;
     }
-    
+
     /* setup a non-blocking recv to get answers - we don't know how
      * many daemons are going to send replies, so we just have to
      * accept whatever comes back
      */
-    ret = orte_rml.recv_buffer_nb(ORTE_NAME_WILDCARD, ORTE_RML_TAG_TOOL,
-                                  ORTE_RML_NON_PERSISTENT, recv_stats, NULL);
-    if (ret != ORTE_SUCCESS) {
-        ORTE_ERROR_LOG(ret);
-        goto cleanup;
-    }
-    
-    
+    orte_rml.recv_buffer_nb(ORTE_NAME_WILDCARD, ORTE_RML_TAG_TOOL,
+                            ORTE_RML_NON_PERSISTENT, recv_stats, NULL);
+
+
     /* setup the command to get the resource usage */
     OBJ_CONSTRUCT(&cmdbuf, opal_buffer_t);
     command = ORTE_DAEMON_TOP_CMD;
@@ -468,7 +463,7 @@ main(int argc, char *argv[])
         ORTE_ERROR_LOG(ret);
         goto cleanup;
     }
-    
+
     proc.jobid = ORTE_PROC_MY_NAME->jobid+1;  /* only support initial launch at this time */
 
     /* parse the rank list - this can be a comma-separated list of ranks,
@@ -484,7 +479,7 @@ main(int argc, char *argv[])
         }
         goto SEND;
     }
-    
+
     /* split on commas */
     r1 = opal_argv_split(ranks, ',');
     /* for each resulting element, check for range */
@@ -519,7 +514,7 @@ main(int argc, char *argv[])
         }
         opal_argv_free(r2);
     }
-    
+
 SEND:
     if (NULL != r1) {
         opal_argv_free(r1);
@@ -527,15 +522,17 @@ SEND:
     send_cmd(0, 0, NULL);
 
     /* now wait until the termination event fires */
-    opal_event_dispatch();
+    while (orte_event_base_active) {
+        opal_event_loop(orte_event_base, OPAL_EVLOOP_ONCE);
+    }
 
     /***************
      * Cleanup
      ***************/
 cleanup:
     /* Remove the TERM and INT signal handlers */
-    opal_signal_del(&term_handler);
-    opal_signal_del(&int_handler);
+    opal_event_signal_del(&term_handler);
+    opal_event_signal_del(&int_handler);
 
     while (NULL != (item  = opal_list_remove_first(&recvd_stats))) {
         OBJ_RELEASE(item);
@@ -546,18 +543,20 @@ cleanup:
         fclose(fp);
     }
     orte_finalize();
-    
+
     return ret;
 }
 
 static void abort_exit_callback(int fd, short ign, void *arg)
 {
     opal_list_item_t *item;
-    
+
     /* Remove the TERM and INT signal handlers */
-    opal_signal_del(&term_handler);
-    opal_signal_del(&int_handler);
-    
+    opal_event_signal_del(&term_handler);
+    OBJ_DESTRUCT(&term_handler);
+    opal_event_signal_del(&int_handler);
+    OBJ_DESTRUCT(&int_handler);
+
     while (NULL != (item  = opal_list_remove_first(&recvd_stats))) {
         OBJ_RELEASE(item);
     }
@@ -566,15 +565,14 @@ static void abort_exit_callback(int fd, short ign, void *arg)
     if (NULL != fp && fp != stdout) {
         fclose(fp);
     }
-    orte_finalize();
-    exit(1);
+    ORTE_UPDATE_EXIT_STATUS(1);
+    orte_quit(0,0,NULL);
 }
 
-static void process_stats(int fd, short event, void *data)
+static void recv_stats(int status, orte_process_name_t* sender,
+                       opal_buffer_t *buffer, orte_rml_tag_t tag,
+                       void* cbdata)
 {
-    orte_message_event_t *mev = (orte_message_event_t*)data;
-    opal_buffer_t *buffer = mev->buffer;
-    orte_process_name_t *sender = &(mev->sender);
     int32_t n;
     opal_pstats_t *stats;
     orte_process_name_t proc;
@@ -595,7 +593,7 @@ static void process_stats(int fd, short event, void *data)
             goto cleanup;
         }
     }
-    
+
     n = 1;
     while (ORTE_SUCCESS == opal_dss.unpack(buffer, &proc, &n, ORTE_NAME)) {
         n = 1;
@@ -607,31 +605,31 @@ static void process_stats(int fd, short event, void *data)
         if (!fields_set) {
             int tmp;
             char *ctmp;
-            
+
             tmp = strlen(stats->node);
             if (nodefield < tmp) {
                 nodefield = tmp;
             }
-            
+
             asprintf(&ctmp, "%d", stats->rank);
             tmp = strlen(ctmp);
             free(ctmp);
             if (rankfield < tmp) {
                 rankfield = tmp;
             }
-            
+
             asprintf(&ctmp, "%lu", (unsigned long)stats->pid);
             tmp = strlen(ctmp);
             free(ctmp);
             if (pidfield < tmp) {
                 pidfield = tmp;
             }
-            
+
             tmp = strlen(stats->cmd);
             if (cmdfield < tmp) {
                 cmdfield = tmp;
             }
-            
+
             if (0 <= stats->priority) {
                 pri_found = true;
                 asprintf(&ctmp, "%d", stats->priority);
@@ -641,7 +639,7 @@ static void process_stats(int fd, short event, void *data)
                     prifield = tmp;
                 }
             }
-            
+
             if (0 <= stats->num_threads) {
                 thr_found = true;
                 asprintf(&ctmp, "%d", stats->num_threads);
@@ -651,47 +649,37 @@ static void process_stats(int fd, short event, void *data)
                     thrfield = tmp;
                 }
             }
-            
+
             if (0 < stats->vsize) {
                 vsize_found = true;
-                asprintf(&ctmp, "%lu", (unsigned long)stats->vsize);
+                asprintf(&ctmp, "%8.2f", stats->vsize);
                 tmp = strlen(ctmp);
                 free(ctmp);
                 if (vsizefield < tmp) {
                     vsizefield = tmp;
                 }
             }
-            
+
             if (0 < stats->rss) {
                 rss_found = true;
-                asprintf(&ctmp, "%lu", (unsigned long)stats->rss);
+                asprintf(&ctmp, "%8.2f", stats->rss);
                 tmp = strlen(ctmp);
                 free(ctmp);
                 if (rssfield < tmp) {
                     rssfield = tmp;
                 }
             }
-            
+
             if (0 < stats->peak_vsize) {
                 pkv_found = true;
-                asprintf(&ctmp, "%lu", (unsigned long)stats->peak_vsize);
+                asprintf(&ctmp, "%8.2f", stats->peak_vsize);
                 tmp = strlen(ctmp);
                 free(ctmp);
                 if (pkvfield < tmp) {
                     pkvfield = tmp;
                 }
             }
-            
-            if (0 < stats->shared_size) {
-                sh_found = true;
-                asprintf(&ctmp, "%lu", (unsigned long)stats->shared_size);
-                tmp = strlen(ctmp);
-                free(ctmp);
-                if (shfield < tmp) {
-                    shfield = tmp;
-                }
-            }
-            
+
             if (0 <= stats->processor) {
                 p_found = true;
                 asprintf(&ctmp, "%d", stats->processor);
@@ -705,42 +693,29 @@ static void process_stats(int fd, short event, void *data)
         /* add it to the list */
         opal_list_append(&recvd_stats, &stats->super);
     }
-    
-cleanup:
-    OBJ_RELEASE(mev);
-    
+
+ cleanup:
     /* check for completion */
     num_recvd++;
     if (num_replies <= num_recvd) {
-        all_recvd = true;
+        /* flag that field sizes are set */
+        fields_set = true;
+
+        /* pretty-print what we got */
+        pretty_print();
+
+        /* see if we want to do it again */
+        if (0 < update_rate) {
+            ORTE_TIMER_EVENT(update_rate, 0, send_cmd, ORTE_SYS_PRI);
+        } else {
+            orte_finalize();
+            exit(0);
+        }
     }
 
     /* repost the receive */
-    ret = orte_rml.recv_buffer_nb(ORTE_NAME_WILDCARD, ORTE_RML_TAG_TOOL,
-                                  ORTE_RML_NON_PERSISTENT, recv_stats, NULL);
-    if (ret != ORTE_SUCCESS) {
-        ORTE_ERROR_LOG(ret);
-    }
-}
-
-static void recv_stats(int status, orte_process_name_t* sender,
-                       opal_buffer_t *buffer, orte_rml_tag_t tag,
-                       void* cbdata)
-{
-    /* don't process this right away - we need to get out of the recv before
-     * we process the message as it may ask us to do something that involves
-     * more messaging! Instead, setup an event so that the message gets processed
-     * as soon as we leave the recv.
-     *
-     * The macro makes a copy of the buffer, which we release when processed - the incoming
-     * buffer, however, is NOT released here, although its payload IS transferred
-     * to the message buffer for later processing
-     */
-    ORTE_MESSAGE_EVENT(sender, buffer, tag, process_stats);
-    
-    OPAL_OUTPUT_VERBOSE((1, orte_debug_output,
-                         "%s recv_stats: reissued recv",
-                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
+    orte_rml.recv_buffer_nb(ORTE_NAME_WILDCARD, ORTE_RML_TAG_TOOL,
+                            ORTE_RML_NON_PERSISTENT, recv_stats, NULL);
 }
 
 /* static values needed for printing */
@@ -780,15 +755,15 @@ static void print_ranks(opal_list_t *statlist)
             }
         }
         memset(pretty_time, 0, sizeof(pretty_time));
-        if (pstats->time >= 3600) {
-            snprintf(pretty_time, sizeof(pretty_time), "%5.1fH", 
-                     (double)pstats->time / (double)(3600));
+        if (pstats->time.tv_sec >= 3600) {
+            snprintf(pretty_time, sizeof(pretty_time), "%5.1fH",
+                     (double)pstats->time.tv_sec / (double)(3600));
         } else {
             snprintf(pretty_time, sizeof(pretty_time), "%3ld:%02ld",
-                     (unsigned long)pstats->time/60,
-                     (unsigned long)pstats->time & 60);
+                     (unsigned long)pstats->time.tv_sec/60,
+                     (unsigned long)pstats->time.tv_sec % 60);
         }
-        
+
         if (bynode) {
             /* print blanks in the nodename field */
             for (i=0; i < lennode; i++) {
@@ -803,7 +778,7 @@ static void print_ranks(opal_list_t *statlist)
         }
         fprintf(fp, "%*s | ", lencmd, pstats->cmd);
         fprintf(fp, "%*lu | ", lenpid, (unsigned long)pstats->pid);
-        fprintf(fp, "%*c | ", lenstate, pstats->state);
+        fprintf(fp, "%*c | ", lenstate, pstats->state[0]);
         fprintf(fp, "%*s | ", lentime, pretty_time);
         if (pri_found) {
             fprintf(fp, "%*d | ", lenpri, pstats->priority);
@@ -819,9 +794,6 @@ static void print_ranks(opal_list_t *statlist)
         }
         if (pkv_found) {
             fprintf(fp, "%*lu | ", lenpkv, (unsigned long)pstats->peak_vsize);
-        }
-        if (sh_found) {
-            fprintf(fp, "%*lu | ", lensh, (unsigned long)pstats->shared_size);
         }
         if (p_found) {
             fprintf(fp, "%*d | ", lenp, pstats->processor);
@@ -839,7 +811,7 @@ static void pretty_print(void)
     opal_pstats_t *stats;
     opal_list_t tmplist;
     char *node;
-    
+
     if (bynode) {
         if (need_header) {
             print_headers();
@@ -890,10 +862,10 @@ static void pretty_print(void)
         }
         print_ranks(&recvd_stats);
     }
-    
+
     /* provide some separation between iterations */
     fprintf(fp, "\n");
-    
+
     /* if we have printed more than MAX_LINES since the last header,
      * flag that we need to print the header next time
      */
@@ -909,13 +881,13 @@ static void print_headers(void)
     int num_fields = 0;
     int i;
     int linelen;
-    
+
     lennode = strlen("Nodename");
     if (nodefield > lennode) {
         lennode = nodefield;
     }
     num_fields++;
-    
+
     lenrank = strlen("Rank");
     if (rankfield > lenrank) {
         lenrank = rankfield;
@@ -950,7 +922,7 @@ static void print_headers(void)
         }
         num_fields++;
     }
-    
+
     if (thr_found) {
         lenthr = strlen("#threads");
         if (thrfield > lenthr) {
@@ -958,7 +930,7 @@ static void print_headers(void)
         }
         num_fields++;
     }
-    
+
     if (vsize_found) {
         lenvsize = strlen("Vsize");
         if (vsizefield > lenvsize) {
@@ -966,7 +938,7 @@ static void print_headers(void)
         }
         num_fields++;
     }
-    
+
     if (rss_found) {
         lenrss = strlen("RSS");
         if (rssfield > lenrss) {
@@ -974,19 +946,11 @@ static void print_headers(void)
         }
         num_fields++;
     }
-    
+
     if (pkv_found) {
         lenpkv = strlen("Peak Vsize");
         if (pkvfield > lenpkv) {
             lenpkv = pkvfield;
-        }
-        num_fields++;
-    }
-
-    if (sh_found) {
-        lensh = strlen("Shr Size");
-        if (shfield > lensh) {
-            lensh = shfield;
         }
         num_fields++;
     }
@@ -998,17 +962,17 @@ static void print_headers(void)
         }
         num_fields++;
     }
-    
+
     linelen = lennode + lenrank + lenpid + lencmd + lenstate + lentime + lenpri + lenthr + lenvsize + lenrss + lenpkv + lensh + lenp;
     /* add spacing */
     linelen += num_fields * 3;
-    
+
     /* print the rip line */
     for(i = 0; i < linelen; ++i) {
         fprintf(fp, "=");
     }
     fprintf(fp, "\n");
-    
+
     /* print the header */
     if (bynode) {
         fprintf(fp, "%*s | ", lennode   , "Nodename");
@@ -1036,18 +1000,15 @@ static void print_headers(void)
     if (pkv_found) {
         fprintf(fp, "%*s | ", lenpkv   , "Peak Vsize");
     }
-    if (sh_found) {
-        fprintf(fp, "%*s | ", lensh   , "Shr Size");
-    }
     if (p_found) {
         fprintf(fp, "%*s | ", lenp   , "Processor");
     }
     fprintf(fp, "\n");
-    
+
     /* print the separator */
     for(i = 0; i < linelen; ++i) {
         fprintf(fp, "-");
     }
     fprintf(fp, "\n");
-    
+
 }

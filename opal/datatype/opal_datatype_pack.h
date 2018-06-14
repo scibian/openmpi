@@ -4,6 +4,7 @@
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
  * Copyright (c) 2009      Oak Ridge National Labs.  All rights reserved.
+ * Copyright (c) 2011      NVIDIA Corporation.  All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -17,12 +18,16 @@
 #include "opal_config.h"
 
 #include <stddef.h>
-#ifdef HAVE_STDINT_H
-#include <stdint.h>
+
+#if !defined(CHECKSUM) && OPAL_CUDA_SUPPORT
+/* Make use of existing macro to do CUDA style memcpy */
+#undef MEMCPY_CSUM
+#define MEMCPY_CSUM( DST, SRC, BLENGTH, CONVERTOR ) \
+    CONVERTOR->cbmemcpy( (DST), (SRC), (BLENGTH), (CONVERTOR) )
 #endif
 
 static inline void pack_predefined_data( opal_convertor_t* CONVERTOR,
-                                         dt_elem_desc_t* ELEM,
+                                         const dt_elem_desc_t* ELEM,
                                          uint32_t* COUNT,
                                          unsigned char** SOURCE,
                                          unsigned char** DESTINATION,
@@ -30,7 +35,7 @@ static inline void pack_predefined_data( opal_convertor_t* CONVERTOR,
 {
     uint32_t _copy_count = *(COUNT);
     size_t _copy_blength;
-    ddt_elem_desc_t* _elem = &((ELEM)->elem);
+    const ddt_elem_desc_t* _elem = &((ELEM)->elem);
     unsigned char* _source = (*SOURCE) + _elem->disp;
 
     _copy_blength = opal_datatype_basicDatatypes[_elem->common.type]->size;
@@ -68,14 +73,14 @@ static inline void pack_predefined_data( opal_convertor_t* CONVERTOR,
 }
 
 static inline void pack_contiguous_loop( opal_convertor_t* CONVERTOR,
-                                         dt_elem_desc_t* ELEM,
+                                         const dt_elem_desc_t* ELEM,
                                          uint32_t* COUNT,
                                          unsigned char** SOURCE,
                                          unsigned char** DESTINATION,
                                          size_t* SPACE )
 {
-    ddt_loop_desc_t *_loop = (ddt_loop_desc_t*)(ELEM);
-    ddt_endloop_desc_t* _end_loop = (ddt_endloop_desc_t*)((ELEM) + _loop->items);
+    const ddt_loop_desc_t *_loop = (ddt_loop_desc_t*)(ELEM);
+    const ddt_endloop_desc_t* _end_loop = (ddt_endloop_desc_t*)((ELEM) + _loop->items);
     unsigned char* _source = (*SOURCE) + _end_loop->first_elem_disp;
     uint32_t _copy_loops = *(COUNT);
     uint32_t _i;

@@ -5,15 +5,15 @@
  * Copyright (c) 2004-2008 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
  * Copyright (c) 2008      Cisco Systems, Inc.  All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  *
  * These symbols are in a file by themselves to provide nice linker
@@ -57,8 +57,12 @@
 
 #include "opal/util/opal_pty.h"
 #include "opal/util/opal_environ.h"
+#include "opal/util/output.h"
+#include "opal/util/argv.h"
 
 #include "orte/mca/errmgr/errmgr.h"
+#include "orte/util/name_fns.h"
+#include "orte/runtime/orte_globals.h"
 
 #include "orte/mca/iof/iof.h"
 #include "orte/mca/iof/base/iof_base_setup.h"
@@ -90,14 +94,8 @@ orte_iof_base_setup_prefork(orte_iof_base_io_conf_t *opts)
     opts->usepty = 0;
 #endif
 
-#if defined(__WINDOWS__)
-    /* Windows doesn't have a 'pipe' function.
-     * So we need to do something a bit more complex */
-    /* 
-     * http://www-106.ibm.com/developerworks/linux/library/l-rt4/?open&t=grl,l=252,p=pipes
-     */
-#else
     if (ret < 0) {
+        opts->usepty = 0;
         if (pipe(opts->p_stdout) < 0) {
             ORTE_ERROR_LOG(ORTE_ERR_SYS_LIMITS_PIPES);
             return ORTE_ERR_SYS_LIMITS_PIPES;
@@ -115,7 +113,6 @@ orte_iof_base_setup_prefork(orte_iof_base_io_conf_t *opts)
         ORTE_ERROR_LOG(ORTE_ERR_SYS_LIMITS_PIPES);
         return ORTE_ERR_SYS_LIMITS_PIPES;
     }
-#endif
 
     return ORTE_SUCCESS;
 }
@@ -133,26 +130,24 @@ orte_iof_base_setup_child(orte_iof_base_io_conf_t *opts, char ***env)
     close(opts->p_internal[0]);
 
     if (opts->usepty) {
-#ifndef __WINDOWS__
-            /* disable echo */
-            struct termios term_attrs;
-            if (tcgetattr(opts->p_stdout[1], &term_attrs) < 0) {
-                return ORTE_ERR_PIPE_SETUP_FAILURE;
-            }
-            term_attrs.c_lflag &= ~ (ECHO | ECHOE | ECHOK |
-                                     ECHOCTL | ECHOKE | ECHONL);
-            term_attrs.c_iflag &= ~ (ICRNL | INLCR | ISTRIP | INPCK | IXON);
-            term_attrs.c_oflag &= ~ (
+        /* disable echo */
+        struct termios term_attrs;
+        if (tcgetattr(opts->p_stdout[1], &term_attrs) < 0) {
+            return ORTE_ERR_PIPE_SETUP_FAILURE;
+        }
+        term_attrs.c_lflag &= ~ (ECHO | ECHOE | ECHOK |
+                                 ECHOCTL | ECHOKE | ECHONL);
+        term_attrs.c_iflag &= ~ (ICRNL | INLCR | ISTRIP | INPCK | IXON);
+        term_attrs.c_oflag &= ~ (
 #ifdef OCRNL
-                                     /* OS X 10.3 does not have this
-                                        value defined */
-                                     OCRNL | 
+                                 /* OS X 10.3 does not have this
+                                    value defined */
+                                 OCRNL |
 #endif
-                                     ONLCR);
-            if (tcsetattr(opts->p_stdout[1], TCSANOW, &term_attrs) == -1) {
-                return ORTE_ERR_PIPE_SETUP_FAILURE;
-            }
-#endif
+                                 ONLCR);
+        if (tcsetattr(opts->p_stdout[1], TCSANOW, &term_attrs) == -1) {
+            return ORTE_ERR_PIPE_SETUP_FAILURE;
+        }
         ret = dup2(opts->p_stdout[1], fileno(stdout));
         if (ret < 0) return ORTE_ERR_PIPE_SETUP_FAILURE;
         close(opts->p_stdout[1]);
@@ -160,14 +155,14 @@ orte_iof_base_setup_child(orte_iof_base_io_conf_t *opts, char ***env)
         if(opts->p_stdout[1] != fileno(stdout)) {
             ret = dup2(opts->p_stdout[1], fileno(stdout));
             if (ret < 0) return ORTE_ERR_PIPE_SETUP_FAILURE;
-            close(opts->p_stdout[1]); 
+            close(opts->p_stdout[1]);
         }
     }
     if (opts->connect_stdin) {
         if(opts->p_stdin[0] != fileno(stdin)) {
             ret = dup2(opts->p_stdin[0], fileno(stdin));
             if (ret < 0) return ORTE_ERR_PIPE_SETUP_FAILURE;
-            close(opts->p_stdin[0]); 
+            close(opts->p_stdin[0]);
         }
     } else {
         int fd;
@@ -186,12 +181,14 @@ orte_iof_base_setup_child(orte_iof_base_io_conf_t *opts, char ***env)
         close(opts->p_stderr[1]);
     }
 
-    /* Set an environment variable that the new child process can use
-       to get the fd of the pipe connected to the INTERNAL IOF tag. */
-    asprintf(&str, "%d", opts->p_internal[1]);
-    if (NULL != str) {
-        opal_setenv("OPAL_OUTPUT_STDERR_FD", str, true, env);
-        free(str);
+    if (!orte_map_stddiag_to_stderr) {
+        /* Set an environment variable that the new child process can use
+           to get the fd of the pipe connected to the INTERNAL IOF tag. */
+        asprintf(&str, "%d", opts->p_internal[1]);
+        if (NULL != str) {
+            opal_setenv("OPAL_OUTPUT_STDERR_FD", str, true, env);
+            free(str);
+        }
     }
 
     return ORTE_SUCCESS;

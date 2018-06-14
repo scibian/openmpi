@@ -5,14 +5,14 @@
  * Copyright (c) 2004-2006 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -21,7 +21,14 @@
 
 #include "opal_config.h"
 
+#include "opal/util/output.h"
+
 BEGIN_C_DECLS
+
+#define OPAL_ERROR_LOG(r) \
+    opal_output(0, "OPAL ERROR: %s in file %s at line %d", \
+                opal_strerror((r)), __FILE__, __LINE__);
+
 
 /**
  * Prints error message for errnum on stderr
@@ -55,7 +62,7 @@ OPAL_DECLSPEC const char *opal_strerror(int errnum);
 
 /**
  * Return string for given error message
- * 
+ *
  * Similar to opal_strerror, but a buffer is passed in which is filled
  * with a string (up to buflen - 1 characters long) containing the
  * error message corresponding to \c errnum.  Unlike opal_strerror(),
@@ -65,7 +72,7 @@ OPAL_DECLSPEC const char *opal_strerror(int errnum);
 OPAL_DECLSPEC int opal_strerror_r(int errnum, char *strerrbuf, size_t buflen);
 
 
-typedef const char * (*opal_err2str_fn_t)(int errnum);
+typedef int (*opal_err2str_fn_t)(int errnum, const char **str);
 
 /**
  * \internal

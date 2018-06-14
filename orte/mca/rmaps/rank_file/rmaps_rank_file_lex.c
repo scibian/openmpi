@@ -412,11 +412,11 @@ static yyconst flex_int32_t yy_ec[256] =
         1,    1,    1,    1,    1,    1,    1,    1,    1,    1,
         1,    2,    1,    4,    5,    1,    1,    1,    1,    1,
         1,    6,    7,    8,    9,   10,   11,   12,   12,   12,
-       12,   12,   12,   12,   12,   12,   12,   13,    1,    1,
+       12,   12,   12,   12,   12,   12,   12,   13,    8,    1,
        14,    1,    1,   15,   16,   16,   16,   16,   16,   16,
        17,   17,   17,   17,   17,   17,   17,   17,   17,   17,
        17,   17,   17,   17,   17,   17,   17,   17,   17,   17,
-        8,    8,    8,    8,   18,    8,   19,   16,   16,   16,
+        1,    1,    1,    1,   18,    1,   19,   16,   16,   16,
 
        20,   16,   17,   17,   17,   17,   21,   22,   23,   24,
        25,   17,   17,   26,   27,   28,   29,   17,   17,   17,
@@ -599,7 +599,8 @@ int orte_rmaps_rank_file__flex_debug = 0;
 #define YY_RESTORE_YY_MORE_OFFSET
 char *orte_rmaps_rank_file_text;
 #line 1 "rmaps_rank_file_lex.l"
-#line 2 "rmaps_rank_file_lex.l"
+#define YY_NO_INPUT 1
+#line 5 "rmaps_rank_file_lex.l"
 /*
  * Copyright (c) 2004-2005 The Trustees of Indiana University and Indiana
  *                         University Research and Technology
@@ -607,16 +608,20 @@ char *orte_rmaps_rank_file_text;
  * Copyright (c) 2004-2006 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
  * Copyright (c) 2008      Voltaire. All rights reserved
- *  
+ * Copyright (c) 2013      Los Alamos National Security, LLC.
+ *                         All rights reserved.
+ * Copyright (c) 2015      Research Organization for Information Science
+ *                         and Technology (RIST). All rights reserved.
+ *
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 #include "orte_config.h"
@@ -631,23 +636,19 @@ char *orte_rmaps_rank_file_text;
 
 BEGIN_C_DECLS
 
-static int finish_parsing(void);
 int orte_rmaps_rank_file_yywrap(void);
 
 END_C_DECLS
-
-#define yyterminate() \
-  return finish_parsing()
 
 /*
  * global variables
  */
 int orte_rmaps_rank_file_line=1;
-orte_rmaps_rank_file_value_t orte_rmaps_rank_file_value;
+orte_rmaps_rank_file_value_t orte_rmaps_rank_file_value = {0};
 bool orte_rmaps_rank_file_done = false;
 
 
-#line 651 "rmaps_rank_file_lex.c"
+#line 652 "rmaps_rank_file_lex.c"
 
 #define INITIAL 0
 #define comment 1
@@ -707,8 +708,6 @@ extern int orte_rmaps_rank_file_wrap (void );
 #endif
 #endif
 
-    static void yyunput (int c,char *buf_ptr  );
-    
 #ifndef yytext_ptr
 static void yy_flex_strncpy (char *,yyconst char *,int );
 #endif
@@ -830,10 +829,10 @@ YY_DECL
 	register char *yy_cp, *yy_bp;
 	register int yy_act;
     
-#line 54 "rmaps_rank_file_lex.l"
+#line 57 "rmaps_rank_file_lex.l"
 
 
-#line 837 "rmaps_rank_file_lex.c"
+#line 836 "rmaps_rank_file_lex.c"
 
 	if ( !(yy_init) )
 		{
@@ -919,110 +918,110 @@ do_action:	/* This label is used only to access EOF actions. */
 case 1:
 /* rule 1 can match eol */
 YY_RULE_SETUP
-#line 56 "rmaps_rank_file_lex.l"
-{ orte_rmaps_rank_file_line++; 
+#line 59 "rmaps_rank_file_lex.l"
+{ orte_rmaps_rank_file_line++;
                      return ORTE_RANKFILE_NEWLINE; }
 	YY_BREAK
 case 2:
 /* rule 2 can match eol */
 YY_RULE_SETUP
-#line 58 "rmaps_rank_file_lex.l"
-{ orte_rmaps_rank_file_line++; 
+#line 61 "rmaps_rank_file_lex.l"
+{ orte_rmaps_rank_file_line++;
                      return ORTE_RANKFILE_NEWLINE; }
 	YY_BREAK
 case 3:
 /* rule 3 can match eol */
 YY_RULE_SETUP
-#line 60 "rmaps_rank_file_lex.l"
-{ orte_rmaps_rank_file_line++; 
+#line 63 "rmaps_rank_file_lex.l"
+{ orte_rmaps_rank_file_line++;
                      return ORTE_RANKFILE_NEWLINE; }
 	YY_BREAK
 case 4:
 YY_RULE_SETUP
-#line 63 "rmaps_rank_file_lex.l"
+#line 66 "rmaps_rank_file_lex.l"
 { BEGIN(comment);
                      return ORTE_RANKFILE_NEWLINE; }
 	YY_BREAK
 case 5:
 YY_RULE_SETUP
-#line 65 "rmaps_rank_file_lex.l"
+#line 68 "rmaps_rank_file_lex.l"
 ; /* Eat up non '*'s */
 	YY_BREAK
 case 6:
 YY_RULE_SETUP
-#line 66 "rmaps_rank_file_lex.l"
+#line 69 "rmaps_rank_file_lex.l"
 ; /* Eat '*'s not followed by a '/' */
 	YY_BREAK
 case 7:
 /* rule 7 can match eol */
 YY_RULE_SETUP
-#line 67 "rmaps_rank_file_lex.l"
+#line 70 "rmaps_rank_file_lex.l"
 { orte_rmaps_rank_file_line++;
-                     return ORTE_RANKFILE_NEWLINE; } 
+                     return ORTE_RANKFILE_NEWLINE; }
 	YY_BREAK
 case 8:
 YY_RULE_SETUP
-#line 69 "rmaps_rank_file_lex.l"
+#line 72 "rmaps_rank_file_lex.l"
 { BEGIN(INITIAL); /* Done with Block Comment */
                      return ORTE_RANKFILE_NEWLINE; }
 	YY_BREAK
 case 9:
 /* rule 9 can match eol */
 YY_RULE_SETUP
-#line 72 "rmaps_rank_file_lex.l"
-{ orte_rmaps_rank_file_value.sval = orte_rmaps_rank_file_text; 
+#line 75 "rmaps_rank_file_lex.l"
+{ orte_rmaps_rank_file_value.sval = orte_rmaps_rank_file_text;
                      return ORTE_RANKFILE_QUOTED_STRING; }
 	YY_BREAK
 case 10:
 YY_RULE_SETUP
-#line 75 "rmaps_rank_file_lex.l"
-;			
+#line 78 "rmaps_rank_file_lex.l"
+;
 	YY_BREAK
 case 11:
 YY_RULE_SETUP
-#line 77 "rmaps_rank_file_lex.l"
+#line 80 "rmaps_rank_file_lex.l"
 { return ORTE_RANKFILE_EQUAL; }
 	YY_BREAK
 case 12:
 YY_RULE_SETUP
-#line 79 "rmaps_rank_file_lex.l"
-{ orte_rmaps_rank_file_value.sval = orte_rmaps_rank_file_text; 
+#line 82 "rmaps_rank_file_lex.l"
+{ orte_rmaps_rank_file_value.sval = orte_rmaps_rank_file_text;
                      return ORTE_RANKFILE_RANK; }
 	YY_BREAK
 case 13:
 YY_RULE_SETUP
-#line 81 "rmaps_rank_file_lex.l"
-{ orte_rmaps_rank_file_value.sval = orte_rmaps_rank_file_text; 
+#line 84 "rmaps_rank_file_lex.l"
+{ orte_rmaps_rank_file_value.sval = orte_rmaps_rank_file_text;
                      return ORTE_RANKFILE_SLOT; }
 	YY_BREAK
 case 14:
 YY_RULE_SETUP
-#line 83 "rmaps_rank_file_lex.l"
-{ orte_rmaps_rank_file_value.sval = orte_rmaps_rank_file_text;  
+#line 86 "rmaps_rank_file_lex.l"
+{ orte_rmaps_rank_file_value.sval = orte_rmaps_rank_file_text;
                      return ORTE_RANKFILE_SLOT; }
 	YY_BREAK
 case 15:
 YY_RULE_SETUP
-#line 86 "rmaps_rank_file_lex.l"
+#line 89 "rmaps_rank_file_lex.l"
 { orte_rmaps_rank_file_value.sval = orte_rmaps_rank_file_text;
                      return ORTE_RANKFILE_USERNAME; }
 	YY_BREAK
 case 16:
 YY_RULE_SETUP
-#line 88 "rmaps_rank_file_lex.l"
+#line 91 "rmaps_rank_file_lex.l"
 { orte_rmaps_rank_file_value.sval = orte_rmaps_rank_file_text;
                      return ORTE_RANKFILE_USERNAME; }
 	YY_BREAK
 case 17:
 YY_RULE_SETUP
-#line 90 "rmaps_rank_file_lex.l"
+#line 93 "rmaps_rank_file_lex.l"
 { orte_rmaps_rank_file_value.sval = orte_rmaps_rank_file_text;
                      return ORTE_RANKFILE_USERNAME; }
 	YY_BREAK
 case 18:
 YY_RULE_SETUP
-#line 93 "rmaps_rank_file_lex.l"
-{ orte_rmaps_rank_file_value.ival = atol(orte_rmaps_rank_file_text); 
+#line 96 "rmaps_rank_file_lex.l"
+{ orte_rmaps_rank_file_value.ival = atol(orte_rmaps_rank_file_text);
                      return ORTE_RANKFILE_INT; }
 	YY_BREAK
  /* First detect hosts as standard Strings (but without ".")
@@ -1032,49 +1031,49 @@ YY_RULE_SETUP
 
 case 19:
 YY_RULE_SETUP
-#line 101 "rmaps_rank_file_lex.l"
+#line 104 "rmaps_rank_file_lex.l"
 { orte_rmaps_rank_file_value.sval = orte_rmaps_rank_file_text;
-                     return ORTE_RANKFILE_STRING; }
+                         return ORTE_RANKFILE_STRING; }
 	YY_BREAK
 case 20:
 YY_RULE_SETUP
-#line 104 "rmaps_rank_file_lex.l"
+#line 107 "rmaps_rank_file_lex.l"
 {
                       orte_rmaps_rank_file_value.sval = orte_rmaps_rank_file_text;
                       return ORTE_RANKFILE_IPV4; }
 	YY_BREAK
 case 21:
 YY_RULE_SETUP
-#line 108 "rmaps_rank_file_lex.l"
+#line 111 "rmaps_rank_file_lex.l"
 {
                       orte_rmaps_rank_file_value.sval = orte_rmaps_rank_file_text;
                       return ORTE_RANKFILE_IPV6; }
 	YY_BREAK
 case 22:
 YY_RULE_SETUP
-#line 112 "rmaps_rank_file_lex.l"
+#line 115 "rmaps_rank_file_lex.l"
 {
-                     orte_rmaps_rank_file_value.sval = orte_rmaps_rank_file_text; 
+                     orte_rmaps_rank_file_value.sval = orte_rmaps_rank_file_text;
                      return ORTE_RANKFILE_HOSTNAME; }
 	YY_BREAK
 case 23:
 YY_RULE_SETUP
-#line 116 "rmaps_rank_file_lex.l"
+#line 119 "rmaps_rank_file_lex.l"
 { orte_rmaps_rank_file_value.sval = orte_rmaps_rank_file_text;
 					 return ORTE_RANKFILE_RELATIVE; }
 	YY_BREAK
 case 24:
 YY_RULE_SETUP
-#line 119 "rmaps_rank_file_lex.l"
-{ orte_rmaps_rank_file_value.sval = orte_rmaps_rank_file_text; 
+#line 122 "rmaps_rank_file_lex.l"
+{ orte_rmaps_rank_file_value.sval = orte_rmaps_rank_file_text;
                      return ORTE_RANKFILE_ERROR; }
 	YY_BREAK
 case 25:
 YY_RULE_SETUP
-#line 122 "rmaps_rank_file_lex.l"
+#line 125 "rmaps_rank_file_lex.l"
 ECHO;
 	YY_BREAK
-#line 1078 "rmaps_rank_file_lex.c"
+#line 1077 "rmaps_rank_file_lex.c"
 case YY_STATE_EOF(INITIAL):
 case YY_STATE_EOF(comment):
 	yyterminate();
@@ -1402,43 +1401,6 @@ static int yy_get_next_buffer (void)
 	yy_is_jam = (yy_current_state == 126);
 
 	return yy_is_jam ? 0 : yy_current_state;
-}
-
-    static void yyunput (int c, register char * yy_bp )
-{
-	register char *yy_cp;
-    
-    yy_cp = (yy_c_buf_p);
-
-	/* undo effects of setting up orte_rmaps_rank_file_text */
-	*yy_cp = (yy_hold_char);
-
-	if ( yy_cp < YY_CURRENT_BUFFER_LVALUE->yy_ch_buf + 2 )
-		{ /* need to shift things up to make room */
-		/* +2 for EOB chars. */
-		register int number_to_move = (yy_n_chars) + 2;
-		register char *dest = &YY_CURRENT_BUFFER_LVALUE->yy_ch_buf[
-					YY_CURRENT_BUFFER_LVALUE->yy_buf_size + 2];
-		register char *source =
-				&YY_CURRENT_BUFFER_LVALUE->yy_ch_buf[number_to_move];
-
-		while ( source > YY_CURRENT_BUFFER_LVALUE->yy_ch_buf )
-			*--dest = *--source;
-
-		yy_cp += (int) (dest - source);
-		yy_bp += (int) (dest - source);
-		YY_CURRENT_BUFFER_LVALUE->yy_n_chars =
-			(yy_n_chars) = YY_CURRENT_BUFFER_LVALUE->yy_buf_size;
-
-		if ( yy_cp < YY_CURRENT_BUFFER_LVALUE->yy_ch_buf + 2 )
-			YY_FATAL_ERROR( "flex scanner push-back overflow" );
-		}
-
-	*--yy_cp = (char) c;
-
-	(yytext_ptr) = yy_bp;
-	(yy_hold_char) = *yy_cp;
-	(yy_c_buf_p) = yy_cp;
 }
 
 #ifndef YY_NO_INPUT
@@ -2073,18 +2035,20 @@ void orte_rmaps_rank_file_free (void * ptr )
 
 #define YYTABLES_NAME "yytables"
 
-#line 122 "rmaps_rank_file_lex.l"
+#line 125 "rmaps_rank_file_lex.l"
 
 
 
-/*
- * This cleans up at the end of the parse (since, in this case, we
- * always parse the entire file) and prevents a memory leak.
- */
-static int finish_parsing(void) 
+/* Old flex (2.5.4a? and older) does not define a destroy function */
+#if !defined(YY_FLEX_SUBMINOR_VERSION)
+#define YY_FLEX_SUBMINOR_VERSION 0
+#endif
+
+#if (YY_FLEX_MAJOR_VERSION < 2) || (YY_FLEX_MAJOR_VERSION == 2 && (YY_FLEX_MINOR_VERSION < 5 || (YY_FLEX_MINOR_VERSION == 5 && YY_FLEX_SUBMINOR_VERSION < 5)))
+int orte_rmaps_rank_file_lex_destroy (void)
 {
     if (NULL != YY_CURRENT_BUFFER) {
-        orte_rmaps_rank_file__delete_buffer(YY_CURRENT_BUFFER); 
+        orte_rmaps_rank_file__delete_buffer(YY_CURRENT_BUFFER);
 #if defined(YY_CURRENT_BUFFER_LVALUE)
         YY_CURRENT_BUFFER_LVALUE = NULL;
 #else
@@ -2093,6 +2057,7 @@ static int finish_parsing(void)
     }
     return YY_NULL;
 }
+#endif
 
 int orte_rmaps_rank_file_wrap(void)
 {

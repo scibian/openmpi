@@ -5,15 +5,17 @@
  * Copyright (c) 2004-2005 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
  * Copyright (c) 2009      Sun Microsystems, Inc. All rights reserved.
+ * Copyright (c) 2015      Research Organization for Information Science
+ *                         and Technology (RIST). All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -26,12 +28,11 @@
 #include "ompi/datatype/ompi_datatype.h"
 #include "ompi/datatype/ompi_datatype_internal.h"
 
-#if OPAL_HAVE_WEAK_SYMBOLS && OMPI_PROFILING_DEFINES
+#if OMPI_BUILD_MPI_PROFILING
+#if OPAL_HAVE_WEAK_SYMBOLS
 #pragma weak MPI_Type_match_size = PMPI_Type_match_size
 #endif
-
-#if OMPI_PROFILING_DEFINES
-#include "ompi/mpi/c/profile/defines.h"
+#define MPI_Type_match_size PMPI_Type_match_size
 #endif
 
 static const char FUNC_NAME[] = "MPI_Type_match_size";
@@ -43,7 +44,6 @@ int MPI_Type_match_size(int typeclass, int size, MPI_Datatype *type)
         OMPI_ERR_INIT_FINALIZE(FUNC_NAME);
     }
 
-    OPAL_CR_ENTER_LIBRARY();
 
     switch( typeclass ) {
     case MPI_TYPECLASS_REAL:
@@ -59,7 +59,6 @@ int MPI_Type_match_size(int typeclass, int size, MPI_Datatype *type)
         *type = &ompi_mpi_datatype_null.dt;
     }
 
-    OPAL_CR_EXIT_LIBRARY();
     if( *type != &ompi_mpi_datatype_null.dt ) {
         return MPI_SUCCESS;
     }

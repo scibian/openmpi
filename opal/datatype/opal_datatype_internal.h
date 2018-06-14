@@ -1,9 +1,9 @@
-/* -*- Mode: C; c-basic-offset:4 ; -*- */
+/* -*- Mode: C; c-basic-offset:4 ; indent-tabs-mode:nil -*- */
 /*
  * Copyright (c) 2004-2006 The Trustees of Indiana University and Indiana
  *                         University Research and Technology
  *                         Corporation.  All rights reserved.
- * Copyright (c) 2004-2010 The University of Tennessee and The University
+ * Copyright (c) 2004-2012 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
  * Copyright (c) 2004-2006 High Performance Computing Center Stuttgart,
@@ -11,6 +11,9 @@
  * Copyright (c) 2004-2006 The Regents of the University of California.
  *                         All rights reserved.
  * Copyright (c) 2009      Oak Ridge National Labs.  All rights reserved.
+ * Copyright (c) 2013      Los Alamos National Security, LLC. All rights
+ *                         reserved.
+ * Copyright (c) 2013 Cisco Systems, Inc.  All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -23,15 +26,8 @@
 
 #include "opal_config.h"
 
-#include <stddef.h>
-#include <stdio.h>
-
-#ifdef HAVE_STRING_H
+#include <stdarg.h>
 #include <string.h>
-#endif
-#ifdef HAVE_STDINT_H
-#include <stdint.h>
-#endif
 
 #if defined(VERBOSE)
 #include "opal/util/output.h"
@@ -70,7 +66,7 @@ static inline void DUMP( char* fmt, ... )
 #        define __opal_attribute_unused_tmp__  __opal_attribute_unused__
 #      else
 #        define __opal_attribute_unused_tmp__
-#      endif  
+#      endif
 static inline void DUMP( char* fmt __opal_attribute_unused_tmp__, ... )
 {
 #if defined(__PGI)
@@ -100,7 +96,8 @@ static inline void DUMP( char* fmt __opal_attribute_unused_tmp__, ... )
  * (C, C++ or FORTRAN), we only focus on their internal representation in
  * the host memory.
  *
- * NOTE: This (and in ompi_datatype_internal.h) is the id-order to obey
+ * NOTE: This predefined datatype order should be matched by any upper-level
+ * users of the OPAL datatype.
  */
 #define OPAL_DATATYPE_LOOP           0
 #define OPAL_DATATYPE_END_LOOP       1
@@ -122,22 +119,20 @@ static inline void DUMP( char* fmt __opal_attribute_unused_tmp__, ... )
 #define OPAL_DATATYPE_FLOAT8         16
 #define OPAL_DATATYPE_FLOAT12        17
 #define OPAL_DATATYPE_FLOAT16        18
-#define OPAL_DATATYPE_COMPLEX8       19
-#define OPAL_DATATYPE_COMPLEX16      20
-#define OPAL_DATATYPE_COMPLEX32      21
+#define OPAL_DATATYPE_FLOAT_COMPLEX  19
+#define OPAL_DATATYPE_DOUBLE_COMPLEX 20
+#define OPAL_DATATYPE_LONG_DOUBLE_COMPLEX 21
 #define OPAL_DATATYPE_BOOL           22
 #define OPAL_DATATYPE_WCHAR          23
 #define OPAL_DATATYPE_UNAVAILABLE    24
 
 #ifndef OPAL_DATATYPE_MAX_PREDEFINED
-#define OPAL_DATATYPE_MAX_PREDEFINED 25
-#endif
-
+#define OPAL_DATATYPE_MAX_PREDEFINED (OPAL_DATATYPE_UNAVAILABLE+1)
+#elif OPAL_DATATYPE_MAX_PREDEFINED <= OPAL_DATATYPE_UNAVAILABLE
 /*
  * If the number of basic datatype should change update
- * OPAL_DATATYPE_MAX_PREDEFINED in datatype.h
+ * OPAL_DATATYPE_MAX_PREDEFINED in opal_datatype.h
  */
-#if OPAL_DATATYPE_MAX_PREDEFINED <= OPAL_DATATYPE_UNAVAILABLE
 #error OPAL_DATATYPE_MAX_PREDEFINED should be updated to the next value after the OPAL_DATATYPE_UNAVAILABLE define
 #endif
 
@@ -151,8 +146,10 @@ struct ddt_elem_id_description {
 };
 typedef struct ddt_elem_id_description ddt_elem_id_description;
 
-/* the basic element. A data description is composed
- * by a set of basic elements.
+/**
+ * The data element description. It is similar to a vector type, a contiguous
+ * blocklen number of basic elements, with a displacement for the first element
+ * and then an extent for all the extra count.
  */
 struct ddt_elem_desc {
     ddt_elem_id_description common;           /**< basic data description and flags */
@@ -163,6 +160,14 @@ struct ddt_elem_desc {
 };
 typedef struct ddt_elem_desc ddt_elem_desc_t;
 
+/**
+ * The loop description, with it's two markers: one for the begining and one for
+ * the end. The initial marker contains the number of repetitions, the number of
+ * elements in the loop, and the extent of each loop. The end marker contains in
+ * addition to the number of elements (so that we can easily pair together the
+ * two markers), the size of the data contained inside and the displacement of
+ * the first element.
+ */
 struct ddt_loop_desc {
     ddt_elem_id_description common;           /**< basic data description and flags */
     uint32_t                loops;            /**< number of elements */
@@ -230,50 +235,11 @@ struct opal_datatype_t;
  * into
  *     OPAL_DATATYPE_INIT_BTYPES_ARRAY_[0-21], then order and naming would _not_ matter....
  */
-#define Z5    0, 0, 0, 0, 0
-#define Z10   Z5, Z5
-#define Z15   Z10, Z5
-#define Z20   Z10, Z10
-#define OPAL_DATATYPE_INIT_BTYPES_ARRAY_UNAVAILABLE { 0, }
-#define OPAL_DATATYPE_INIT_BTYPES_ARRAY_LOOP        { 1, }
-#define OPAL_DATATYPE_INIT_BTYPES_ARRAY_END_LOOP    { 0, 1, }
-#define OPAL_DATATYPE_INIT_BTYPES_ARRAY_LB          { 0, 0, 1, }
-#define OPAL_DATATYPE_INIT_BTYPES_ARRAY_UB          { 0, 0, 0, 1, }
-#define OPAL_DATATYPE_INIT_BTYPES_ARRAY_INT1        { 0, 0, 0, 0, 1, }
-#define OPAL_DATATYPE_INIT_BTYPES_ARRAY_INT2        { Z5, 1, }              /*5*/
-#define OPAL_DATATYPE_INIT_BTYPES_ARRAY_INT4        { Z5, 0, 1, }
-#define OPAL_DATATYPE_INIT_BTYPES_ARRAY_INT8        { Z5, 0, 0, 1, }
-#define OPAL_DATATYPE_INIT_BTYPES_ARRAY_INT16       { Z5, 0, 0, 0, 1, }
-#define OPAL_DATATYPE_INIT_BTYPES_ARRAY_UINT1       { Z5, 0, 0, 0, 0, 1, }
-#define OPAL_DATATYPE_INIT_BTYPES_ARRAY_UINT2       { Z10, 1, }             /*10*/
-#define OPAL_DATATYPE_INIT_BTYPES_ARRAY_UINT4       { Z10, 0, 1, }
-#define OPAL_DATATYPE_INIT_BTYPES_ARRAY_UINT8       { Z10, 0, 0, 1, }
-#define OPAL_DATATYPE_INIT_BTYPES_ARRAY_UINT16      { Z10, 0, 0, 0, 1, }
-#define OPAL_DATATYPE_INIT_BTYPES_ARRAY_FLOAT2      { Z10, 0, 0, 0, 0, 1, }
-#define OPAL_DATATYPE_INIT_BTYPES_ARRAY_FLOAT4      { Z15, 1, }             /*15*/
-#define OPAL_DATATYPE_INIT_BTYPES_ARRAY_FLOAT8      { Z15, 0, 1, }
-#define OPAL_DATATYPE_INIT_BTYPES_ARRAY_FLOAT12     { Z15, 0, 0, 1, }
-#define OPAL_DATATYPE_INIT_BTYPES_ARRAY_FLOAT16     { Z15, 0, 0, 0, 1, }
-#if HAVE_FLOAT__COMPLEX
-#define OPAL_DATATYPE_INIT_BTYPES_ARRAY_COMPLEX8    { Z15, 0, 0, 0, 0, 1 }
-#else
-#define OPAL_DATATYPE_INIT_BTYPES_ARRAY_COMPLEX8    { Z15, 2 }    /* two floats */
-#endif
-#if HAVE_DOUBLE__COMPLEX
-#define OPAL_DATATYPE_INIT_BTYPES_ARRAY_COMPLEX16   { Z15, 0, 0, 0, 0, 0, 1 }
-#else
-#define OPAL_DATATYPE_INIT_BTYPES_ARRAY_COMPLEX16   { Z15, 0, 2, }
-#endif
-#if HAVE_LONG_DOUBLE__COMPLEX
-#define OPAL_DATATYPE_INIT_BTYPES_ARRAY_COMPLEX32   { Z15, 0, 0, 0, 0, 0, 0, 1 }
-#else
-#define OPAL_DATATYPE_INIT_BTYPES_ARRAY_COMPLEX32   { Z15, 0, 0, 0, 2, }
-#endif
-#define OPAL_DATATYPE_INIT_BTYPES_ARRAY_BOOL        { Z20, 0, 1, }          /*22*/
-#define OPAL_DATATYPE_INIT_BTYPES_ARRAY_WCHAR       { Z20, 0, 0, 1, }
 
-#define OPAL_DATATYPE_INIT_NAME(NAME) "OPAL_" _OPAL_DATATYPE_INIT_NAME(NAME)
-#define _OPAL_DATATYPE_INIT_NAME(NAME)  #NAME
+#define OPAL_DATATYPE_INIT_BTYPES_ARRAY_UNAVAILABLE { 0 }
+#define OPAL_DATATYPE_INIT_BTYPES_ARRAY(NAME) { [OPAL_DATATYPE_ ## NAME] = 1 }
+
+#define OPAL_DATATYPE_INIT_NAME(NAME) "OPAL_" #NAME
 
 /*
  * Macro to initialize the main description for basic types, setting the pointer
@@ -282,76 +248,76 @@ struct opal_datatype_t;
  */
 #define OPAL_DATATYPE_INIT_DESC_PREDEFINED(NAME)                                     \
     {                                                                                \
-        1 /*length*/, 1/*used*/,                                                     \
-        &(opal_datatype_predefined_elem_desc[2 * OPAL_DATATYPE_ ## NAME]) /*desc*/   \
+        .length = 1, .used = 1,                                                      \
+        .desc = &(opal_datatype_predefined_elem_desc[2 * OPAL_DATATYPE_ ## NAME])    \
     }
-#define OPAL_DATATYPE_INIT_DESC_NULL  {0 /*length*/, 0/*used*/, NULL /*desc*/}
+#define OPAL_DATATYPE_INIT_DESC_NULL  {.length = 0, .used = 0, .desc = NULL}
 
 #define OPAL_DATATYPE_INITIALIZER_UNAVAILABLE_NAMED( NAME, FLAGS )                   \
     {                                                                                \
-        OPAL_OBJ_STATIC_INIT(opal_datatype_t),                                       \
-        OPAL_DATATYPE_FLAG_UNAVAILABLE | OPAL_DATATYPE_FLAG_PREDEFINED | (FLAGS) /*flag*/, \
-        OPAL_DATATYPE_ ## NAME /*id*/,                                               \
-        0 /*bdt_used*/,                                                              \
-        0 /*size*/,                                                                  \
-        0 /*true_lb*/, 0 /*true_ub*/, 0 /*lb*/, 0 /*ub*/,                            \
-        0 /*align*/,                                                                 \
-        1 /*nbElems*/,                                                               \
-        OPAL_DATATYPE_INIT_NAME(NAME), /*name*/                                      \
-        OPAL_DATATYPE_INIT_DESC_PREDEFINED(UNAVAILABLE), /*desc*/                    \
-        OPAL_DATATYPE_INIT_DESC_PREDEFINED(UNAVAILABLE), /*opt_desc*/                \
-        OPAL_DATATYPE_INIT_BTYPES_ARRAY_UNAVAILABLE /*btypes*/                       \
+        .super = OPAL_OBJ_STATIC_INIT(opal_datatype_t),                              \
+        .flags = OPAL_DATATYPE_FLAG_UNAVAILABLE | OPAL_DATATYPE_FLAG_PREDEFINED | (FLAGS), \
+        .id = OPAL_DATATYPE_ ## NAME,                                                \
+        .bdt_used = 0,                                                               \
+        .size = 0,                                                                   \
+        .true_lb = 0, .true_ub = 0, .lb = 0, .ub = 0,                                \
+        .align = 0,                                                                  \
+        .nbElems = 1,                                                                \
+        .name = OPAL_DATATYPE_INIT_NAME(NAME),                                       \
+        .desc = OPAL_DATATYPE_INIT_DESC_PREDEFINED(UNAVAILABLE),                     \
+        .opt_desc = OPAL_DATATYPE_INIT_DESC_PREDEFINED(UNAVAILABLE),                 \
+        .btypes = OPAL_DATATYPE_INIT_BTYPES_ARRAY_UNAVAILABLE                        \
     }
 
 #define OPAL_DATATYPE_INITIALIZER_UNAVAILABLE( FLAGS )                               \
     OPAL_DATATYPE_INITIALIZER_UNAVAILABLE_NAMED( UNAVAILABLE, (FLAGS) )
 
-#define OPAL_DATATYPE_INITIALIZER_EMPTY( FLAGS )                                     \
-    {                                                                                \
-        OPAL_OBJ_STATIC_INIT(opal_datatype_t),                                       \
-        OPAL_DATATYPE_FLAG_PREDEFINED | (FLAGS) /*flag*/,                            \
-        0 /*id*/,                                                                    \
-        0 /*bdt_used*/,                                                              \
-        0 /*size*/,                                                                  \
-        0 /*true_lb*/, 0 /*true_ub*/, 0 /*lb*/, 0 /*ub*/,                            \
-        0 /*align*/,                                                                 \
-        1 /*nbElems*/,                                                               \
-        OPAL_DATATYPE_INIT_NAME(EMPTY), /*name*/                                     \
-        OPAL_DATATYPE_INIT_DESC_NULL, /*desc*/                                       \
-        OPAL_DATATYPE_INIT_DESC_NULL, /*opt_desc*/                                   \
-        OPAL_DATATYPE_INIT_BTYPES_ARRAY_UNAVAILABLE /*btypes*/                       \
+#define OPAL_DATATYPE_INITIALIZER_EMPTY( FLAGS )                        \
+    {                                                                   \
+        .super = OPAL_OBJ_STATIC_INIT(opal_datatype_t),                 \
+        .flags = OPAL_DATATYPE_FLAG_PREDEFINED | (FLAGS),               \
+        .id = 0,                                                        \
+        .bdt_used = 0,                                                  \
+        .size = 0,                                                      \
+        .true_lb = 0, .true_ub = 0, .lb = 0, .ub = 0,                   \
+        .align = 0,                                                     \
+        .nbElems = 1,                                                   \
+        .name = OPAL_DATATYPE_INIT_NAME(EMPTY),                         \
+        .desc = OPAL_DATATYPE_INIT_DESC_NULL,                           \
+        .opt_desc = OPAL_DATATYPE_INIT_DESC_NULL,                       \
+        .btypes = OPAL_DATATYPE_INIT_BTYPES_ARRAY_UNAVAILABLE           \
     }
 
-#define OPAL_DATATYPE_INIT_BASIC_TYPE( TYPE, NAME, FLAGS )                           \
-    {                                                                                \
-        OPAL_OBJ_STATIC_INIT(opal_datatype_t),                                       \
-        OPAL_DATATYPE_FLAG_PREDEFINED | (FLAGS) /*flag*/,                            \
-        TYPE /*id*/,                                                                 \
-        (((uint32_t)1)<<(TYPE)) /*bdt_used*/,                                        \
-        0 /*size*/,                                                                  \
-        0 /*true_lb*/, 0 /*true_ub*/, 0 /*lb*/, 0 /*ub*/,                            \
-        0 /*align*/,                                                                 \
-        1 /*nbElems*/,                                                               \
-        OPAL_DATATYPE_INIT_NAME(NAME), /*name*/                                      \
-        OPAL_DATATYPE_INIT_DESC_NULL, /*desc*/                                       \
-        OPAL_DATATYPE_INIT_DESC_NULL, /*opt_desc*/                                   \
-        OPAL_DATATYPE_INIT_BTYPES_ARRAY_ ## NAME /*btypes*/                          \
+#define OPAL_DATATYPE_INIT_BASIC_TYPE( TYPE, NAME, FLAGS )              \
+    {                                                                   \
+        .super = OPAL_OBJ_STATIC_INIT(opal_datatype_t),                 \
+        .flags = OPAL_DATATYPE_FLAG_PREDEFINED | (FLAGS),               \
+        .id = TYPE,                                                     \
+        .bdt_used = (((uint32_t)1)<<(TYPE)),                            \
+        .size = 0,                                                      \
+        .true_lb = 0, .true_ub = 0, .lb = 0, .ub = 0,                   \
+        .align = 0,                                                     \
+        .nbElems = 1,                                                   \
+        .name = OPAL_DATATYPE_INIT_NAME(NAME),                          \
+        .desc = OPAL_DATATYPE_INIT_DESC_NULL,                           \
+        .opt_desc = OPAL_DATATYPE_INIT_DESC_NULL,                       \
+        .btypes = OPAL_DATATYPE_INIT_BTYPES_ARRAY(NAME)                 \
     }
 
 #define OPAL_DATATYPE_INIT_BASIC_DATATYPE( TYPE, ALIGN, NAME, FLAGS )                \
     {                                                                                \
-        OPAL_OBJ_STATIC_INIT(opal_datatype_t),                                       \
-        OPAL_DATATYPE_FLAG_BASIC | (FLAGS) /*flag*/,                                 \
-        OPAL_DATATYPE_ ## NAME /*id*/,                                               \
-        (((uint32_t)1)<<(OPAL_DATATYPE_ ## NAME)) /*bdt_used*/,                      \
-        sizeof(TYPE) /*size*/,                                                       \
-        0 /*true_lb*/, sizeof(TYPE) /*true_ub*/, 0 /*lb*/, sizeof(TYPE) /*ub*/,      \
-        (ALIGN) /*align*/,                                                           \
-        1 /*nbElems*/,                                                               \
-        OPAL_DATATYPE_INIT_NAME(NAME) /*name*/,                                      \
-        OPAL_DATATYPE_INIT_DESC_PREDEFINED(NAME) /*desc*/,                           \
-        OPAL_DATATYPE_INIT_DESC_PREDEFINED(NAME) /*opt_desc*/,                       \
-        OPAL_DATATYPE_INIT_BTYPES_ARRAY_ ## NAME /*btypes*/                          \
+        .super = OPAL_OBJ_STATIC_INIT(opal_datatype_t),                              \
+        .flags = OPAL_DATATYPE_FLAG_BASIC | (FLAGS),                                 \
+        .id = OPAL_DATATYPE_ ## NAME,                                                \
+        .bdt_used = (((uint32_t)1)<<(OPAL_DATATYPE_ ## NAME)),                       \
+        .size = sizeof(TYPE),                                                        \
+        .true_lb = 0, .true_ub = sizeof(TYPE), .lb = 0, .ub = sizeof(TYPE),          \
+        .align = (ALIGN),                                                            \
+        .nbElems = 1,                                                                \
+        .name = OPAL_DATATYPE_INIT_NAME(NAME),                                       \
+        .desc = OPAL_DATATYPE_INIT_DESC_PREDEFINED(NAME),                            \
+        .opt_desc = OPAL_DATATYPE_INIT_DESC_PREDEFINED(NAME),                        \
+        .btypes = OPAL_DATATYPE_INIT_BTYPES_ARRAY(NAME)                              \
     }
 
 #define OPAL_DATATYPE_INITIALIZER_LOOP(FLAGS)       OPAL_DATATYPE_INIT_BASIC_TYPE( OPAL_DATATYPE_LOOP, LOOP, FLAGS )
@@ -381,7 +347,7 @@ struct opal_datatype_t;
 #define OPAL_DATATYPE_INITIALIZER_FLOAT2(FLAGS)     OPAL_DATATYPE_INIT_BASIC_DATATYPE( float, OPAL_ALIGNMENT_FLOAT, FLOAT2, FLAGS )
 #elif SIZEOF_DOUBLE == 2
 #define OPAL_DATATYPE_INITIALIZER_FLOAT2(FLAGS)     OPAL_DATATYPE_INIT_BASIC_DATATYPE( double, OPAL_ALIGNMENT_DOUBLE, FLOAT2, FLAGS )
-#elif SIZEOF_LONG_DOUBLE == 2
+#elif HAVE_LONG_DOUBLE && SIZEOF_LONG_DOUBLE == 2
 #define OPAL_DATATYPE_INITIALIZER_FLOAT2(FLAGS)     OPAL_DATATYPE_INIT_BASIC_DATATYPE( long double, OPAL_ALIGNMENT_LONG_DOUBLE, FLOAT2, FLAGS )
 #else
 #define OPAL_DATATYPE_INITIALIZER_FLOAT2(FLAGS)     OPAL_DATATYPE_INITIALIZER_UNAVAILABLE_NAMED( FLOAT2, FLAGS )
@@ -391,7 +357,7 @@ struct opal_datatype_t;
 #define OPAL_DATATYPE_INITIALIZER_FLOAT4(FLAGS)     OPAL_DATATYPE_INIT_BASIC_DATATYPE( float, OPAL_ALIGNMENT_FLOAT, FLOAT4, FLAGS )
 #elif SIZEOF_DOUBLE == 4
 #define OPAL_DATATYPE_INITIALIZER_FLOAT4(FLAGS)     OPAL_DATATYPE_INIT_BASIC_DATATYPE( double, OPAL_ALIGNMENT_DOUBLE, FLOAT4, FLAGS )
-#elif SIZEOF_LONG_DOUBLE == 4
+#elif HAVE_LONG_DOUBLE && SIZEOF_LONG_DOUBLE == 4
 #define OPAL_DATATYPE_INITIALIZER_FLOAT4(FLAGS)     OPAL_DATATYPE_INIT_BASIC_DATATYPE( long double, OPAL_ALIGNMENT_LONG_DOUBLE, FLOAT4, FLAGS )
 #else
 #define OPAL_DATATYPE_INITIALIZER_FLOAT4(FLAGS)     OPAL_DATATYPE_INITIALIZER_UNAVAILABLE_NAMED( FLOAT4, FLAGS )
@@ -401,7 +367,7 @@ struct opal_datatype_t;
 #define OPAL_DATATYPE_INITIALIZER_FLOAT8(FLAGS)     OPAL_DATATYPE_INIT_BASIC_DATATYPE( float, OPAL_ALIGNMENT_FLOAT, FLOAT8, FLAGS )
 #elif SIZEOF_DOUBLE == 8
 #define OPAL_DATATYPE_INITIALIZER_FLOAT8(FLAGS)     OPAL_DATATYPE_INIT_BASIC_DATATYPE( double, OPAL_ALIGNMENT_DOUBLE, FLOAT8, FLAGS )
-#elif SIZEOF_LONG_DOUBLE == 8
+#elif HAVE_LONG_DOUBLE && SIZEOF_LONG_DOUBLE == 8
 #define OPAL_DATATYPE_INITIALIZER_FLOAT8(FLAGS)     OPAL_DATATYPE_INIT_BASIC_DATATYPE( long double, OPAL_ALIGNMENT_LONG_DOUBLE, FLOAT8, FLAGS )
 #else
 #define OPAL_DATATYPE_INITIALIZER_FLOAT8(FLAGS)     OPAL_DATATYPE_INITIALIZER_UNAVAILABLE_NAMED( FLOAT8, FLAGS )
@@ -411,7 +377,7 @@ struct opal_datatype_t;
 #define OPAL_DATATYPE_INITIALIZER_FLOAT12(FLAGS)    OPAL_DATATYPE_INIT_BASIC_DATATYPE( float, OPAL_ALIGNMENT_FLOAT, FLOAT12, FLAGS )
 #elif SIZEOF_DOUBLE == 12
 #define OPAL_DATATYPE_INITIALIZER_FLOAT12(FLAGS)    OPAL_DATATYPE_INIT_BASIC_DATATYPE( double, OPAL_ALIGNMENT_DOUBLE, FLOAT12, FLAGS )
-#elif SIZEOF_LONG_DOUBLE == 12
+#elif HAVE_LONG_DOUBLE && SIZEOF_LONG_DOUBLE == 12
 #define OPAL_DATATYPE_INITIALIZER_FLOAT12(FLAGS)    OPAL_DATATYPE_INIT_BASIC_DATATYPE( long double, OPAL_ALIGNMENT_LONG_DOUBLE, FLOAT12, FLAGS )
 #else
 #define OPAL_DATATYPE_INITIALIZER_FLOAT12(FLAGS)    OPAL_DATATYPE_INITIALIZER_UNAVAILABLE_NAMED( FLOAT12, FLAGS )
@@ -421,115 +387,29 @@ struct opal_datatype_t;
 #define OPAL_DATATYPE_INITIALIZER_FLOAT16(FLAGS)    OPAL_DATATYPE_INIT_BASIC_DATATYPE( float, OPAL_ALIGNMENT_FLOAT, FLOAT16, FLAGS )
 #elif SIZEOF_DOUBLE == 16
 #define OPAL_DATATYPE_INITIALIZER_FLOAT16(FLAGS)    OPAL_DATATYPE_INIT_BASIC_DATATYPE( double, OPAL_ALIGNMENT_DOUBLE, FLOAT16, FLAGS )
-#elif SIZEOF_LONG_DOUBLE == 16
+#elif HAVE_LONG_DOUBLE && SIZEOF_LONG_DOUBLE == 16
 #define OPAL_DATATYPE_INITIALIZER_FLOAT16(FLAGS)    OPAL_DATATYPE_INIT_BASIC_DATATYPE( long double, OPAL_ALIGNMENT_LONG_DOUBLE, FLOAT16, FLAGS )
 #else
 #define OPAL_DATATYPE_INITIALIZER_FLOAT16(FLAGS)    OPAL_DATATYPE_INITIALIZER_UNAVAILABLE_NAMED( FLOAT16, FLAGS )
 #endif
 
-/*
- * Until we figure out the whole logic behing the _Complex type, disable it. It only exists
- * in C99 (i.e. __STDC_VERSION__ >= 199901L) but [evidently] not all compilers correctly
- * export the __STDC_VERSION__.
- * http://predef.sourceforge.net/prestd.html for more info.
- */
-
-#define OPAL_USE_FLOAT__COMPLEX       (0 && HAVE_FLOAT__COMPLEX)
-#define OPAL_USE_DOUBLE__COMPLEX      (0 && HAVE_DOUBLE__COMPLEX)
-#define OPAL_USE_LONG_DOUBLE__COMPLEX (0 && HAVE_LONG_DOUBLE__COMPLEX)
-
-#if OPAL_USE_FLOAT__COMPLEX && (SIZEOF_FLOAT__COMPLEX == 8)
-#define OPAL_DATATYPE_INITIALIZER_COMPLEX8(FLAGS)   OPAL_DATATYPE_INIT_BASIC_DATATYPE( float _Complex, OPAL_ALIGNMENT_FLOAT_COMPLEX, COMPLEX8, (FLAGS) )
+#if HAVE_FLOAT__COMPLEX
+#define OPAL_DATATYPE_INITIALIZER_FLOAT_COMPLEX(FLAGS) OPAL_DATATYPE_INIT_BASIC_DATATYPE( float _Complex, OPAL_ALIGNMENT_FLOAT_COMPLEX, FLOAT_COMPLEX, FLAGS )
 #else
-
-#if SIZEOF_FLOAT == 4
-typedef struct {
-    float r;
-    float i;
-} opal_complex_float_t;
-
-#define OPAL_DATATYPE_INITIALIZER_COMPLEX8( FLAGS )                     \
-    {                                                                   \
-        OPAL_OBJ_STATIC_INIT(opal_datatype_t),                          \
-        OPAL_DATATYPE_FLAG_BASIC | (FLAGS) /*flag*/,                    \
-        OPAL_DATATYPE_COMPLEX8 /*id*/,                                  \
-        (((uint32_t)1)<<(OPAL_DATATYPE_ ## FLOAT4)) /*bdt_used*/,       \
-        sizeof(opal_complex_float_t) /*size*/,                          \
-        0 /*true_lb*/, sizeof(opal_complex_float_t) /*true_ub*/, 0 /*lb*/, sizeof(opal_complex_float_t) /*ub*/, \
-        OPAL_ALIGNMENT_FLOAT /*align*/,                                 \
-        2 /*nbElems*/,                                                  \
-        OPAL_DATATYPE_INIT_NAME(COMPLEX8) /*name*/,                     \
-        OPAL_DATATYPE_INIT_DESC_PREDEFINED(COMPLEX8) /*desc*/,          \
-        OPAL_DATATYPE_INIT_DESC_PREDEFINED(COMPLEX8) /*opt_desc*/,      \
-        {Z15, 2, } /*btypes*/                                           \
-    }
-#else
-#define OPAL_DATATYPE_INITIALIZER_COMPLEX8(FLAGS)  OPAL_DATATYPE_INITIALIZER_UNAVAILABLE_NAMED( COMPLEX8, FLAGS )
+#define OPAL_DATATYPE_INITIALIZER_FLOAT_COMPLEX(FLAGS) OPAL_DATATYPE_INITIALIZER_UNAVAILABLE_NAMED( FLOAT_COMPLEX, FLAGS)
 #endif
 
-#endif  /* HAVE_FLOAT__COMPLEX */
-
-#if OPAL_USE_DOUBLE__COMPLEX && (SIZEOF_DOUBLE__COMPLEX == 16)
-#define OPAL_DATATYPE_INITIALIZER_COMPLEX16(FLAGS)  OPAL_DATATYPE_INIT_BASIC_DATATYPE( double _Complex, OPAL_ALIGNMENT_DOUBLE_COMPLEX, COMPLEX16, (FLAGS) )
+#if HAVE_DOUBLE__COMPLEX
+#define OPAL_DATATYPE_INITIALIZER_DOUBLE_COMPLEX(FLAGS) OPAL_DATATYPE_INIT_BASIC_DATATYPE( double _Complex, OPAL_ALIGNMENT_DOUBLE_COMPLEX, DOUBLE_COMPLEX, FLAGS )
 #else
-
-#if SIZEOF_DOUBLE == 8
-typedef struct {
-    double r;
-    double i;
-} opal_complex_double_t;
-
-#define OPAL_DATATYPE_INITIALIZER_COMPLEX16( FLAGS )                    \
-    {                                                                   \
-        OPAL_OBJ_STATIC_INIT(opal_datatype_t),                          \
-        OPAL_DATATYPE_FLAG_BASIC | (FLAGS) /*flag*/,                    \
-        OPAL_DATATYPE_COMPLEX16 /*id*/,                                 \
-        (((uint32_t)1)<<(OPAL_DATATYPE_ ## FLOAT8)) /*bdt_used*/,       \
-        sizeof(opal_complex_double_t) /*size*/,                         \
-        0 /*true_lb*/, sizeof(opal_complex_double_t) /*true_ub*/, 0 /*lb*/, sizeof(opal_complex_double_t) /*ub*/, \
-        OPAL_ALIGNMENT_DOUBLE /*align*/,                                \
-        2 /*nbElems*/,                                                  \
-        OPAL_DATATYPE_INIT_NAME(COMPLEX16) /*name*/,                    \
-        OPAL_DATATYPE_INIT_DESC_PREDEFINED(COMPLEX16) /*desc*/,         \
-        OPAL_DATATYPE_INIT_DESC_PREDEFINED(COMPLEX16) /*opt_desc*/,     \
-        {Z15, 2, } /*btypes*/                                           \
-    }
-#else
-#define OPAL_DATATYPE_INITIALIZER_COMPLEX16(FLAGS) OPAL_DATATYPE_INITIALIZER_UNAVAILABLE_NAMED( COMPLEX16, FLAGS )
+#define OPAL_DATATYPE_INITIALIZER_DOUBLE_COMPLEX(FLAGS) OPAL_DATATYPE_INITIALIZER_UNAVAILABLE_NAMED( DOUBLE_COMPLEX, FLAGS)
 #endif
 
-#endif  /* HAVE_DOUBLE__COMPLEX */
-
-#if OPAL_USE_LONG_DOUBLE__COMPLEX && (SIZEOF_LONG_DOUBLE__COMPLEX == 32)
-#define OPAL_DATATYPE_INITIALIZER_COMPLEX32(FLAGS)   OPAL_DATATYPE_INIT_BASIC_DATATYPE( long double _Complex, OPAL_ALIGNMENT_LONG_DOUBLE_COMPLEX, COMPLEX32, (FLAGS) )
+#if HAVE_LONG_DOUBLE__COMPLEX
+#define OPAL_DATATYPE_INITIALIZER_LONG_DOUBLE_COMPLEX(FLAGS) OPAL_DATATYPE_INIT_BASIC_DATATYPE( long double _Complex, OPAL_ALIGNMENT_LONG_DOUBLE_COMPLEX, LONG_DOUBLE_COMPLEX, FLAGS )
 #else
-
-#if HAVE_LONG_DOUBLE && (SIZEOF_LONG_DOUBLE == 16)
-typedef struct {
-    long double r;
-    long double i;
-} opal_complex_long_double_t;
-
-#define OPAL_DATATYPE_INITIALIZER_COMPLEX32( FLAGS )                    \
-    {                                                                   \
-        OPAL_OBJ_STATIC_INIT(opal_datatype_t),                          \
-        OPAL_DATATYPE_FLAG_BASIC | (FLAGS) /*flag*/,                    \
-        OPAL_DATATYPE_COMPLEX32 /*id*/,                                 \
-        (((uint32_t)1)<<(OPAL_DATATYPE_ ## FLOAT16)) /*bdt_used*/,      \
-        sizeof(opal_complex_long_double_t) /*size*/,                    \
-        0 /*true_lb*/, sizeof(opal_complex_long_double_t) /*true_ub*/, 0 /*lb*/, sizeof(opal_complex_long_double_t) /*ub*/, \
-        OPAL_ALIGNMENT_LONG_DOUBLE /*align*/,                           \
-        2 /*nbElems*/,                                                  \
-        OPAL_DATATYPE_INIT_NAME(COMPLEX32) /*name*/,                    \
-        OPAL_DATATYPE_INIT_DESC_PREDEFINED(COMPLEX32) /*desc*/,         \
-        OPAL_DATATYPE_INIT_DESC_PREDEFINED(COMPLEX32) /*opt_desc*/,     \
-        {Z15, 2, } /*btypes*/                                           \
-    }
-#else
-#define OPAL_DATATYPE_INITIALIZER_COMPLEX32(FLAGS) OPAL_DATATYPE_INITIALIZER_UNAVAILABLE_NAMED( COMPLEX32, FLAGS )
+#define OPAL_DATATYPE_INITIALIZER_LONG_DOUBLE_COMPLEX(FLAGS) OPAL_DATATYPE_INITIALIZER_UNAVAILABLE_NAMED( LONG_DOUBLE_COMPLEX, FLAGS)
 #endif
-
-#endif  /* HAVE_LONG_DOUBLE__COMPLEX */
 
 #define OPAL_DATATYPE_INITIALIZER_BOOL(FLAGS)       OPAL_DATATYPE_INIT_BASIC_DATATYPE( _Bool, OPAL_ALIGNMENT_BOOL, BOOL, FLAGS )
 
@@ -538,7 +418,6 @@ typedef struct {
 #else
 #define OPAL_DATATYPE_INITIALIZER_WCHAR(FLAGS)      OPAL_DATATYPE_INITIALIZER_UNAVAILABLE_NAMED( WCHAR, FLAGS )
 #endif
-
 
 #define BASIC_DDT_FROM_ELEM( ELEM ) (opal_datatype_basicDatatypes[(ELEM).elem.common.type])
 
@@ -568,9 +447,9 @@ do { \
             ((PDATA)->ub - (PDATA)->lb) * ((COUNT) - 1);                \
         if( ((ACTPTR) < __lower_bound) || ((ACTPTR) >= __upper_bound) ) { \
             opal_datatype_safeguard_pointer_debug_breakpoint( (ACTPTR), (LENGTH), (INITPTR), (PDATA), (COUNT) ); \
-            opal_output( 0, "%s:%d\n\tPointer %p size %lu is outside [%p,%p] for\n\tbase ptr %p count %d and data \n", \
+            opal_output( 0, "%s:%d\n\tPointer %p size %lu is outside [%p,%p] for\n\tbase ptr %p count %lu and data \n", \
                          __FILE__, __LINE__, (ACTPTR), (unsigned long)(LENGTH), __lower_bound, __upper_bound, \
-                         (INITPTR), (COUNT) );                          \
+                         (INITPTR), (unsigned long)(COUNT) );                          \
             opal_datatype_dump( (PDATA) );                                   \
         }                                                               \
     }
@@ -601,6 +480,11 @@ static inline int GET_FIRST_NON_LOOP( const union dt_elem_desc* _pElem )
 OPAL_DECLSPEC int opal_datatype_contain_basic_datatypes( const struct opal_datatype_t* pData, char* ptr, size_t length );
 OPAL_DECLSPEC int opal_datatype_dump_data_flags( unsigned short usflags, char* ptr, size_t length );
 OPAL_DECLSPEC int opal_datatype_dump_data_desc( union dt_elem_desc* pDesc, int nbElems, char* ptr, size_t length );
+
+#if OPAL_ENABLE_DEBUG
+extern bool opal_position_debug;
+extern bool opal_copy_debug;
+#endif  /* OPAL_ENABLE_DEBUG */
 
 END_C_DECLS
 #endif  /* OPAL_DATATYPE_INTERNAL_H_HAS_BEEN_INCLUDED */

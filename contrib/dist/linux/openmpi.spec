@@ -5,15 +5,19 @@
 # Copyright (c) 2004-2005 The University of Tennessee and The University
 #                         of Tennessee Research Foundation.  All rights
 #                         reserved.
-# Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+# Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
 #                         University of Stuttgart.  All rights reserved.
 # Copyright (c) 2004-2005 The Regents of the University of California.
 #                         All rights reserved.
-# Copyright (c) 2006-2012 Cisco Systems, Inc.  All rights reserved.
+# Copyright (c) 2006-2016 Cisco Systems, Inc.  All rights reserved.
+# Copyright (c) 2013      Mellanox Technologies, Inc.
+#                         All rights reserved.
+# Copyright (c) 2015      Research Organization for Information Science
+#                         and Technology (RIST). All rights reserved.
 # $COPYRIGHT$
-# 
+#
 # Additional copyrights may follow
-# 
+#
 # $HEADER$
 #
 ############################################################################
@@ -37,7 +41,7 @@
 # token is the name of the variable to define, and all remaining tokens
 # are the value.  For example:
 #
-# shell$ rpmbuild ... --define 'ofed 1' ...
+# shell$ rpmbuild ... --define 'install_in_opt 1' ...
 #
 # Or (a multi-token example):
 #
@@ -46,12 +50,8 @@
 #
 #############################################################################
 
-# Help for OFED RPMs
-
-%{!?ofed: %define ofed 0}
-
-# Define this if you want to make this SRPM build in /opt/NAME/VERSION-RELEASE
-# instead of the default /usr/
+# Define this if you want to make this SRPM build in
+# /opt/NAME/VERSION-RELEASE instead of the default /usr/.
 # type: bool (0/1)
 %{!?install_in_opt: %define install_in_opt 0}
 
@@ -75,6 +75,7 @@
 %{!?modulefile_name: %define modulefile_name %{version}}
 
 # The name of the modules RPM.  Can vary from system to system.
+# RHEL6 calls it "environment-modules".
 # type: string (name of modules RPM)
 %{!?modules_rpm_name: %define modules_rpm_name environment-modules}
 
@@ -99,18 +100,10 @@
 
 # Should we use the default "check_files" RPM step (i.e., check for
 # unpackaged files)?  It is discouraged to disable this, but some
-# installers need it (e.g., OFED, because it installs lots of other
-# stuff in the BUILD_ROOT before Open MPI).
+# installers need it (e.g., older versions of OFED, because they
+# installed lots of other stuff in the BUILD_ROOT before Open MPI/SHMEM).
 # type: bool (0/1)
 %{!?use_check_files: %define use_check_files 1}
-
-# Should we use the traditional % build and % install sections?  Or
-# should we combine them both into % install?  This is entirely
-# motivated by the OFED installer where, on SLES, the % build macro
-# will completely remove the BUILD_ROOT before building (which breaks
-# some assumptions in the OFED installer).  Ick!
-# type: bool (0/1)
-%{!?munge_build_into_install: %define munge_build_into_install 0}
 
 # By default, RPM supplies a bunch of optimization flags, some of
 # which may not work with non-gcc compilers.  We attempt to weed some
@@ -133,7 +126,7 @@
 # type: bool (0/1)
 %{!?disable_auto_requires: %define disable_auto_requires 0}
 
-# On some platforms, Open MPI just flat-out doesn't work with
+# On some platforms, Open MPI/SHMEM just flat-out doesn't work with
 # -D_FORTIFY_SOURCE (e.g., some users have reported that there are
 # problems on ioa64 platforms).  In this case, just turn it off
 # (meaning: this specfile will strip out that flag from the
@@ -143,23 +136,9 @@
 # type: bool (0/1)
 %{!?allow_fortify_source: %define allow_fortify_source 1}
 
-#############################################################################
-#
-# OFED-specific defaults
-#
-# Tailored for the peculiar requirements of the OFED installer; not
-# necessary for when building this SRPM outside of the OFED installer.
-#
-#############################################################################
-
-%if %{ofed}
-%define use_check_files 0
-%define install_shell_scripts 1
-%define shell_scripts_basename mpivars
-%define munge_build_into_install 1
-%define use_mpi_selector 1
-%endif
-
+# Select md5 packing algorithm, that src.rpm created on one distro can be read on another.
+%global _binary_filedigest_algorithm 1
+%global _source_filedigest_algorithm 1
 
 #############################################################################
 #
@@ -223,10 +202,10 @@
 #
 #############################################################################
 
-Summary: A powerful implementation of MPI
+Summary: A powerful implementation of MPI/SHMEM
 Name: %{?_name:%{_name}}%{!?_name:openmpi}
 Version: $VERSION
-Release: 1
+Release: 1%{?dist}
 License: BSD
 Group: Development/Libraries
 Source: openmpi-%{version}.tar.$EXTENSION
@@ -235,6 +214,7 @@ Vendor: %{?_vendorinfo:%{_vendorinfo}}%{!?_vendorinfo:%{_vendor}}
 Distribution: %{?_distribution:%{_distribution}}%{!?_distribution:%{_vendor}}
 Prefix: %{_prefix}
 Provides: mpi
+Provides: openmpi = %{version}
 BuildRoot: /var/tmp/%{name}-%{version}-%{release}-root
 %if %{disable_auto_requires}
 AutoReq: no
@@ -247,12 +227,19 @@ Requires: %{mpi_selector_rpm_name}
 %endif
 
 %description
-Open MPI is a project combining technologies and resources from
-several other projects (FT-MPI, LA-MPI, LAM/MPI, and PACX-MPI) in
-order to build the best MPI library available.
+Open MPI is an open source implementation of the Message Passing
+Interface specification (http://www.mpi-forum.org/) developed and
+maintained by a consortium of research, academic, and industry
+partners.
+
+Open MPI also includes an implementation of the OpenSHMEM parallel
+programming API (http://www.openshmem.org/).  OpenSHMEM is a
+Partitioned Global Address Space (PGAS) abstraction layer, which
+provides fast inter-process communication using one-sided
+communication techniques.
 
 This RPM contains all the tools necessary to compile, link, and run
-Open MPI jobs.
+Open MPI and OpenSHMEM jobs.
 
 %if !%{build_all_in_one_rpm}
 
@@ -263,9 +250,11 @@ Open MPI jobs.
 #############################################################################
 
 %package runtime
-Summary: Tools and plugin modules for running Open MPI jobs
+Summary: Tools and plugin modules for running Open MPI/SHMEM jobs
 Group: Development/Libraries
 Provides: mpi
+Provides: openmpi = %{version}
+Provides: openmpi-runtime = %{version}
 %if %{disable_auto_requires}
 AutoReq: no
 %endif
@@ -274,13 +263,20 @@ Requires: %{modules_rpm_name}
 %endif
 
 %description runtime
-Open MPI is a project combining technologies and resources from several other
-projects (FT-MPI, LA-MPI, LAM/MPI, and PACX-MPI) in order to build the best
-MPI library available.
+Open MPI is an open source implementation of the Message Passing
+Interface specification (http://www.mpi-forum.org/) developed and
+maintained by a consortium of research, academic, and industry
+partners.
+
+Open MPI also includes an implementation of the OpenSHMEM parallel
+programming API (http://www.openshmem.org/).  OpenSHMEM is a
+Partitioned Global Address Space (PGAS) abstraction layer, which
+provides fast inter-process communication using one-sided
+communication techniques.
 
 This subpackage provides general tools (mpirun, mpiexec, etc.) and the
 Module Component Architecture (MCA) base and plugins necessary for
-running Open MPI jobs.
+running Open MPI/OpenSHMEM jobs.
 
 %endif
 
@@ -291,20 +287,29 @@ running Open MPI jobs.
 #############################################################################
 
 %package devel
-Summary: Development tools and header files for Open MPI
+Summary: Development tools and header files for Open MPI/SHMEM
 Group: Development/Libraries
 %if %{disable_auto_requires}
 AutoReq: no
 %endif
+Provides: openmpi-devel = %{version}
 Requires: %{name}-runtime
 
 %description devel
-Open MPI is a project combining technologies and resources from
-several other projects (FT-MPI, LA-MPI, LAM/MPI, and PACX-MPI) in
-order to build the best MPI library available.
+Open MPI is an open source implementation of the Message Passing
+Interface specification (http://www.mpi-forum.org/) developed and
+maintained by a consortium of research, academic, and industry
+partners.
 
-This subpackage provides the development files for Open MPI, such as
-wrapper compilers and header files for MPI development.
+Open MPI also includes an implementation of the OpenSHMEM parallel
+programming API (http://www.openshmem.org/).  OpenSHMEM is a
+Partitioned Global Address Space (PGAS) abstraction layer, which
+provides fast inter-process communication using one-sided
+communication techniques.
+
+This subpackage provides the development files for Open MPI/OpenSHMEM,
+such as wrapper compilers and header files for MPI/OpenSHMEM
+development.
 
 #############################################################################
 #
@@ -313,19 +318,27 @@ wrapper compilers and header files for MPI development.
 #############################################################################
 
 %package docs
-Summary: Documentation for Open MPI
+Summary: Documentation for Open MPI/SHMEM
 Group: Development/Documentation
 %if %{disable_auto_requires}
 AutoReq: no
 %endif
+Provides: openmpi-docs = %{version}
 Requires: %{name}-runtime
 
 %description docs
-Open MPI is a project combining technologies and resources from several other
-projects (FT-MPI, LA-MPI, LAM/MPI, and PACX-MPI) in order to build the best
-MPI library available.
+Open MPI is an open source implementation of the Message Passing
+Interface specification (http://www.mpi-forum.org/) developed and
+maintained by a consortium of research, academic, and industry
+partners.
 
-This subpackage provides the documentation for Open MPI.
+Open MPI also includes an implementation of the OpenSHMEM parallel
+programming API (http://www.openshmem.org/).  OpenSHMEM is a
+Partitioned Global Address Space (PGAS) abstraction layer, which
+provides fast inter-process communication using one-sided
+communication techniques.
+
+This subpackage provides the documentation for Open MPI/OpenSHMEM.
 
 #############################################################################
 #
@@ -347,12 +360,7 @@ rm -rf $RPM_BUILD_ROOT
 #
 #############################################################################
 
-# See note above about %{munge_build_into_install}
-%if %{munge_build_into_install}
-%install
-%else
 %build
-%endif
 
 # rpmbuild processes seem to be geared towards the GNU compilers --
 # they pass in some flags that will only work with gcc.  So if we're
@@ -428,9 +436,8 @@ fi
 
 CFLAGS="%{?cflags:%{cflags}}%{!?cflags:$RPM_OPT_FLAGS}"
 CXXFLAGS="%{?cxxflags:%{cxxflags}}%{!?cxxflags:$RPM_OPT_FLAGS}"
-FFLAGS="%{?f77flags:%{f77flags}}%{!?f7flags:$RPM_OPT_FLAGS}"
 FCFLAGS="%{?fcflags:%{fcflags}}%{!?fcflags:$RPM_OPT_FLAGS}"
-export CFLAGS CXXFLAGS F77FLAGS FCFLAGS
+export CFLAGS CXXFLAGS FCFLAGS
 
 %configure %{configure_options}
 %{__make} %{?mflags}
@@ -442,10 +449,7 @@ export CFLAGS CXXFLAGS F77FLAGS FCFLAGS
 #
 #############################################################################
 
-# See note above about %{munge_build_into_install}
-%if !%{munge_build_into_install}
 %install
-%endif
 %{__make} install DESTDIR=$RPM_BUILD_ROOT %{?mflags_install}
 
 # We've had cases of config.log being left in the installation tree.
@@ -460,14 +464,14 @@ cat <<EOF >$RPM_BUILD_ROOT/%{modulefile_path}/%{modulefile_subdir}/%{modulefile_
 #%Module
 
 # NOTE: This is an automatically-generated file!  (generated by the
-# Open MPI RPM).  Any changes made here will be lost a) if the RPM is
+# Open MPI/SHMEM RPM).  Any changes made here will be lost a) if the RPM is
 # uninstalled, or b) if the RPM is upgraded or uninstalled.
 
 proc ModulesHelp { } {
-   puts stderr "This module adds Open MPI v%{version} to various paths"
+   puts stderr "This module adds Open MPI/SHMEM v%{version} to various paths"
 }
 
-module-whatis   "Sets up Open MPI v%{version} in your enviornment"
+module-whatis   "Sets up Open MPI/SHMEM v%{version} in your enviornment"
 
 prepend-path PATH "%{_prefix}/bin/"
 prepend-path LD_LIBRARY_PATH %{_libdir}
@@ -482,7 +486,7 @@ EOF
 %{__mkdir_p} $RPM_BUILD_ROOT/%{shell_scripts_path}
 cat <<EOF > $RPM_BUILD_ROOT/%{shell_scripts_path}/%{shell_scripts_basename}.sh
 # NOTE: This is an automatically-generated file!  (generated by the
-# Open MPI RPM).  Any changes made here will be lost if the RPM is
+# Open MPI/SHMEM RPM).  Any changes made here will be lost if the RPM is
 # uninstalled or upgraded.
 
 # PATH
@@ -509,7 +513,7 @@ export MPI_ROOT
 EOF
 cat <<EOF > $RPM_BUILD_ROOT/%{shell_scripts_path}/%{shell_scripts_basename}.csh
 # NOTE: This is an automatically-generated file!  (generated by the
-# Open MPI RPM).  Any changes made here will be lost if the RPM is
+# Open MPI/SHMEM RPM).  Any changes made here will be lost if the RPM is
 # uninstalled or upgraded.
 
 # path
@@ -560,13 +564,11 @@ find $RPM_BUILD_ROOT -type f -o -type l | \
 
 # Runtime files.  This should generally be library files and some
 # executables (no man pages, no doc files, no header files).  Do *not*
-# include wrapper compilers.  Note that the VT files are variable; if
-# they're there, then take them (e.g., VT build may have been disabled
-# via a configure option).
+# include wrapper compilers.
 cat all.files | egrep '/lib/|/lib64/|/lib32/|/bin/|/etc/|/help-' > tmp.files | /bin/true
 # Snip out a bunch of executables (e.g., wrapper compilers, pkgconfig
 # files, .la and .a files)
-egrep -vi 'mpic|mpif|ortec|vtc|vtfort|f77|f90|pkgconfig|\.la$|\.a$' tmp.files > runtime.files | /bin/true
+egrep -vi 'mpic|mpif|ortec|f77|f90|pkgconfig|\.la$|\.a$' tmp.files > runtime.files | /bin/true
 rm -f tmp.files
 
 # Now take the runtime files out of all.files so that we don't get
@@ -624,7 +626,7 @@ mv tmp.files docs.files
 cd /tmp
 
 # Remove installed driver after rpm build finished
-rm -rf $RPM_BUILD_DIR/%{name}-%{version} 
+rm -rf $RPM_BUILD_DIR/%{name}-%{version}
 
 test "x$RPM_BUILD_ROOT" != "x" && rm -rf $RPM_BUILD_ROOT
 
@@ -661,7 +663,7 @@ test "x$RPM_BUILD_ROOT" != "x" && rm -rf $RPM_BUILD_ROOT
 %if %{build_all_in_one_rpm}
 
 #
-# All in one RPM 
+# All in one RPM
 #
 # Easy; just list the prefix and then specifically call out the doc
 # files.
@@ -669,7 +671,14 @@ test "x$RPM_BUILD_ROOT" != "x" && rm -rf $RPM_BUILD_ROOT
 
 %files
 %defattr(-, root, root, -)
+%if %(test "%{_prefix}" = "/usr" && echo 1 || echo 0)
+%{_bindir}/*
+%{_includedir}/*
+%{_libdir}/*
+%{_datadir}
+%else
 %{_prefix}
+%endif
 # If the sysconfdir is not under the prefix, then list it explicitly.
 %if !%{sysconfdir_in_prefix}
 %{_sysconfdir}
@@ -705,7 +714,13 @@ test "x$RPM_BUILD_ROOT" != "x" && rm -rf $RPM_BUILD_ROOT
 
 %files runtime -f runtime.files
 %defattr(-, root, root, -)
-%dir %{_prefix}
+%if %(test "%{_prefix}" = "/usr" && echo 1 || echo 0)
+%{_bindir}/*
+%{_libdir}/*
+%{_datadir}
+%else
+%{_prefix}
+%endif
 # If the sysconfdir is not under the prefix, then list it explicitly.
 %if !%{sysconfdir_in_prefix}
 %{_sysconfdir}
@@ -728,9 +743,6 @@ test "x$RPM_BUILD_ROOT" != "x" && rm -rf $RPM_BUILD_ROOT
 %{shell_scripts_path}/%{shell_scripts_basename}.sh
 %{shell_scripts_path}/%{shell_scripts_basename}.csh
 %endif
-%dir %{_bindir}
-%dir %{_libdir}
-%dir %{_libdir}/openmpi
 %doc README INSTALL LICENSE
 %{_pkgdatadir}
 
@@ -755,6 +767,20 @@ test "x$RPM_BUILD_ROOT" != "x" && rm -rf $RPM_BUILD_ROOT
 #
 #############################################################################
 %changelog
+* Thu Nov 12 2015 Gilles Gouaillardet <gilles@rist.or.jp>
+- Revamp packaging when prefix is /usr
+
+* Tue Jan 20 2015 Bert Wesarg <bert.wesarg@tu-dresden.de>
+- Remove VampirTrace wrapper from package.
+
+* Mon Jul 07 2014 Jeff Squyres <jsquyres@cisco.com>
+- Several minor fixes from Oliver Lahaye: fix dates in changelog,
+  added %{?dist} tag to the Release field, and added some Provides
+  fields in case %{name} is overridden.
+
+* Mon Jun 24 2013 Igor Ivanov <Igor.Ivanov@itseez.com>
+- Add Open SHMEM parallel programming library as part of Open MPI
+
 * Tue Dec 11 2012 Jeff Squyres <jsquyres@cisco.com>
 - Re-release 1.6.0-1.6.3 SRPMs (with new SRPM Release numbers) with
   patch for VampirTrace's configure script to make it install the
@@ -768,8 +794,18 @@ test "x$RPM_BUILD_ROOT" != "x" && rm -rf $RPM_BUILD_ROOT
   named "config.log" from the install tree so that we can use this
   spec file to re-release all OMPI v1.6.x SRPMs.
 
+* Wed Jun 27 2012 Jeff Squyres <jsquyres@cisco.com>
+- Remove the "ofed" and "munge_build_into_install" options, because
+  OFED no longer distributes MPI implementations.  Yay!
+
+* Mon Jun 04 2012 Jeff Squyres <jsquyres@cisco.com>
+- Didn't change the specfile, but changed the script that generates
+  the SRPM to force the use of MD5 checksums (vs. SHA1 checksums) so
+  that the SRPM is friendly to older versions of RPM, such as that on
+  RHEL 5.x.
+
 * Fri Feb 17 2012 Jeff Squyres <jsquyres@cisco.com>
-- Removed OSCAR define.
+- Removed OSCAR defines.
 - If use_mpi_selector==1, then also set install_shell_scripts to 1.
 - Change modules default RPM name and modulefiles path to the defaults
   on RHEL6.
@@ -782,7 +818,7 @@ test "x$RPM_BUILD_ROOT" != "x" && rm -rf $RPM_BUILD_ROOT
   _FORTIFY_SOURCE processing on platforms where it just doesn't work
   (even with gcc; also reported by Jim Kusznir).
 
-* Thu Sep  8 2009 Jeff Squyres <jsquyres@cisco.com>
+* Tue Sep  8 2009 Jeff Squyres <jsquyres@cisco.com>
 - Change shell_scripts_basename to not include version number to
   accomodate what mpi-selector expects.
 
@@ -853,14 +889,14 @@ test "x$RPM_BUILD_ROOT" != "x" && rm -rf $RPM_BUILD_ROOT
 - Ensure to list sysconfdir in the files list if it's outside of the
   prefix.
 
-* Wed Mar 30 2006 Jeff Squyres <jsquyres@cisco.com>
+* Thu Mar 30 2006 Jeff Squyres <jsquyres@cisco.com>
 - Lots of bit rot updates
 - Reorganize and rename the subpackages
 - Add / formalize a variety of rpmbuild --define options
 - Comment out the docs subpackage for the moment (until we have some
   documentation -- coming in v1.1!)
 
-* Wed May 03 2005 Jeff Squyres <jsquyres@open-mpi.org>
+* Tue May 03 2005 Jeff Squyres <jsquyres@open-mpi.org>
 - Added some defines for LANL defaults
 - Added more defines for granulatirty of installation location for
   modulefile

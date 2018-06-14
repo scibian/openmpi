@@ -28,7 +28,7 @@ sources = \
 # mca_<type>_<name>.la (for DSO builds) or libmca_<type>_<name>.la
 # (for static builds).
 
-if OMPI_BUILD_shmem_mmap_DSO
+if MCA_BUILD_opal_shmem_mmap_DSO
 component_noinst =
 component_install = mca_shmem_mmap.la
 else
@@ -37,9 +37,9 @@ component_install =
 endif
 
 # help file
-dist_pkgdata_DATA = help-opal-shmem-mmap.txt
+dist_opaldata_DATA = help-opal-shmem-mmap.txt
 
-mcacomponentdir = $(pkglibdir)
+mcacomponentdir = $(opallibdir)
 mcacomponent_LTLIBRARIES = $(component_install)
 mca_shmem_mmap_la_SOURCES = $(sources)
 mca_shmem_mmap_la_LDFLAGS = -module -avoid-version

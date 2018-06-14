@@ -1,4 +1,4 @@
-/* -*- Mode: C; c-basic-offset:4 ; -*- */
+/* -*- Mode: C; c-basic-offset:4 ; indent-tabs-mode:nil -*- */
 /*
  * Copyright (c) 2004-2005 The Trustees of Indiana University and Indiana
  *                         University Research and Technology
@@ -6,21 +6,26 @@
  * Copyright (c) 2004-2007 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
  * Copyright (c) 2006-2007 University of Houston. All rights reserved.
- * Copyright (c) 2007      Cisco Systems, Inc. All rights reserved.
+ * Copyright (c) 2007-2012 Cisco Systems, Inc.  All rights reserved.
  * Copyright (c) 2009      Sun Microsystems, Inc. All rights reserved.
+ * Copyright (c) 2012      Oak Ridge National Labs.  All rights reserved.
+ * Copyright (c) 2013-2015 Los Alamos National Security, LLC.  All rights
+ *                         reserved.
+ * Copyright (c) 2016      Research Organization for Information Science
+ *                         and Technology (RIST). All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
-/** 
+/**
  * @file:
  *
  * Infrastructure for MPI group support.
@@ -33,20 +38,21 @@
 #include "mpi.h"
 #include "opal/class/opal_pointer_array.h"
 #include "opal/util/output.h"
+#include "opal/include/opal/prefetch.h"
 
 BEGIN_C_DECLS
 
 #define BSIZE ((int)sizeof(unsigned char)*8)
 
-struct ompi_group_sporadic_list_t 
-{ 
-  int rank_first; 
-  int length; 
-}; 
-    
+struct ompi_group_sporadic_list_t
+{
+  int rank_first;
+  int length;
+};
+
 struct ompi_group_sporadic_data_t
 {
-    struct ompi_group_sporadic_list_t  *grp_sporadic_list; 
+    struct ompi_group_sporadic_list_t  *grp_sporadic_list;
                                             /** list to hold the sporadic struct */
     int                        grp_sporadic_list_len;/** length of the structure*/
 };
@@ -64,7 +70,7 @@ struct ompi_group_bitmap_data_t
 
 /**
  * Group structure
- * Currently we have four formats for storing the process pointers that are members 
+ * Currently we have four formats for storing the process pointers that are members
  * of the group.
  * PList: a dense format that stores all the process pointers of the group.
  * Sporadic: a sparse format that stores the ranges of the ranks from the parent group,
@@ -113,7 +119,7 @@ typedef struct ompi_predefined_group_t ompi_predefined_group_t;
 
 /*
  * The following include pulls in shared typedefs with debugger plugins.
- * For more information on why we do this see the Notice to developers 
+ * For more information on why we do this see the Notice to developers
  * comment at the top of the ompi_msgq_dll.c file.
  */
 #include "group_dbg.h"
@@ -135,6 +141,7 @@ typedef struct ompi_predefined_group_t ompi_predefined_group_t;
  */
 OMPI_DECLSPEC extern struct opal_pointer_array_t ompi_group_f_to_c_table;
 OMPI_DECLSPEC extern struct ompi_predefined_group_t ompi_mpi_group_null;
+OMPI_DECLSPEC extern struct ompi_predefined_group_t *ompi_mpi_group_null_addr;
 
 
 /*
@@ -149,6 +156,7 @@ OMPI_DECLSPEC extern struct ompi_predefined_group_t ompi_mpi_group_null;
  * @return Pointer to new group structure
  */
 OMPI_DECLSPEC ompi_group_t *ompi_group_allocate(int group_size);
+ompi_group_t *ompi_group_allocate_plist_w_procs (ompi_proc_t **procs, int group_size);
 ompi_group_t *ompi_group_allocate_sporadic(int group_size);
 ompi_group_t *ompi_group_allocate_strided(void);
 ompi_group_t *ompi_group_allocate_bmap(int orig_group_size, int group_size);
@@ -228,13 +236,19 @@ void ompi_set_group_rank(ompi_group_t *group, struct ompi_proc_t *proc_pointer);
 /**
  * Abstracting MPI_Group_translate_ranks to an ompi function for internal use
  */
-OMPI_DECLSPEC int ompi_group_translate_ranks ( ompi_group_t *group1, 
-                                 int n_ranks, int *ranks1,
-                                 ompi_group_t *group2, 
-                                 int *ranks2);
+OMPI_DECLSPEC int ompi_group_translate_ranks ( ompi_group_t *group1,
+                                               int n_ranks, const int *ranks1,
+                                               ompi_group_t *group2,
+                                               int *ranks2);
 
+/**
+ * Abstracting MPI_Group_compare to an ompi function for internal use
+ */
+OMPI_DECLSPEC int ompi_group_compare(ompi_group_t *group1,
+                                     ompi_group_t *group2,
+                                     int *result);
 
-/** 
+/**
  * Abstracting MPI_Group_free, since it is required by some internal functions...
  */
 int ompi_group_free (ompi_group_t **group);
@@ -242,72 +256,70 @@ int ompi_group_free (ompi_group_t **group);
 /**
  * Functions to handle process pointers for sparse group formats
  */
-OMPI_DECLSPEC ompi_proc_t* ompi_group_get_proc_ptr (ompi_group_t* group , int rank);
-
-int ompi_group_translate_ranks_sporadic ( ompi_group_t *group1, 
-                                 int n_ranks, int *ranks1,
-                                 ompi_group_t *group2, 
+int ompi_group_translate_ranks_sporadic ( ompi_group_t *group1,
+                                 int n_ranks, const int *ranks1,
+                                 ompi_group_t *group2,
                                  int *ranks2);
-int ompi_group_translate_ranks_sporadic_reverse ( ompi_group_t *group1, 
-                                 int n_ranks, int *ranks1,
-                                 ompi_group_t *group2, 
+int ompi_group_translate_ranks_sporadic_reverse ( ompi_group_t *group1,
+                                 int n_ranks, const int *ranks1,
+                                 ompi_group_t *group2,
                                  int *ranks2);
-int ompi_group_translate_ranks_strided ( ompi_group_t *group1, 
-                                 int n_ranks, int *ranks1,
-                                 ompi_group_t *group2, 
+int ompi_group_translate_ranks_strided ( ompi_group_t *group1,
+                                 int n_ranks, const int *ranks1,
+                                 ompi_group_t *group2,
                                  int *ranks2);
-int ompi_group_translate_ranks_strided_reverse ( ompi_group_t *group1, 
-                                 int n_ranks, int *ranks1,
-                                 ompi_group_t *group2, 
+int ompi_group_translate_ranks_strided_reverse ( ompi_group_t *group1,
+                                 int n_ranks, const int *ranks1,
+                                 ompi_group_t *group2,
                                  int *ranks2);
-int ompi_group_translate_ranks_bmap ( ompi_group_t *group1, 
-                                 int n_ranks, int *ranks1,
-                                 ompi_group_t *group2, 
+int ompi_group_translate_ranks_bmap ( ompi_group_t *group1,
+                                 int n_ranks, const int *ranks1,
+                                 ompi_group_t *group2,
                                  int *ranks2);
-int ompi_group_translate_ranks_bmap_reverse ( ompi_group_t *group1, 
-                                 int n_ranks, int *ranks1,
-                                 ompi_group_t *group2, 
+int ompi_group_translate_ranks_bmap_reverse ( ompi_group_t *group1,
+                                 int n_ranks, const int *ranks1,
+                                 ompi_group_t *group2,
                                  int *ranks2);
 
 /**
- *  Prototypes for the group back-end functions. Argument lists 
+ *  Prototypes for the group back-end functions. Argument lists
  are similar to the according  C MPI functions.
  */
-int ompi_group_incl(ompi_group_t* group, int n, int *ranks, 
-		    ompi_group_t **new_group);
-int ompi_group_excl(ompi_group_t* group, int n, int *ranks,
-		    ompi_group_t **new_group);
-int ompi_group_range_incl(ompi_group_t* group, int n_triplets, 
-			  int ranges[][3],ompi_group_t **new_group);
-int ompi_group_range_excl(ompi_group_t* group, int n_triplets, 
-			  int ranges[][3],ompi_group_t **new_group);
-int ompi_group_union (ompi_group_t* group1, ompi_group_t* group2, 
-		      ompi_group_t **new_group); 
+int ompi_group_incl(ompi_group_t* group, int n, const int *ranks,
+                    ompi_group_t **new_group);
+int ompi_group_excl(ompi_group_t* group, int n, const int *ranks,
+                    ompi_group_t **new_group);
+int ompi_group_range_incl(ompi_group_t* group, int n_triplets,
+                          int ranges[][3],ompi_group_t **new_group);
+int ompi_group_range_excl(ompi_group_t* group, int n_triplets,
+                          int ranges[][3],ompi_group_t **new_group);
+int ompi_group_union (ompi_group_t* group1, ompi_group_t* group2,
+                      ompi_group_t **new_group);
 int ompi_group_intersection(ompi_group_t* group1,ompi_group_t* group2,
-			    ompi_group_t **new_group); 
+                            ompi_group_t **new_group);
 int ompi_group_difference(ompi_group_t* group1, ompi_group_t* group2,
-			  ompi_group_t **new_group);
+                          ompi_group_t **new_group);
 
 
-/** 
+/**
  *  Include Functions to handle Sparse storage formats
  */
-int ompi_group_incl_plist(ompi_group_t* group, int n, int *ranks,
-			  ompi_group_t **new_group);
-int ompi_group_incl_spor(ompi_group_t* group, int n, int *ranks, 
-			 ompi_group_t **new_group);
-int ompi_group_incl_strided(ompi_group_t* group, int n, int *ranks, 
-			    ompi_group_t **new_group);
-int ompi_group_incl_bmap(ompi_group_t* group, int n, int *ranks, 
-			    ompi_group_t **new_group);
+int ompi_group_incl_plist(ompi_group_t* group, int n, const int *ranks,
+                          ompi_group_t **new_group);
+int ompi_group_incl_spor(ompi_group_t* group, int n, const int *ranks,
+                         ompi_group_t **new_group);
+int ompi_group_incl_strided(ompi_group_t* group, int n, const int *ranks,
+                            ompi_group_t **new_group);
+int ompi_group_incl_bmap(ompi_group_t* group, int n, const int *ranks,
+                         ompi_group_t **new_group);
 
-/** 
+/**
  *  Functions to calculate storage spaces
  */
-int ompi_group_calc_plist ( int n, int *ranks );
-int ompi_group_calc_strided ( int n, int *ranks );
-int ompi_group_calc_sporadic ( int n, int *ranks );
-int ompi_group_calc_bmap ( int n, int orig_size , int *ranks );
+int ompi_group_calc_plist ( int n, const int *ranks );
+int ompi_group_calc_strided ( int n, const int *ranks );
+int ompi_group_calc_sporadic ( int n, const int *ranks );
+int ompi_group_calc_bmap ( int n, int orig_size , const int *ranks );
 
 /**
  * Function to return the minimum value in an array
@@ -315,23 +327,100 @@ int ompi_group_calc_bmap ( int n, int orig_size , int *ranks );
 int ompi_group_minloc (int list[], int length);
 
 /**
+ * @brief Helper function for retreiving the proc of a group member in a dense group
+ *
+ * This function exists to handle the translation of sentinel group members to real
+ * ompi_proc_t's. If a sentinel value is found and allocate is true then this function
+ * looks for an existing ompi_proc_t using ompi_proc_for_name which will allocate a
+ * ompi_proc_t if one does not exist. If allocate is false then sentinel values translate
+ * to NULL.
+ */
+static inline struct ompi_proc_t *ompi_group_dense_lookup (ompi_group_t *group, const int peer_id, const bool allocate)
+{
+    ompi_proc_t *proc;
+
+#if OPAL_ENABLE_DEBUG
+    if (peer_id >= group->grp_proc_count) {
+        opal_output(0, "ompi_group_dense_lookup: invalid peer index (%d)", peer_id);
+        return (struct ompi_proc_t *) NULL;
+    }
+#endif
+
+    proc = group->grp_proc_pointers[peer_id];
+
+    if (OPAL_UNLIKELY(ompi_proc_is_sentinel (proc))) {
+        if (!allocate) {
+            return NULL;
+        }
+
+        /* replace sentinel value with an actual ompi_proc_t */
+        ompi_proc_t *real_proc =
+            (ompi_proc_t *) ompi_proc_for_name (ompi_proc_sentinel_to_name ((uintptr_t) proc));
+
+        if (opal_atomic_cmpset_ptr (group->grp_proc_pointers + peer_id, proc, real_proc)) {
+            OBJ_RETAIN(real_proc);
+        }
+
+        proc = real_proc;
+    }
+
+    return proc;
+}
+
+/*
+ * This is the function that iterates through the sparse groups to the dense group
+ * to reach the process pointer
+ */
+static inline ompi_proc_t *ompi_group_get_proc_ptr (ompi_group_t *group, int rank, const bool allocate)
+{
+#if OMPI_GROUP_SPARSE
+    do {
+        if (OMPI_GROUP_IS_DENSE(group)) {
+            return ompi_group_dense_lookup (group, rank, allocate);
+        }
+        int ranks1 = rank;
+        ompi_group_translate_ranks (group, 1, &ranks1, group->grp_parent_group_ptr, &rank);
+        group = group->grp_parent_group_ptr;
+    } while (1);
+#else
+    return ompi_group_dense_lookup (group, rank, allocate);
+#endif
+}
+
+/**
+ * @brief Get the raw proc pointer from the group
+ *
+ * This function will either return a ompi_proc_t if one exists (either stored in the group
+ * or cached in the proc hash table) or a sentinel value representing the proc. This
+ * differs from ompi_group_get_proc_ptr() which returns the ompi_proc_t or NULL.
+ */
+ompi_proc_t *ompi_group_get_proc_ptr_raw (ompi_group_t *group, int rank);
+
+static inline opal_process_name_t ompi_group_get_proc_name (ompi_group_t *group, int rank)
+{
+    ompi_proc_t *proc = ompi_group_get_proc_ptr_raw (group, rank);
+    if (ompi_proc_is_sentinel (proc)) {
+        return ompi_proc_sentinel_to_name ((intptr_t) proc);
+    }
+
+    return proc->super.proc_name;
+}
+
+/**
  * Inline function to check if sparse groups are enabled and return the direct access
  * to the proc pointer, otherwise the lookup function
  */
 static inline struct ompi_proc_t* ompi_group_peer_lookup(ompi_group_t *group, int peer_id)
 {
-#if OPAL_ENABLE_DEBUG
-    if (peer_id >= group->grp_proc_count) {
-        opal_output(0, "ompi_group_lookup_peer: invalid peer index (%d)", peer_id);
-        return (struct ompi_proc_t *) NULL;
-    }
-#endif
-#if OMPI_GROUP_SPARSE
-    return ompi_group_get_proc_ptr (group, peer_id);
-#else
-    return group->grp_proc_pointers[peer_id];
-#endif
+    return ompi_group_get_proc_ptr (group, peer_id, true);
 }
+
+static inline struct ompi_proc_t *ompi_group_peer_lookup_existing (ompi_group_t *group, int peer_id)
+{
+    return ompi_group_get_proc_ptr (group, peer_id, false);
+}
+
+bool ompi_group_have_remote_peers (ompi_group_t *group);
 
 /**
  *  Function to print the group info

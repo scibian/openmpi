@@ -1,10 +1,10 @@
 /*
  * Copyright (c) 2007      Los Alamos National Security, LLC.
- *                         All rights reserved. 
+ *                         All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -20,6 +20,7 @@ BEGIN_C_DECLS
 typedef struct {
     orte_routed_component_t super;
     int radix;
+    orte_vpid_t max_connections;
 } orte_routed_radix_component_t;
 ORTE_MODULE_DECLSPEC extern orte_routed_radix_component_t mca_routed_radix_component;
 

@@ -3,18 +3,19 @@
  * Copyright (c) 2004-2005 The Trustees of Indiana University and Indiana
  *                         University Research and Technology
  *                         Corporation.  All rights reserved.
- * Copyright (c) 2004-2007 The University of Tennessee and The University
+ * Copyright (c) 2004-2014 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
  * Copyright (c) 2007      Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2010-2012 Oak Ridge National Labs.  All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  *
  */
@@ -34,8 +35,6 @@
  *  to be Fortran INTEGER), we offer a opal_bitmap_set_max_size, so that
  *  the upper layer can ask to never have more than
  *  OMPI_FORTRAN_HANDLE_MAX, which is min(INT_MAX, fortran INTEGER max).
- *  Currently the only user of this is ompi/attribute/attribute.c
- *
  */
 
 #ifndef OPAL_BITMAP_H
@@ -50,10 +49,10 @@
 BEGIN_C_DECLS
 
 struct opal_bitmap_t {
-    opal_object_t super;   /**< Subclass of opal_object_t */
-    unsigned char *bitmap; /**< The actual bitmap array of characters */
-    int array_size;        /**< The actual array size that maintains the bitmap */
-    int max_size;          /**< The maximum size that this bitmap may grow (optional) */
+    opal_object_t  super;       /**< Subclass of opal_object_t */
+    uint64_t      *bitmap;      /**< The actual bitmap array of characters */
+    int            array_size;  /**< The actual array size that maintains the bitmap */
+    int            max_size;    /**< The maximum size that this bitmap may grow (optional) */
 };
 
 typedef struct opal_bitmap_t opal_bitmap_t;
@@ -94,7 +93,7 @@ OPAL_DECLSPEC int opal_bitmap_init (opal_bitmap_t *bm, int size);
  * @return OPAL error code or success
  *
  */
-OPAL_DECLSPEC int opal_bitmap_set_bit(opal_bitmap_t *bm, int bit); 
+OPAL_DECLSPEC int opal_bitmap_set_bit(opal_bitmap_t *bm, int bit);
 
 
 /**
@@ -131,8 +130,8 @@ OPAL_DECLSPEC bool opal_bitmap_is_set_bit(opal_bitmap_t *bm, int bit);
 
  * @return err        OPAL_SUCCESS on success
  */
-OPAL_DECLSPEC int opal_bitmap_find_and_set_first_unset_bit(opal_bitmap_t *bm, 
-                                                           int *position); 
+OPAL_DECLSPEC int opal_bitmap_find_and_set_first_unset_bit(opal_bitmap_t *bm,
+                                                           int *position);
 
 
 /**
@@ -140,7 +139,7 @@ OPAL_DECLSPEC int opal_bitmap_find_and_set_first_unset_bit(opal_bitmap_t *bm,
  *
  * @param bitmap The input bitmap (IN)
  * @return OPAL error code if bm is NULL
- * 
+ *
  */
 OPAL_DECLSPEC int opal_bitmap_clear_all_bits(opal_bitmap_t *bm);
 
@@ -164,7 +163,7 @@ OPAL_DECLSPEC int opal_bitmap_set_all_bits(opal_bitmap_t *bm);
  */
 static inline int opal_bitmap_size(opal_bitmap_t *bm)
 {
-    return (NULL == bm) ? 0 : (bm->array_size * ((int) (sizeof(char) * 8)));
+    return (NULL == bm) ? 0 : (bm->array_size * ((int) (sizeof(*bm->bitmap) * 8)));
 }
 
 
@@ -177,10 +176,82 @@ static inline int opal_bitmap_size(opal_bitmap_t *bm)
  */
 static inline void opal_bitmap_copy(opal_bitmap_t *dest, opal_bitmap_t *src)
 {
-    dest->bitmap = (unsigned char*)malloc(src->array_size);
-    memcpy(dest->bitmap, src->bitmap, src->array_size);
+    if( dest->array_size < src->array_size ) {
+        if( NULL != dest->bitmap) free(dest->bitmap);
+        dest->max_size = src->max_size;
+        dest->bitmap = (uint64_t*)malloc(src->array_size*sizeof(uint64_t));
+    }
+    memcpy(dest->bitmap, src->bitmap, src->array_size * sizeof(uint64_t));
     dest->array_size = src->array_size;
 }
+
+/**
+ * Bitwise AND operator (inplace)
+ *
+ * @param dest Pointer to the bitmap that should be modified
+ * @param right Point to the other bitmap in the operation
+ * @return OPAL error code if the length of the two bitmaps is not equal or one is NULL.
+ */
+OPAL_DECLSPEC int opal_bitmap_bitwise_and_inplace(opal_bitmap_t *dest, opal_bitmap_t *right);
+
+/**
+ * Bitwise OR operator (inplace)
+ *
+ * @param dest Pointer to the bitmap that should be modified
+ * @param right Point to the other bitmap in the operation
+ * @return OPAL error code if the length of the two bitmaps is not equal or one is NULL.
+ */
+OPAL_DECLSPEC int opal_bitmap_bitwise_or_inplace(opal_bitmap_t *dest, opal_bitmap_t *right);
+
+/**
+ * Bitwise XOR operator (inplace)
+ *
+ * @param dest Pointer to the bitmap that should be modified
+ * @param right Point to the other bitmap in the operation
+ * @return OPAL error code if the length of the two bitmaps is not equal or one is NULL.
+ */
+OPAL_DECLSPEC int opal_bitmap_bitwise_xor_inplace(opal_bitmap_t *dest, opal_bitmap_t *right);
+
+/**
+ * If the bitmaps are different
+ *
+ * @param left Pointer to a bitmap
+ * @param right Pointer to another bitmap
+ * @return true if different, false if the same
+ */
+OPAL_DECLSPEC bool opal_bitmap_are_different(opal_bitmap_t *left, opal_bitmap_t *right);
+
+/**
+ * Get a string representation of the bitmap.
+ * Useful for debugging.
+ *
+ * @param bitmap Point to the bitmap to represent
+ * @return Pointer to the string (caller must free if not NULL)
+ */
+OPAL_DECLSPEC char * opal_bitmap_get_string(opal_bitmap_t *bitmap);
+
+/**
+ * Return the number of 'unset' bits, upto the specified length
+ *
+ * @param bitmap Pointer to the bitmap
+ * @param len Number of bits to check
+ * @return Integer
+ */
+OPAL_DECLSPEC int opal_bitmap_num_unset_bits(opal_bitmap_t *bm, int len);
+
+/**
+ * Return the number of 'set' bits, upto the specified length
+ *
+ * @param bitmap Pointer to the bitmap
+ * @param len Number of bits to check
+ * @return Integer
+ */
+OPAL_DECLSPEC int opal_bitmap_num_set_bits(opal_bitmap_t *bm, int len);
+
+/**
+ * Check a bitmap to see if any bit is set
+ */
+OPAL_DECLSPEC bool opal_bitmap_is_clear(opal_bitmap_t *bm);
 
 END_C_DECLS
 

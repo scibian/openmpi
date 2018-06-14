@@ -1,4 +1,4 @@
-/* -*- Mode: C; c-basic-offset:4 ; -*- */
+/* -*- Mode: C; c-basic-offset:4 ; indent-tabs-mode:nil -*- */
 /*
  * Copyright (c) 2004-2006 The Trustees of Indiana University and Indiana
  *                         University Research and Technology
@@ -6,17 +6,19 @@
  * Copyright (c) 2004-2007 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2007 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2007 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
  * Copyright (c) 2008      UT-Battelle, LLC
- * Copyright (c) 2008-2009 Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2008-2012 Cisco Systems, Inc.  All rights reserved.
  * Copyright (c) 2009      Sun Microsystems, Inc.  All rights reserved.
+ * Copyright (c) 2015      Los Alamos National Security, LLC. All rights
+ *                         reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 /**
@@ -37,7 +39,7 @@
 #include "opal/class/opal_object.h"
 
 #include "ompi/datatype/ompi_datatype.h"
-#include "ompi/mpi/f77/fint_2_int.h"
+#include "ompi/mpi/fortran/base/fint_2_int.h"
 #include "ompi/mca/op/op.h"
 
 BEGIN_C_DECLS
@@ -71,6 +73,19 @@ typedef void (ompi_op_cxx_handler_fn_t)(void *, void *, int *,
                                         struct ompi_datatype_t **,
                                         MPI_User_function * op);
 
+/**
+ * Typedef for Java op functions intercept (used for user-defined
+ * MPI.Ops).
+ *
+ * See the lengthy explanation for why this is different than the C
+ * intercept in ompi/mpi/cxx/intercepts.cc in the
+ * ompi_mpi_cxx_op_intercept() function.
+ */
+typedef void (ompi_op_java_handler_fn_t)(void *, void *, int *,
+                                         struct ompi_datatype_t **,
+                                         int baseType,
+                                         void *jnienv, void *object);
+
 /*
  * Flags for MPI_Op
  */
@@ -80,20 +95,44 @@ typedef void (ompi_op_cxx_handler_fn_t)(void *, void *, int *,
 #define OMPI_OP_FLAGS_FORTRAN_FUNC 0x0002
 /** Set if the callback function is in C++ */
 #define OMPI_OP_FLAGS_CXX_FUNC     0x0004
+/** Set if the callback function is in Java */
+#define OMPI_OP_FLAGS_JAVA_FUNC    0x0008
 /** Set if the callback function is associative (MAX and SUM will both
     have ASSOC set -- in fact, it will only *not* be set if we
     implement some extensions to MPI, because MPI says that all
     MPI_Op's should be associative, so this flag is really here for
     future expansion) */
-#define OMPI_OP_FLAGS_ASSOC        0x0008
+#define OMPI_OP_FLAGS_ASSOC        0x0010
 /** Set if the callback function is associative for floating point
     operands (e.g., MPI_SUM will have ASSOC set, but will *not* have
     FLOAT_ASSOC set)  */
-#define OMPI_OP_FLAGS_FLOAT_ASSOC  0x0010
+#define OMPI_OP_FLAGS_FLOAT_ASSOC  0x0020
 /** Set if the callback function is communative */
-#define OMPI_OP_FLAGS_COMMUTE      0x0020
+#define OMPI_OP_FLAGS_COMMUTE      0x0040
 
 
+
+
+/*
+ * Basic operation type for predefined types.
+ */
+enum ompi_op_type {
+    OMPI_OP_NULL,
+    OMPI_OP_MAX,
+    OMPI_OP_MIN,
+    OMPI_OP_SUM,
+    OMPI_OP_PROD,
+    OMPI_OP_LAND,
+    OMPI_OP_BAND,
+    OMPI_OP_LOR,
+    OMPI_OP_BOR,
+    OMPI_OP_LXOR,
+    OMPI_OP_BXOR,
+    OMPI_OP_MAXLOC,
+    OMPI_OP_MINLOC,
+    OMPI_OP_REPLACE,
+    OMPI_OP_NUM_OF_TYPES
+};
 /**
  * Back-end type of MPI_Op
  */
@@ -103,6 +142,8 @@ struct ompi_op_t {
 
     /** Name, for debugging purposes */
     char o_name[MPI_MAX_OBJECT_NAME];
+
+    enum ompi_op_type op_type;
 
     /** Flags about the op */
     uint32_t o_flags;
@@ -133,15 +174,22 @@ struct ompi_op_t {
             /* The OMPI C++ callback/intercept function */
             ompi_op_cxx_handler_fn_t *intercept_fn;
         } cxx_data;
+        struct {
+            /* The OMPI C++ callback/intercept function */
+            ompi_op_java_handler_fn_t *intercept_fn;
+            /* The Java run time environment */
+            void *jnienv, *object;
+            int baseType;
+        } java_data;
     } o_func;
-    
+
     /** 3-buffer functions, which is only for intrinsic ops.  No need
         for the C/C++/Fortran user-defined functions. */
     ompi_op_base_op_3buff_fns_t o_3buff_intrinsic;
 };
 
 /**
- * Convenience typedef 
+ * Convenience typedef
  */
 typedef struct ompi_op_t ompi_op_t;
 OMPI_DECLSPEC OBJ_CLASS_DECLARATION(ompi_op_t);
@@ -192,74 +240,93 @@ typedef struct ompi_predefined_op_t ompi_predefined_op_t;
 OMPI_DECLSPEC extern int ompi_op_ddt_map[OMPI_DATATYPE_MAX_PREDEFINED];
 
 /**
- * Global variable for MPI_OP_NULL
+ * Global variable for MPI_OP_NULL (_addr flavor is for F03 bindings)
  */
 OMPI_DECLSPEC extern ompi_predefined_op_t ompi_mpi_op_null;
+OMPI_DECLSPEC extern ompi_predefined_op_t *ompi_mpi_op_null_addr;
 
 /**
- * Global variable for MPI_MAX
+ * Global variable for MPI_MAX (_addr flavor is for F03 bindings)
  */
 OMPI_DECLSPEC extern ompi_predefined_op_t ompi_mpi_op_max;
+OMPI_DECLSPEC extern ompi_predefined_op_t *ompi_mpi_op_max_addr;
 
 /**
- * Global variable for MPI_MIN
+ * Global variable for MPI_MIN (_addr flavor is for F03 bindings)
  */
 OMPI_DECLSPEC extern ompi_predefined_op_t ompi_mpi_op_min;
+OMPI_DECLSPEC extern ompi_predefined_op_t *ompi_mpi_op_min_addr;
 
 /**
- * Global variable for MPI_SUM
+ * Global variable for MPI_SUM (_addr flavor is for F03 bindings)
  */
 OMPI_DECLSPEC extern ompi_predefined_op_t ompi_mpi_op_sum;
+OMPI_DECLSPEC extern ompi_predefined_op_t *ompi_mpi_op_sum_addr;
 
 /**
- * Global variable for MPI_PROD
+ * Global variable for MPI_PROD (_addr flavor is for F03 bindings)
  */
 OMPI_DECLSPEC extern ompi_predefined_op_t ompi_mpi_op_prod;
+OMPI_DECLSPEC extern ompi_predefined_op_t *ompi_mpi_op_prod_addr;
 
 /**
- * Global variable for MPI_LAND
+ * Global variable for MPI_LAND (_addr flavor is for F03 bindings)
  */
 OMPI_DECLSPEC extern ompi_predefined_op_t ompi_mpi_op_land;
+OMPI_DECLSPEC extern ompi_predefined_op_t *ompi_mpi_op_land_addr;
 
 /**
- * Global variable for MPI_BAND
+ * Global variable for MPI_BAND (_addr flavor is for F03 bindings)
  */
 OMPI_DECLSPEC extern ompi_predefined_op_t ompi_mpi_op_band;
+OMPI_DECLSPEC extern ompi_predefined_op_t *ompi_mpi_op_band_addr;
 
 /**
- * Global variable for MPI_LOR
+ * Global variable for MPI_LOR (_addr flavor is for F03 bindings)
  */
 OMPI_DECLSPEC extern ompi_predefined_op_t ompi_mpi_op_lor;
+OMPI_DECLSPEC extern ompi_predefined_op_t *ompi_mpi_op_lor_addr;
 
 /**
- * Global variable for MPI_BOR
+ * Global variable for MPI_BOR (_addr flavor is for F03 bindings)
  */
 OMPI_DECLSPEC extern ompi_predefined_op_t ompi_mpi_op_bor;
+OMPI_DECLSPEC extern ompi_predefined_op_t *ompi_mpi_op_bor_addr;
 
 /**
- * Global variable for MPI_LXOR
+ * Global variable for MPI_LXOR (_addr flavor is for F03 bindings)
  */
 OMPI_DECLSPEC extern ompi_predefined_op_t ompi_mpi_op_lxor;
+OMPI_DECLSPEC extern ompi_predefined_op_t *ompi_mpi_op_lxor_addr;
 
 /**
- * Global variable for MPI_BXOR
+ * Global variable for MPI_BXOR (_addr flavor is for F03 bindings)
  */
 OMPI_DECLSPEC extern ompi_predefined_op_t ompi_mpi_op_bxor;
+OMPI_DECLSPEC extern ompi_predefined_op_t *ompi_mpi_op_bxor_addr;
 
 /**
- * Global variable for MPI_MAXLOC
+ * Global variable for MPI_MAXLOC (_addr flavor is for F03 bindings)
  */
 OMPI_DECLSPEC extern ompi_predefined_op_t ompi_mpi_op_maxloc;
+OMPI_DECLSPEC extern ompi_predefined_op_t *ompi_mpi_op_maxloc_addr;
 
 /**
- * Global variable for MPI_MINLOC
+ * Global variable for MPI_MINLOC (_addr flavor is for F03 bindings)
  */
 OMPI_DECLSPEC extern ompi_predefined_op_t ompi_mpi_op_minloc;
+OMPI_DECLSPEC extern ompi_predefined_op_t *ompi_mpi_op_minloc_addr;
 
 /**
- * Global variable for MPI_REPLACE
+ * Global variable for MPI_REPLACE (_addr flavor is for F03 bindings)
  */
 OMPI_DECLSPEC extern ompi_predefined_op_t ompi_mpi_op_replace;
+OMPI_DECLSPEC extern ompi_predefined_op_t *ompi_mpi_op_replace_addr;
+
+/**
+ * Global variable for MPI_NO_OP
+ */
+OMPI_DECLSPEC extern ompi_predefined_op_t ompi_mpi_op_no_op;
 
 
 /**
@@ -327,6 +394,13 @@ ompi_op_t *ompi_op_create_user(bool commute,
  */
 OMPI_DECLSPEC void ompi_op_set_cxx_callback(ompi_op_t * op,
                                             MPI_User_function * fn);
+
+/**
+ * Similar to ompi_op_set_cxx_callback(), mark an MPI_Op as holding a
+ * Java calback function, and cache that function in the MPI_Op.
+ */
+OMPI_DECLSPEC void ompi_op_set_java_callback(ompi_op_t *op,  void *jnienv,
+                                             void *object, int baseType);
 
 /**
  * Check to see if an op is intrinsic.
@@ -507,14 +581,26 @@ static inline void ompi_op_reduce(ompi_op_t * op, void *source,
         f_count = OMPI_INT_2_FINT(count);
         op->o_func.fort_fn(source, target, &f_count, &f_dtype);
         return;
-    }
-    if (0 != (op->o_flags & OMPI_OP_FLAGS_CXX_FUNC)) {
+    } else if (0 != (op->o_flags & OMPI_OP_FLAGS_CXX_FUNC)) {
         op->o_func.cxx_data.intercept_fn(source, target, &count, &dtype,
                                          op->o_func.cxx_data.user_fn);
+        return;
+    } else if (0 != (op->o_flags & OMPI_OP_FLAGS_JAVA_FUNC)) {
+        op->o_func.java_data.intercept_fn(source, target, &count, &dtype,
+                                          op->o_func.java_data.baseType,
+                                          op->o_func.java_data.jnienv,
+                                          op->o_func.java_data.object);
         return;
     }
     op->o_func.c_fn(source, target, &count, &dtype);
     return;
+}
+
+static inline void ompi_3buff_op_user (ompi_op_t *op, void * restrict source1, void * restrict source2,
+                                       void * restrict result, int count, struct ompi_datatype_t *dtype)
+{
+    ompi_datatype_copy_content_same_ddt (dtype, count, result, source1);
+    op->o_func.c_fn (source2, result, &count, &dtype);
 }
 
 /**
@@ -551,10 +637,14 @@ static inline void ompi_3buff_op_reduce(ompi_op_t * op, void *source1,
     src2 = source2;
     tgt = target;
 
-    op->o_3buff_intrinsic.fns[ompi_op_ddt_map[dtype->id]](src1, src2,
-                                                          tgt, &count,
-                                                          &dtype,
-                                                          op->o_3buff_intrinsic.modules[ompi_op_ddt_map[dtype->id]]);
+    if (OPAL_LIKELY(ompi_op_is_intrinsic (op))) {
+        op->o_3buff_intrinsic.fns[ompi_op_ddt_map[dtype->id]](src1, src2,
+                                                              tgt, &count,
+                                                              &dtype,
+                                                              op->o_3buff_intrinsic.modules[ompi_op_ddt_map[dtype->id]]);
+    } else {
+        ompi_3buff_op_user (op, src1, src2, tgt, count, dtype);
+    }
 }
 
 END_C_DECLS

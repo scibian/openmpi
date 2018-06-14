@@ -1,3 +1,4 @@
+/* -*- Mode: C; c-basic-offset:4 ; indent-tabs-mode:nil -*- */
 /*
  * Copyright (c) 2004-2005 The Trustees of Indiana University and Indiana
  *                         University Research and Technology
@@ -5,16 +6,18 @@
  * Copyright (c) 2004-2005 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
  * Copyright (c) 2006-2007 University of Houston. All rights reserved.
  * Copyright (c) 2008      Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2015      Los Alamos National Security, LLC. All rights
+ *                         reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  *
  * These symbols are in a file by themselves to provide nice linker
@@ -46,7 +49,7 @@ int mca_coll_inter_verbose_param = 0;
 /*
  * Local function
  */
-static int inter_open(void);
+static int inter_register(void);
 
 /*
  * Instantiate the public struct with all of our public information
@@ -55,50 +58,50 @@ static int inter_open(void);
 
 const mca_coll_base_component_2_0_0_t mca_coll_inter_component = {
 
-  /* First, the mca_component_t struct containing meta information
-     about the component itself */
+    /* First, the mca_component_t struct containing meta information
+       about the component itself */
 
-  {
-    MCA_COLL_BASE_VERSION_2_0_0,
+    .collm_version = {
+        MCA_COLL_BASE_VERSION_2_0_0,
 
-    /* Component name and version */
-    "inter",
-    OMPI_MAJOR_VERSION,
-    OMPI_MINOR_VERSION,
-    OMPI_RELEASE_VERSION,
+        /* Component name and version */
+        .mca_component_name = "inter",
+        MCA_BASE_MAKE_VERSION(component, OMPI_MAJOR_VERSION, OMPI_MINOR_VERSION,
+                              OMPI_RELEASE_VERSION),
 
-    /* Component open and close functions */
-    inter_open,
-    NULL
-  },
-  {
-      /* This component is checkpointable */
-      MCA_BASE_METADATA_PARAM_CHECKPOINT
-  },
+        /* Component open and close functions */
+        .mca_register_component_params = inter_register,
+    },
+    .collm_data = {
+        /* This component is checkpointable */
+        MCA_BASE_METADATA_PARAM_CHECKPOINT
+    },
 
-  /* Initialization / querying functions */
-  mca_coll_inter_init_query,
-  mca_coll_inter_comm_query
+    /* Initialization / querying functions */
+    .collm_init_query = mca_coll_inter_init_query,
+    .collm_comm_query = mca_coll_inter_comm_query,
 };
 
 
-static int inter_open(void)
+static int inter_register(void)
 {
-    
-
     /* Use a high priority, but allow other components to be higher */
-    mca_base_param_reg_int(&mca_coll_inter_component.collm_version, 
-			   "priority",
-                           "Priority of the inter coll component",
-                           false, false, mca_coll_inter_priority_param,
-                           &mca_coll_inter_priority_param);
+    mca_coll_inter_priority_param = 40;
+    (void) mca_base_component_var_register(&mca_coll_inter_component.collm_version,
+                                           "priority", "Priority of the inter coll component",
+                                           MCA_BASE_VAR_TYPE_INT, NULL, 0, 0,
+                                           OPAL_INFO_LVL_9,
+                                           MCA_BASE_VAR_SCOPE_READONLY,
+                                           &mca_coll_inter_priority_param);
 
-
-    mca_base_param_reg_int(&mca_coll_inter_component.collm_version, 
-			   "verbose",
-                           "Turn verbose message of the inter coll component on/off",
-                           false, false, mca_coll_inter_verbose_param,
-                           &mca_coll_inter_verbose_param);
+    mca_coll_inter_verbose_param = 0;
+    (void) mca_base_component_var_register(&mca_coll_inter_component.collm_version,
+                                           "verbose",
+                                           "Turn verbose message of the inter coll component on/off",
+                                           MCA_BASE_VAR_TYPE_INT, NULL, 0, 0,
+                                           OPAL_INFO_LVL_9,
+                                           MCA_BASE_VAR_SCOPE_READONLY,
+                                           &mca_coll_inter_verbose_param);
 
     return OMPI_SUCCESS;
 }

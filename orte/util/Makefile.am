@@ -5,23 +5,25 @@
 # Copyright (c) 2004-2005 The University of Tennessee and The University
 #                         of Tennessee Research Foundation.  All rights
 #                         reserved.
-# Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+# Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
 #                         University of Stuttgart.  All rights reserved.
 # Copyright (c) 2004-2005 The Regents of the University of California.
 #                         All rights reserved.
 # Copyright (c) 2008      Sun Microsystems, Inc.  All rights reserved.
+# Copyright (c) 2014      Cisco Systems, Inc.  All rights reserved.
+# Copyright (c) 2014-2015 Intel, Inc. All rights reserved.
 # $COPYRIGHT$
-# 
+#
 # Additional copyrights may follow
-# 
+#
 # $HEADER$
 #
 
 # This makefile.am does not stand on its own - it is included from orte/Makefile.am
 
-include $(top_srcdir)/Makefile.man-page-rules
+include $(top_srcdir)/Makefile.ompi-rules
 
-dist_pkgdata_DATA += util/hostfile/help-hostfile.txt \
+dist_ortedata_DATA += util/hostfile/help-hostfile.txt \
                      util/dash_host/help-dash-host.txt \
                      util/help-regex.txt
 
@@ -42,18 +44,8 @@ headers += \
 	util/name_fns.h \
         util/proc_info.h \
         util/session_dir.h \
-        util/show_help.h
-
-libopen_rte_la_SOURCES += \
-        util/error_strings.c \
-        util/name_fns.c \
-        util/proc_info.c \
-        util/session_dir.c \
-        util/show_help.c
-
-if !ORTE_DISABLE_FULL_SUPPORT
-
-headers += \
+        util/show_help.h \
+        util/error_strings.h \
 	util/context_fns.h \
 	util/parse_options.h \
 	util/pre_condition_transports.h \
@@ -63,9 +55,16 @@ headers += \
         util/dash_host/dash_host.h \
         util/comm/comm.h \
         util/nidmap.h \
-        util/regex.h
+        util/regex.h \
+        util/attr.h \
+        util/listener.h
 
-libopen_rte_la_SOURCES += \
+lib@ORTE_LIB_PREFIX@open_rte_la_SOURCES += \
+        util/error_strings.c \
+        util/name_fns.c \
+        util/proc_info.c \
+        util/session_dir.c \
+        util/show_help.c \
 	util/context_fns.c \
 	util/parse_options.c \
 	util/pre_condition_transports.c \
@@ -75,9 +74,9 @@ libopen_rte_la_SOURCES += \
         util/dash_host/dash_host.c \
         util/comm/comm.c \
         util/nidmap.c \
-        util/regex.c
-
-endif
+        util/regex.c \
+        util/attr.c \
+        util/listener.c
 
 # Remove the generated man pages
 distclean-local:

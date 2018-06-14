@@ -1,29 +1,32 @@
+/* -*- Mode: C; c-basic-offset:4 ; indent-tabs-mode:nil -*- */
 /*
  * Copyright (c) 2004-2005 The Trustees of Indiana University and Indiana
  *                         University Research and Technology
  *                         Corporation.  All rights reserved.
- * Copyright (c) 2004-2006 The University of Tennessee and The University
+ * Copyright (c) 2004-2013 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
  * Copyright (c) 2008      UT-Battelle, LLC. All rights reserved.
+ * Copyright (c) 2011      Sandia National Laboratories. All rights reserved.
+ * Copyright (c) 2012-2015 Los Alamos National Security, LLC. All rights
+ *                         reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 /**
  *  @file
  */
-                                                                                                                                                 
+
 #ifndef MCA_PML_OB1_RECVFRAG_H
 #define MCA_PML_OB1_RECVFRAG_H
 
-#include "ompi/mca/btl/btl.h"
 #include "pml_ob1_hdr.h"
 
 BEGIN_C_DECLS
@@ -36,7 +39,7 @@ typedef struct mca_pml_ob1_buffer_t mca_pml_ob1_buffer_t;
 
 
 struct mca_pml_ob1_recv_frag_t {
-    ompi_free_list_item_t super;
+    opal_free_list_item_t super;
     mca_pml_ob1_hdr_t hdr;
     size_t num_segments;
     mca_btl_base_module_t* btl;
@@ -49,14 +52,13 @@ typedef struct mca_pml_ob1_recv_frag_t mca_pml_ob1_recv_frag_t;
 OBJ_CLASS_DECLARATION(mca_pml_ob1_recv_frag_t);
 
 
-#define MCA_PML_OB1_RECV_FRAG_ALLOC(frag,rc)                    \
+#define MCA_PML_OB1_RECV_FRAG_ALLOC(frag)                       \
 do {                                                            \
-    ompi_free_list_item_t* item;                                \
-    OMPI_FREE_LIST_WAIT(&mca_pml_ob1.recv_frags, item, rc);     \
-    frag = (mca_pml_ob1_recv_frag_t*)item;                      \
+    frag = (mca_pml_ob1_recv_frag_t *)                          \
+        opal_free_list_wait (&mca_pml_ob1.recv_frags);          \
 } while(0)
 
-    
+
 #define MCA_PML_OB1_RECV_FRAG_INIT(frag, hdr, segs, cnt, btl )          \
 do {                                                                    \
     size_t i, _size;                                                    \
@@ -65,7 +67,7 @@ do {                                                                    \
     unsigned char* _ptr = (unsigned char*)frag->addr;                   \
     /* init recv_frag */                                                \
     frag->btl = btl;                                                    \
-    frag->hdr = *(mca_pml_ob1_hdr_t*)hdr;                               \
+    ob1_hdr_copy( (mca_pml_ob1_hdr_t*)hdr, &frag->hdr );                \
     frag->num_segments = 1;                                             \
     _size = segs[0].seg_len;                                            \
     for( i = 1; i < cnt; i++ ) {                                        \
@@ -101,8 +103,8 @@ do {                                                                    \
     frag->num_segments = 0;                                             \
                                                                         \
     /* return recv_frag */                                              \
-    OMPI_FREE_LIST_RETURN(&mca_pml_ob1.recv_frags,                      \
-                          (ompi_free_list_item_t*)frag);                \
+    opal_free_list_return (&mca_pml_ob1.recv_frags,                     \
+                           (opal_free_list_item_t*)frag);               \
  } while(0)
 
 
@@ -110,16 +112,16 @@ do {                                                                    \
  *  Callback from BTL on receipt of a recv_frag (match).
  */
 
-extern void mca_pml_ob1_recv_frag_callback_match( mca_btl_base_module_t *btl, 
+extern void mca_pml_ob1_recv_frag_callback_match( mca_btl_base_module_t *btl,
                                                   mca_btl_base_tag_t tag,
                                                   mca_btl_base_descriptor_t* descriptor,
                                                   void* cbdata );
-                                                                 
+
 /**
  *  Callback from BTL on receipt of a recv_frag (rndv).
  */
 
-extern void mca_pml_ob1_recv_frag_callback_rndv( mca_btl_base_module_t *btl, 
+extern void mca_pml_ob1_recv_frag_callback_rndv( mca_btl_base_module_t *btl,
                                                  mca_btl_base_tag_t tag,
                                                  mca_btl_base_descriptor_t* descriptor,
                                                  void* cbdata );
@@ -127,7 +129,7 @@ extern void mca_pml_ob1_recv_frag_callback_rndv( mca_btl_base_module_t *btl,
  *  Callback from BTL on receipt of a recv_frag (rget).
  */
 
-extern void mca_pml_ob1_recv_frag_callback_rget( mca_btl_base_module_t *btl, 
+extern void mca_pml_ob1_recv_frag_callback_rget( mca_btl_base_module_t *btl,
                                                  mca_btl_base_tag_t tag,
                                                  mca_btl_base_descriptor_t* descriptor,
                                                  void* cbdata );
@@ -136,7 +138,7 @@ extern void mca_pml_ob1_recv_frag_callback_rget( mca_btl_base_module_t *btl,
  *  Callback from BTL on receipt of a recv_frag (ack).
  */
 
-extern void mca_pml_ob1_recv_frag_callback_ack( mca_btl_base_module_t *btl, 
+extern void mca_pml_ob1_recv_frag_callback_ack( mca_btl_base_module_t *btl,
                                                 mca_btl_base_tag_t tag,
                                                 mca_btl_base_descriptor_t* descriptor,
                                                 void* cbdata );
@@ -144,7 +146,7 @@ extern void mca_pml_ob1_recv_frag_callback_ack( mca_btl_base_module_t *btl,
  *  Callback from BTL on receipt of a recv_frag (frag).
  */
 
-extern void mca_pml_ob1_recv_frag_callback_frag( mca_btl_base_module_t *btl, 
+extern void mca_pml_ob1_recv_frag_callback_frag( mca_btl_base_module_t *btl,
                                                  mca_btl_base_tag_t tag,
                                                  mca_btl_base_descriptor_t* descriptor,
                                                  void* cbdata );
@@ -152,7 +154,7 @@ extern void mca_pml_ob1_recv_frag_callback_frag( mca_btl_base_module_t *btl,
  *  Callback from BTL on receipt of a recv_frag (put).
  */
 
-extern void mca_pml_ob1_recv_frag_callback_put( mca_btl_base_module_t *btl, 
+extern void mca_pml_ob1_recv_frag_callback_put( mca_btl_base_module_t *btl,
                                                 mca_btl_base_tag_t tag,
                                                 mca_btl_base_descriptor_t* descriptor,
                                                 void* cbdata );
@@ -160,12 +162,13 @@ extern void mca_pml_ob1_recv_frag_callback_put( mca_btl_base_module_t *btl,
  *  Callback from BTL on receipt of a recv_frag (fin).
  */
 
-extern void mca_pml_ob1_recv_frag_callback_fin( mca_btl_base_module_t *btl, 
+extern void mca_pml_ob1_recv_frag_callback_fin( mca_btl_base_module_t *btl,
                                                 mca_btl_base_tag_t tag,
                                                 mca_btl_base_descriptor_t* descriptor,
                                                 void* cbdata );
 
-                                              
+
 END_C_DECLS
+
 #endif
 

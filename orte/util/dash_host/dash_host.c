@@ -5,22 +5,25 @@
  * Copyright (c) 2004-2005 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
+ * Copyright (c) 2013      Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2014-2015 Intel, Inc.  All rights reserved.
+ * Copyright (c) 2015      Research Organization for Information Science
+ *                         and Technology (RIST). All rights reserved.
+ * Copyright (c) 2016      IBM Corporation.  All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
 #include "orte_config.h"
 
-#ifdef HAVE_STRING_H
 #include <string.h>
-#endif
 
 #include "orte/constants.h"
 #include "orte/types.h"
@@ -28,8 +31,11 @@
 #include "orte/util/show_help.h"
 #include "opal/util/argv.h"
 #include "opal/util/if.h"
+#include "opal/util/net.h"
 
+#include "orte/mca/ras/base/base.h"
 #include "orte/mca/plm/plm_types.h"
+#include "orte/mca/errmgr/errmgr.h"
 #include "orte/util/proc_info.h"
 #include "orte/runtime/orte_globals.h"
 
@@ -40,110 +46,264 @@
  * relative node syntax should generate an immediate error
  */
 int orte_util_add_dash_host_nodes(opal_list_t *nodes,
-                                  bool *override_oversubscribed,
-                                  char ** host_argv)
+                                  char *hosts, bool allocating)
 {
-    opal_list_item_t* item;
+    opal_list_item_t *item, *itm;
     orte_std_cntr_t i, j, k;
-    int rc;
-    char **mapped_nodes = NULL, **mini_map;
-    orte_node_t *node;
+    int rc, nodeidx;
+    char **host_argv=NULL;
+    char **mapped_nodes = NULL, **mini_map, *ndname;
+    orte_node_t *node, *nd;
+    opal_list_t adds;
+    bool found;
+    int slots;
+    bool slots_given;
+    char *cptr;
+
+    OPAL_OUTPUT_VERBOSE((1, orte_ras_base_framework.framework_output,
+                         "%s dashhost: parsing args %s",
+                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), hosts));
+
+    OBJ_CONSTRUCT(&adds, opal_list_t);
+    host_argv = opal_argv_split(hosts, ',');
 
     /* Accumulate all of the host name mappings */
     for (j = 0; j < opal_argv_count(host_argv); ++j) {
         mini_map = opal_argv_split(host_argv[j], ',');
-        
+
         if (mapped_nodes == NULL) {
             mapped_nodes = mini_map;
         } else {
             for (k = 0; NULL != mini_map[k]; ++k) {
-                rc = opal_argv_append_nosize(&mapped_nodes, 
+                rc = opal_argv_append_nosize(&mapped_nodes,
                                              mini_map[k]);
                 if (OPAL_SUCCESS != rc) {
+                    opal_argv_free(host_argv);
+                    opal_argv_free(mini_map);
                     goto cleanup;
                 }
             }
             opal_argv_free(mini_map);
         }
     }
+    opal_argv_free(host_argv);
+    mini_map = NULL;
 
     /* Did we find anything? If not, then do nothing */
     if (NULL == mapped_nodes) {
-        return ORTE_SUCCESS;
+        rc = ORTE_SUCCESS;
+        goto cleanup;
     }
-    
-    /*  go through the names found and
-       add them to the host list. If they're not unique, then
-       bump the slots count for each duplicate */
-    
+
     for (i = 0; NULL != mapped_nodes[i]; ++i) {
         /* if the specified node contains a relative node syntax,
-         * this is an error
+         * and we are allocating, then ignore it
          */
         if ('+' == mapped_nodes[i][0]) {
-            orte_show_help("help-dash-host.txt", "dash-host:relative-syntax",
-                           true, mapped_nodes[i]);
-            rc = ORTE_ERR_SILENT;
-            goto cleanup;
+            if (!allocating) {
+                if ('e' == mapped_nodes[i][1] ||
+                    'E' == mapped_nodes[i][1]) {
+                    /* request for empty nodes - do they want
+                     * all of them?
+                     */
+                    if (NULL != (cptr = strchr(mapped_nodes[i], ':'))) {
+                        /* the colon indicates a specific # are requested */
+                        ++cptr;
+                        j = strtoul(cptr, NULL, 10);
+                    } else if ('\0' != mapped_nodes[0][2]) {
+                        j = strtoul(&mapped_nodes[0][2], NULL, 10);
+                    } else {
+                        /* add them all */
+                        j = orte_node_pool->size;
+                    }
+                    for (k=0; 0 < j && k < orte_node_pool->size; k++) {
+                        if (NULL != (node = (orte_node_t*)opal_pointer_array_get_item(orte_node_pool, k))) {
+                            if (0 == node->num_procs) {
+                                opal_argv_append_nosize(&mini_map, node->name);
+                                --j;
+                            }
+                        }
+                    }
+                } else if ('n' == mapped_nodes[i][1] ||
+                           'N' == mapped_nodes[i][1]) {
+                    /* they want a specific relative node #, so
+                     * look it up on global pool
+                     */
+                    if ('\0' == mapped_nodes[i][2]) {
+                        /* they forgot to tell us the # */
+                        orte_show_help("help-dash-host.txt", "dash-host:invalid-relative-node-syntax",
+                                       true, mapped_nodes[i]);
+                        rc = ORTE_ERR_SILENT;
+                        goto cleanup;
+                    }
+                    nodeidx = strtol(&mapped_nodes[i][2], NULL, 10);
+                    if (nodeidx < 0 ||
+                        nodeidx > (int)orte_node_pool->size) {
+                        /* this is an error */
+                        orte_show_help("help-dash-host.txt", "dash-host:relative-node-out-of-bounds",
+                                       true, nodeidx, mapped_nodes[i]);
+                        rc = ORTE_ERR_SILENT;
+                        goto cleanup;
+                    }
+                    /* if the HNP is not allocated, then we need to
+                     * adjust the index as the node pool is offset
+                     * by one
+                     */
+                    if (!orte_hnp_is_allocated) {
+                        nodeidx++;
+                    }
+                    /* see if that location is filled */
+
+                    if (NULL == (node = (orte_node_t *) opal_pointer_array_get_item(orte_node_pool, nodeidx))) {
+                        /* this is an error */
+                        orte_show_help("help-dash-host.txt", "dash-host:relative-node-not-found",
+                                       true, nodeidx, mapped_nodes[i]);
+                        rc = ORTE_ERR_SILENT;
+                        goto cleanup;
+                    }
+                    /* add this node to the list */
+                    opal_argv_append_nosize(&mini_map, node->name);
+                } else {
+                    /* invalid relative node syntax */
+                    orte_show_help("help-dash-host.txt", "dash-host:invalid-relative-node-syntax",
+                                   true, mapped_nodes[i]);
+                    rc = ORTE_ERR_SILENT;
+                    goto cleanup;
+                }
+            }
+        } else {
+            /* just one node was given */
+            opal_argv_append_nosize(&mini_map, mapped_nodes[i]);
         }
-        
+    }
+    if (NULL == mini_map) {
+        rc = ORTE_SUCCESS;
+        goto cleanup;
+    }
+
+    /*  go through the names found and
+        add them to the host list. If they're not unique, then
+        bump the slots count for each duplicate */
+    for (i=0; NULL != mini_map[i]; i++) {
+        OPAL_OUTPUT_VERBOSE((1, orte_ras_base_framework.framework_output,
+                             "%s dashhost: working node %s",
+                             ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), mini_map[i]));
+
+        /* see if the node contains the number of slots */
+        slots_given = false;
+        if (NULL != (cptr = strchr(mini_map[i], ':'))) {
+            *cptr = '\0';
+            ++cptr;
+            if ('*' == *cptr) {
+                slots = 0;
+            } else {
+                slots = strtol(cptr, NULL, 10);
+            }
+            slots_given = true;
+        }
+
+        /* check for local name */
+        if (orte_ifislocal(mini_map[i])) {
+            ndname = orte_process_info.nodename;
+        } else {
+            ndname = mini_map[i];
+        }
+
+        // Strip off the FQDN if present, ignore IP addresses
+        if( !orte_keep_fqdn_hostnames && !opal_net_isaddr(ndname) ) {
+            char *ptr;
+            if (NULL != (ptr = strchr(ndname, '.'))) {
+                *ptr = '\0';
+            }
+        }
+
         /* see if the node is already on the list */
-        for (item = opal_list_get_first(nodes); 
-             item != opal_list_get_end(nodes);
-             item = opal_list_get_next(item)) {
-            node = (orte_node_t*) item;
-            if (0 == strcmp(node->name, mapped_nodes[i]) ||
-               (0 == strcmp(node->name, orte_process_info.nodename) &&
-               (0 == strcmp(mapped_nodes[i], "localhost") || opal_ifislocal(mapped_nodes[i])))) {
-                ++node->slots;
+        found = false;
+        OPAL_LIST_FOREACH(node, &adds, orte_node_t) {
+            if (0 == strcmp(node->name, ndname)) {
+                found = true;
+                if (slots_given) {
+                    node->slots += slots;
+                    if (0 < slots) {
+                        ORTE_FLAG_SET(node, ORTE_NODE_FLAG_SLOTS_GIVEN);
+                    }
+                } else {
+                    ++node->slots;
+                    ORTE_FLAG_SET(node, ORTE_NODE_FLAG_SLOTS_GIVEN);
+                }
+                OPAL_OUTPUT_VERBOSE((1, orte_ras_base_framework.framework_output,
+                                     "%s dashhost: node %s already on list - slots %d",
+                                     ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), node->name, node->slots));
                 break;
             }
         }
-        
+
         /* If we didn't find it, add it to the list */
-        
-        if (item == opal_list_get_end(nodes)) {
+        if (!found) {
             node = OBJ_NEW(orte_node_t);
             if (NULL == node) {
+                opal_argv_free(mapped_nodes);
                 return ORTE_ERR_OUT_OF_RESOURCE;
             }
-            /* check to see if this is a local name */
-            if (0 == strcmp(mapped_nodes[i], "localhost") ||
-                opal_ifislocal(mapped_nodes[i])) {
-                /* it is local, so use the local nodename to avoid
-                 * later confusion
-                 */
-                if (orte_show_resolved_nodenames &&
-                    0 != strcmp(mapped_nodes[i], orte_process_info.nodename)) {
-                    /* add to list of aliases for this node - only add if unique */
-                    opal_argv_append_unique_nosize(&node->alias, mapped_nodes[i], false);
-                }
-                node->name = strdup(orte_process_info.nodename);
-            } else {
-                /* not local - use the given name */
-                node->name = strdup(mapped_nodes[i]);
-            }
+            node->name = strdup(ndname);
+            OPAL_OUTPUT_VERBOSE((1, orte_ras_base_framework.framework_output,
+                                 "%s dashhost: added node %s to list",
+                                 ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), node->name));
             node->state = ORTE_NODE_STATE_UP;
             node->slots_inuse = 0;
             node->slots_max = 0;
-            node->slots = 1;
-            /* indicate that ORTE should override any oversubscribed conditions
-             * based on local hardware limits since the user (a) might not have
-             * provided us any info on the #slots for a node, and (b) the user
-             * might have been wrong! If we don't check the number of local physical
-             * processors, then we could be too aggressive on our sched_yield setting
-             * and cause performance problems.
-             */
-            *override_oversubscribed = true;
-            opal_list_append(nodes, &node->super);
+            if (slots_given) {
+                node->slots = slots;
+                if (0 < slots) {
+                    ORTE_FLAG_SET(node, ORTE_NODE_FLAG_SLOTS_GIVEN);
+                }
+            } else {
+                node->slots = 1;
+                ORTE_FLAG_SET(node, ORTE_NODE_FLAG_SLOTS_GIVEN);
+            }
+            opal_list_append(&adds, &node->super);
         }
     }
+    opal_argv_free(mini_map);
+
+    /* transfer across all unique nodes */
+    while (NULL != (item = opal_list_remove_first(&adds))) {
+        nd = (orte_node_t*)item;
+        found = false;
+        for (itm = opal_list_get_first(nodes);
+             itm != opal_list_get_end(nodes);
+             itm = opal_list_get_next(itm)) {
+            node = (orte_node_t*)itm;
+            if (0 == strcmp(nd->name, node->name)) {
+                found = true;
+                OPAL_OUTPUT_VERBOSE((1, orte_ras_base_framework.framework_output,
+                                     "%s dashhost: found existing node %s on input list - ignoring",
+                                     ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), node->name));
+                /* transfer across the number of slots */
+                node->slots = nd->slots;
+                if (ORTE_FLAG_TEST(nd, ORTE_NODE_FLAG_SLOTS_GIVEN)) {
+                    ORTE_FLAG_SET(node, ORTE_NODE_FLAG_SLOTS_GIVEN);
+                }
+                break;
+            }
+        }
+        if (!found) {
+            OPAL_OUTPUT_VERBOSE((1, orte_ras_base_framework.framework_output,
+                                 "%s dashhost: adding node %s with %d slots to final list",
+                                 ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), nd->name, nd->slots));
+            opal_list_append(nodes, &nd->super);
+        } else {
+            OBJ_RELEASE(item);
+        }
+    }
+
     rc = ORTE_SUCCESS;
 
-cleanup:
+ cleanup:
     if (NULL != mapped_nodes) {
         opal_argv_free(mapped_nodes);
     }
+    OPAL_LIST_DESTRUCT(&adds);
 
     return rc;
 }
@@ -153,34 +313,21 @@ cleanup:
  * and relative mode, so we have to check for pre-existing
  * allocations if we are to use relative node syntax
  */
-int orte_util_filter_dash_host_nodes(opal_list_t *nodes,
-                                     char** host_argv)
+static int parse_dash_host(char ***mapped_nodes, char *hosts)
 {
-    opal_list_item_t* item;
-    opal_list_item_t *next;
-    orte_std_cntr_t i, j, k, len_mapped_node=0;
-    int rc;
-    char **mapped_nodes = NULL, **mini_map, *cptr;
-    orte_node_t *node, **nodepool;
+    orte_std_cntr_t j, k;
+    int rc=ORTE_SUCCESS;
+    char **mini_map=NULL, *cptr;
     int nodeidx;
-    int num_empty=0;
-    opal_list_t keep;
-    bool want_all_empty = false;
-    
-    /* if the incoming node list is empty, then there
-     * is nothing to filter!
-     */
-    if (opal_list_is_empty(nodes)) {
-        return ORTE_SUCCESS;
-    }
+    orte_node_t *node;
+    char **host_argv=NULL;
 
-    /* setup for relative node syntax */
-    nodepool = (orte_node_t**)orte_node_pool->addr;
-    
+    host_argv = opal_argv_split(hosts, ',');
+
     /* Accumulate all of the host name mappings */
     for (j = 0; j < opal_argv_count(host_argv); ++j) {
         mini_map = opal_argv_split(host_argv[j], ',');
-        
+
         for (k = 0; NULL != mini_map[k]; ++k) {
             if ('+' == mini_map[k][0]) {
                 /* see if we specified empty nodes */
@@ -191,15 +338,11 @@ int orte_util_filter_dash_host_nodes(opal_list_t *nodes,
                      */
                     if (NULL != (cptr = strchr(mini_map[k], ':'))) {
                         /* the colon indicates a specific # are requested */
-                        cptr++; /* step past : */
-                        /* put a marker into the list */
-                        cptr--;
                         *cptr = '*';
-                        opal_argv_append_nosize(&mapped_nodes, cptr);
+                        opal_argv_append_nosize(mapped_nodes, cptr);
                     } else {
                         /* add a marker to the list */
-                        opal_argv_append_nosize(&mapped_nodes, "*");
-                        want_all_empty = true;
+                        opal_argv_append_nosize(mapped_nodes, "*");
                     }
                 } else if ('n' == mini_map[k][1] ||
                            'N' == mini_map[k][1]) {
@@ -223,8 +366,8 @@ int orte_util_filter_dash_host_nodes(opal_list_t *nodes,
                         nodeidx++;
                     }
                     /* see if that location is filled */
-                    
-                    if (NULL == nodepool[nodeidx]) {
+
+                    if (NULL == (node = (orte_node_t *) opal_pointer_array_get_item(orte_node_pool, nodeidx))) {
                         /* this is an error */
                         orte_show_help("help-dash-host.txt", "dash-host:relative-node-not-found",
                                        true, nodeidx, mini_map[k]);
@@ -232,7 +375,7 @@ int orte_util_filter_dash_host_nodes(opal_list_t *nodes,
                         goto cleanup;
                     }
                     /* add this node to the list */
-                    opal_argv_append_nosize(&mapped_nodes, nodepool[nodeidx]->name);
+                    opal_argv_append_nosize(mapped_nodes, node->name);
                 } else {
                     /* invalid relative node syntax */
                     orte_show_help("help-dash-host.txt", "dash-host:invalid-relative-node-syntax",
@@ -241,29 +384,68 @@ int orte_util_filter_dash_host_nodes(opal_list_t *nodes,
                     goto cleanup;
                 }
             } else { /* non-relative syntax - add to list */
-                if (OPAL_SUCCESS != (rc = opal_argv_append_nosize(&mapped_nodes, 
-                                                                  mini_map[k]))) {
-                    goto cleanup;
+                /* remove any modifier */
+                if (NULL != (cptr = strchr(mini_map[k], ':'))) {
+                    *cptr = '\0';
+                }
+                /* check for local alias */
+                if (orte_ifislocal(mini_map[k])) {
+                    opal_argv_append_nosize(mapped_nodes, orte_process_info.nodename);
+                } else {
+                    opal_argv_append_nosize(mapped_nodes, mini_map[k]);
                 }
             }
         }
         opal_argv_free(mini_map);
+        mini_map = NULL;
     }
-    
-    /* Did we find anything? If not, then do nothing */
-    if (NULL == mapped_nodes && 0 == num_empty) {
+
+cleanup:
+    if (NULL != host_argv) {
+        opal_argv_free(host_argv);
+    }
+    if (NULL != mini_map) {
+        opal_argv_free(mini_map);
+    }
+    return rc;
+}
+
+int orte_util_filter_dash_host_nodes(opal_list_t *nodes,
+                                     char *hosts,
+                                     bool remove)
+{
+    opal_list_item_t* item;
+    opal_list_item_t *next;
+    orte_std_cntr_t i, j, len_mapped_node=0;
+    int rc;
+    char **mapped_nodes = NULL;
+    orte_node_t *node;
+    int num_empty=0;
+    opal_list_t keep;
+    bool want_all_empty=false;
+    char *cptr;
+
+    /* if the incoming node list is empty, then there
+     * is nothing to filter!
+     */
+    if (opal_list_is_empty(nodes)) {
         return ORTE_SUCCESS;
     }
-    
-    /* we found some info - filter what is on the list...
-     * i.e., go through the list and remove any nodes that
-     * were -not- included on the -host list.
-     *
-     * NOTE: The following logic is based on knowing that
+
+    if (ORTE_SUCCESS != (rc = parse_dash_host(&mapped_nodes, hosts))) {
+        ORTE_ERROR_LOG(rc);
+        return rc;
+    }
+    /* Did we find anything? If not, then do nothing */
+    if (NULL == mapped_nodes) {
+        return ORTE_SUCCESS;
+    }
+
+    /* NOTE: The following logic is based on knowing that
      * any node can only be included on the incoming
      * nodes list ONCE.
      */
-    
+
     len_mapped_node = opal_argv_count(mapped_nodes);
     /* setup a working list so we can put the final list
      * of nodes in order. This way, if the user specifies a
@@ -272,7 +454,7 @@ int orte_util_filter_dash_host_nodes(opal_list_t *nodes,
      * will always be appended to the end
      */
     OBJ_CONSTRUCT(&keep, opal_list_t);
-    
+
     for (i = 0; i < len_mapped_node; ++i) {
         /* check if we are supposed to add some number of empty
          * nodes here
@@ -284,6 +466,7 @@ int orte_util_filter_dash_host_nodes(opal_list_t *nodes,
             if ('\0' == mapped_nodes[i][1]) {
                 /* take all empty nodes from the list */
                 num_empty = INT_MAX;
+                want_all_empty = true;
             } else {
                 /* extract number of nodes to take */
                 num_empty = strtol(&mapped_nodes[i][1], NULL, 10);
@@ -302,35 +485,43 @@ int orte_util_filter_dash_host_nodes(opal_list_t *nodes,
                             goto skipnode;
                         }
                     }
-                    /* remove item from list */
-                    opal_list_remove_item(nodes, item);
-                    /* xfer to keep list */
-                    opal_list_append(&keep, item);
+                    if (remove) {
+                        /* remove item from list */
+                        opal_list_remove_item(nodes, item);
+                        /* xfer to keep list */
+                        opal_list_append(&keep, item);
+                    } else {
+                        /* mark the node as found */
+                        ORTE_FLAG_SET(node, ORTE_NODE_FLAG_MAPPED);
+                    }
                     --num_empty;
                 }
             skipnode:
                 item = next;
             }
         } else {
-            /* we are looking for a specific node on the list
-             * we have a match if one of two conditions is met:
-             * 1. the node_name and mapped_nodes directly match
-             * 2. the node_name is the local system name AND
-             *    either the mapped_node is "localhost" OR it
-             *    is a local interface as found by opal_ifislocal
-             */
+            /* we are looking for a specific node on the list. The
+             * parser will have substituted our local name for any
+             * alias, so we only have to do a strcmp here */
             item = opal_list_get_first(nodes);
             while (item != opal_list_get_end(nodes)) {
                 next = opal_list_get_next(item);  /* save this position */
                 node = (orte_node_t*)item;
+                /* remove any modifier */
+                if (NULL != (cptr = strchr(mapped_nodes[i], ':'))) {
+                    *cptr = '\0';
+                }
                 /* search -host list to see if this one is found */
-                if ((0 == strcmp(node->name, mapped_nodes[i]) ||
-                    (0 == strcmp(node->name, orte_process_info.nodename) &&
-                    (0 == strcmp(mapped_nodes[i], "localhost") || opal_ifislocal(mapped_nodes[i]))))) {
-                    /* remove item from list */
-                    opal_list_remove_item(nodes, item);
-                    /* xfer to keep list */
-                    opal_list_append(&keep, item);
+                if (0 == strcmp(node->name, mapped_nodes[i])) {
+                    if (remove) {
+                        /* remove item from list */
+                        opal_list_remove_item(nodes, item);
+                        /* xfer to keep list */
+                        opal_list_append(&keep, item);
+                    } else {
+                        /* mark the node as found */
+                        ORTE_FLAG_SET(node, ORTE_NODE_FLAG_MAPPED);
+                    }
                     break;
                 }
                 item = next;
@@ -350,17 +541,23 @@ int orte_util_filter_dash_host_nodes(opal_list_t *nodes,
             goto cleanup;
         }
     }
-    
+
+    if (!remove) {
+        /* all done */
+        rc = ORTE_SUCCESS;
+        goto cleanup;
+    }
+
     /* clear the rest of the nodes list */
     while (NULL != (item = opal_list_remove_first(nodes))) {
         OBJ_RELEASE(item);
     }
-    
+
     /* the nodes list has been cleared - rebuild it in order */
     while (NULL != (item = opal_list_remove_first(&keep))) {
         opal_list_append(nodes, item);
     }
-    
+
     /* did they ask for more than we could provide */
     if (!want_all_empty && 0 < num_empty) {
         orte_show_help("help-dash-host.txt", "dash-host:not-enough-empty",
@@ -368,10 +565,10 @@ int orte_util_filter_dash_host_nodes(opal_list_t *nodes,
         rc = ORTE_ERR_SILENT;
         goto cleanup;
     }
-    
+
     rc = ORTE_SUCCESS;
     /* done filtering existing list */
-    
+
 cleanup:
     for (i=0; i < len_mapped_node; i++) {
         if (NULL != mapped_nodes[i]) {
@@ -382,7 +579,29 @@ cleanup:
     if (NULL != mapped_nodes) {
         free(mapped_nodes);
     }
-    
+
     return rc;
 }
 
+int orte_util_get_ordered_dash_host_list(opal_list_t *nodes,
+                                         char *hosts)
+{
+    int rc, i;
+    char **mapped_nodes = NULL;
+    orte_node_t *node;
+
+    if (ORTE_SUCCESS != (rc = parse_dash_host(&mapped_nodes, hosts))) {
+        ORTE_ERROR_LOG(rc);
+    }
+
+    /* for each entry, create a node entry on the list */
+    for (i=0; NULL != mapped_nodes[i]; i++) {
+        node = OBJ_NEW(orte_node_t);
+        node->name = strdup(mapped_nodes[i]);
+        opal_list_append(nodes, &node->super);
+    }
+
+    /* cleanup */
+    opal_argv_free(mapped_nodes);
+    return rc;
+}

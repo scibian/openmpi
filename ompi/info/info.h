@@ -1,21 +1,23 @@
-/* -*- Mode: C; c-basic-offset:4 ; -*- */
+/* -*- Mode: C; c-basic-offset:4 ; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2004-2005 The Trustees of Indiana University and Indiana
+ * Copyright (c) 2004-2010 The Trustees of Indiana University and Indiana
  *                         University Research and Technology
  *                         Corporation.  All rights reserved.
  * Copyright (c) 2004-2007 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
- * Copyright (c) 2007      Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2007-2012 Cisco Systems, Inc.  All rights reserved.
  * Copyright (c) 2009      Sun Microsystems, Inc.  All rights reserved.
+ * Copyright (c) 2012-2015 Los Alamos National Security, LLC. All rights
+ *                         reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -30,16 +32,17 @@
 #include "opal/class/opal_pointer_array.h"
 #include "opal/threads/mutex.h"
 
+#include "opal/mca/base/mca_base_var_enum.h"
 
 /**
  * \internal
  * ompi_info_t structure. MPI_Info is a pointer to this structure
  */
 struct ompi_info_t {
-  opal_list_t super; 
+  opal_list_t super;
   /**< generic list pointer which is the container for (key,value)
        pairs */
-  int i_f_to_c_index; 
+  int i_f_to_c_index;
   /**< fortran handle for info. This is needed for translation from
        fortran to C and vice versa */
   opal_mutex_t *i_lock;
@@ -78,7 +81,7 @@ struct ompi_info_entry_t {
     char *ie_value; /**< value part of the (key, value) pair.
                   * Maximum length is MPI_MAX_INFO_VAL */
     char ie_key[MPI_MAX_INFO_KEY + 1]; /**< "key" part of the (key, value)
-                                     * pair */ 
+                                     * pair */
 };
 /**
  * \internal
@@ -90,13 +93,23 @@ BEGIN_C_DECLS
 
 /**
  * Table for Fortran <-> C translation table
- */ 
+ */
 extern opal_pointer_array_t ompi_info_f_to_c_table;
 
 /**
  * Global instance for MPI_INFO_NULL
  */
 OMPI_DECLSPEC extern ompi_predefined_info_t ompi_mpi_info_null;
+
+/**
+ * Symbol for Fortran 03 bindings to bind to
+ */
+OMPI_DECLSPEC extern ompi_predefined_info_t *ompi_mpi_info_null_addr;
+
+/**
+ * Global instance for MPI_INFO_ENV
+ */
+OMPI_DECLSPEC extern ompi_predefined_info_t ompi_mpi_info_env;
 
 /**
  * \internal
@@ -138,7 +151,7 @@ int ompi_info_finalize(void);
  */
 int ompi_info_dup (ompi_info_t *info, ompi_info_t **newinfo);
 
-/*
+/**
  * Set a new key,value pair on info.
  *
  * @param info pointer to ompi_info_t object
@@ -148,7 +161,22 @@ int ompi_info_dup (ompi_info_t *info, ompi_info_t **newinfo);
  * @retval MPI_SUCCESS upon success
  * @retval MPI_ERR_NO_MEM if out of memory
  */
-int ompi_info_set (ompi_info_t *info, char *key, char *value);
+OMPI_DECLSPEC int ompi_info_set (ompi_info_t *info, const char *key, const char *value);
+
+/**
+ * Set a new key,value pair from a variable enumerator.
+ *
+ * @param info pointer to ompi_info_t object
+ * @param key pointer to the new key object
+ * @param value integer value of the info key (must be valid in var_enum)
+ * @param var_enum variable enumerator
+ *
+ * @retval MPI_SUCCESS upon success
+ * @retval MPI_ERR_NO_MEM if out of memory
+ * @retval OPAL_ERR_VALUE_OUT_OF_BOUNDS if the value is not valid in the enumerator
+ */
+OMPI_DECLSPEC int ompi_info_set_value_enum (ompi_info_t *info, const char *key, int value,
+                                            mca_base_var_enum_t *var_enum);
 
 /**
  * ompi_info_free - Free an 'MPI_Info' object.
@@ -191,6 +219,26 @@ OMPI_DECLSPEC int ompi_info_get_bool (ompi_info_t *info, char *key, bool *value,
                                       int *flag);
 
 /**
+ *   Get a (key, value) pair from an 'MPI_Info' object and assign it
+ *   into an integer output based on the enumerator value.
+ *
+ *   @param info Pointer to ompi_info_t object
+ *   @param key null-terminated character string of the index key
+ *   @param value integer output value
+ *   @param default_value value to use if the string does not conform to the
+ *          values accepted by the enumerator
+ *   @param var_enum variable enumerator for the value
+ *   @param flag true (1) if 'key' defined on 'info', false (0) if not
+ *               (logical)
+ *
+ *   @retval MPI_SUCCESS
+ */
+
+OMPI_DECLSPEC int ompi_info_get_value_enum (ompi_info_t *info, const char *key,
+                                            int *value, int default_value,
+                                            mca_base_var_enum_t *var_enum, int *flag);
+
+/**
  *   Get a (key, value) pair from an 'MPI_Info' object
  *
  *   @param info Pointer to ompi_info_t object
@@ -205,7 +253,7 @@ OMPI_DECLSPEC int ompi_info_get_bool (ompi_info_t *info, char *key, bool *value,
  *   In C and C++, 'valuelen' should be one less than the allocated
  *   space to allow for for the null terminator.
  */
-OMPI_DECLSPEC int ompi_info_get (ompi_info_t *info, char *key, int valuelen,
+OMPI_DECLSPEC int ompi_info_get (ompi_info_t *info, const char *key, int valuelen,
                                  char *value, int *flag);
 
 /**
@@ -218,7 +266,7 @@ OMPI_DECLSPEC int ompi_info_get (ompi_info_t *info, char *key, int valuelen,
  * @retval MPI_SUCCESS
  * @retval MPI_ERR_NOKEY
  */
-int ompi_info_delete (ompi_info_t *info, char *key);
+int ompi_info_delete (ompi_info_t *info, const char *key);
 
 /**
  *   @param info - ompi_info_t pointer object (handle)
@@ -235,8 +283,8 @@ int ompi_info_delete (ompi_info_t *info, char *key);
  *   character.  If the 'key' is not found on 'info', 'valuelen' is left
  *   alone.
  */
-OMPI_DECLSPEC int ompi_info_get_valuelen (ompi_info_t *info, char *key, int *valuelen,
-                              int *flag);
+OMPI_DECLSPEC int ompi_info_get_valuelen (ompi_info_t *info, const char *key, int *valuelen,
+                                          int *flag);
 
 /**
  *   ompi_info_get_nthkey - Get a key indexed by integer from an 'MPI_Info' o
@@ -270,7 +318,7 @@ OMPI_DECLSPEC int ompi_info_value_to_bool(char *value, bool *interp);
  * Convert value string to integer
  *
  * Convert value string \c value into a integer, using the
- * interpretation rules specified in MPI-2 Section 4.10.  
+ * interpretation rules specified in MPI-2 Section 4.10.
  * All others will return \c OMPI_ERR_BAD_PARAM
  *
  * @param value Value string for info key to interpret
@@ -311,8 +359,8 @@ static inline bool ompi_info_is_freed(ompi_info_t *info)
  *
  * @retval The number of keys defined on info
  */
-static inline int 
-ompi_info_get_nkeys(ompi_info_t *info, int *nkeys) 
+static inline int
+ompi_info_get_nkeys(ompi_info_t *info, int *nkeys)
 {
     *nkeys = (int) opal_list_get_size(&(info->super));
     return MPI_SUCCESS;

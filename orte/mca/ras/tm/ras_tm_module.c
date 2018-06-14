@@ -5,15 +5,16 @@
  * Copyright (c) 2004-2005 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
  * Copyright (c) 2006      Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2014      Intel, Inc.  All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 #include "orte_config.h"
@@ -38,7 +39,7 @@
 /*
  * Local functions
  */
-static int allocate(opal_list_t *nodes);
+static int allocate(orte_job_t *jdata, opal_list_t *nodes);
 static int finalize(void);
 
 static int discover(opal_list_t* nodelist, char *pbs_jobid);
@@ -52,7 +53,9 @@ static char *filename;
  * Global variable
  */
 orte_ras_base_module_t orte_ras_tm_module = {
+    NULL,
     allocate,
+    NULL,
     finalize
 };
 
@@ -60,9 +63,9 @@ orte_ras_base_module_t orte_ras_tm_module = {
 /**
  * Discover available (pre-allocated) nodes and report
  * them back to the caller.
- *  
+ *
  */
-static int allocate(opal_list_t *nodes)
+static int allocate(orte_job_t *jdata, opal_list_t *nodes)
 {
     int ret;
     char *pbs_jobid;
@@ -72,17 +75,17 @@ static int allocate(opal_list_t *nodes)
         ORTE_ERROR_LOG(ORTE_ERR_NOT_FOUND);
         return ORTE_ERR_NOT_FOUND;
     }
-    
+
     /* save that value in the global job ident string for
      * later use in any error reporting
      */
     orte_job_ident = strdup(pbs_jobid);
-    
+
     if (ORTE_SUCCESS != (ret = discover(nodes, pbs_jobid))) {
         ORTE_ERROR_LOG(ret);
         return ret;
     }
-    
+
     /* in the TM world, if we didn't find anything, then this
      * is an unrecoverable error - report it
      */
@@ -90,7 +93,7 @@ static int allocate(opal_list_t *nodes)
         orte_show_help("help-ras-tm.txt", "no-nodes-found", true, filename);
         return ORTE_ERR_NOT_FOUND;
     }
-    
+
     /* All done */
     return ORTE_SUCCESS;
 }
@@ -100,7 +103,7 @@ static int allocate(opal_list_t *nodes)
  */
 static int finalize(void)
 {
-    OPAL_OUTPUT_VERBOSE((1, orte_ras_base.ras_output,
+    OPAL_OUTPUT_VERBOSE((1, orte_ras_base_framework.framework_output,
                          "%s ras:tm:finalize: success (nothing to do)",
                          ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
     return ORTE_SUCCESS;
@@ -122,7 +125,8 @@ static int discover(opal_list_t* nodelist, char *pbs_jobid)
     orte_node_t *node;
     opal_list_item_t* item;
     FILE *fp;
-    char *hostname;
+    char *hostname, *cppn;
+    int ppn;
 
     /* Ignore anything that the user already specified -- we're
        getting nodes only from TM. */
@@ -133,6 +137,19 @@ static int discover(opal_list_t* nodelist, char *pbs_jobid)
        here (we actually ignore the fact that they're duplicates --
        slightly inefficient, but no big deal); just mentioned for
        completeness... */
+
+    /* if we are in SMP mode, then read the environment to get the
+     * number of cpus for each node read in the file
+     */
+    if (mca_ras_tm_component.smp_mode) {
+        if (NULL == (cppn = getenv("PBS_PPN"))) {
+            orte_show_help("help-ras-tm.txt", "smp-error", true);
+            return ORTE_ERR_NOT_FOUND;
+        }
+        ppn = strtol(cppn, NULL, 10);
+    } else {
+        ppn = 1;
+    }
 
     /* setup the full path to the PBS file */
     filename = opal_os_path(false, mca_ras_tm_component.nodefile_dir,
@@ -152,7 +169,7 @@ static int discover(opal_list_t* nodelist, char *pbs_jobid)
     nodeid=0;
     while (NULL != (hostname = tm_getline(fp))) {
 
-        OPAL_OUTPUT_VERBOSE((1, orte_ras_base.ras_output,
+        OPAL_OUTPUT_VERBOSE((1, orte_ras_base_framework.framework_output,
                              "%s ras:tm:allocate:discover: got hostname %s",
                              ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), hostname));
 
@@ -164,12 +181,17 @@ static int discover(opal_list_t* nodelist, char *pbs_jobid)
              item = opal_list_get_next(item)) {
             node = (orte_node_t*) item;
             if (0 == strcmp(node->name, hostname)) {
+                if (mca_ras_tm_component.smp_mode) {
+                    /* this cannot happen in smp mode */
+                    orte_show_help("help-ras-tm.txt", "smp-multi", true);
+                    return ORTE_ERR_BAD_PARAM;
+                }
                 ++node->slots;
 
-                OPAL_OUTPUT_VERBOSE((1, orte_ras_base.ras_output,
+                OPAL_OUTPUT_VERBOSE((1, orte_ras_base_framework.framework_output,
                                      "%s ras:tm:allocate:discover: found -- bumped slots to %d",
                                      ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), node->slots));
-                
+
                 break;
             }
         }
@@ -179,17 +201,18 @@ static int discover(opal_list_t* nodelist, char *pbs_jobid)
         if (opal_list_get_end(nodelist) == item) {
 
             /* Nope -- didn't find it, so add a new item to the list */
-            
-            OPAL_OUTPUT_VERBOSE((1, orte_ras_base.ras_output,
+
+            OPAL_OUTPUT_VERBOSE((1, orte_ras_base_framework.framework_output,
                                  "%s ras:tm:allocate:discover: not found -- added to list",
                                  ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
-            
+
             node = OBJ_NEW(orte_node_t);
             node->name = hostname;
-            node->launch_id = nodeid;
+            orte_set_attribute(&node->attributes, ORTE_NODE_LAUNCH_ID, ORTE_ATTR_LOCAL, &nodeid, OPAL_INT32);
             node->slots_inuse = 0;
             node->slots_max = 0;
-            node->slots = 1;
+            node->slots = ppn;
+            node->state = ORTE_NODE_STATE_UP;
             opal_list_append(nodelist, &node->super);
         } else {
 
@@ -200,6 +223,7 @@ static int discover(opal_list_t* nodelist, char *pbs_jobid)
         /* up the nodeid */
         nodeid++;
     }
+    fclose(fp);
 
     return ORTE_SUCCESS;
 }
@@ -208,14 +232,14 @@ static char *tm_getline(FILE *fp)
 {
     char *ret, *buff;
     char input[TM_FILE_MAX_LINE_LENGTH];
-    
+
     ret = fgets(input, TM_FILE_MAX_LINE_LENGTH, fp);
     if (NULL != ret) {
         input[strlen(input)-1] = '\0';  /* remove newline */
         buff = strdup(input);
         return buff;
     }
-    
+
     return NULL;
 }
 

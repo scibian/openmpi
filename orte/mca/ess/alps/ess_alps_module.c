@@ -10,7 +10,7 @@
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
  * Copyright (c) 2011      Cisco Systems, Inc.  All rights reserved.
- * Copyright (c) 2011      Los Alamos National Security, LLC.
+ * Copyright (c) 2011-2013 Los Alamos National Security, LLC.
  *                         All rights reserved.
  * $COPYRIGHT$
  *
@@ -22,15 +22,6 @@
 
 #include "orte_config.h"
 #include "orte/constants.h"
-
-#if ORTE_MCA_ESS_ALPS_HAVE_CNOS == 1
-#  if defined(HAVE_CNOS_MPI_OS_H)
-#    include "cnos_mpi_os.h"
-#  elif defined(HAVE_CATAMOUNT_CNOS_MPI_OS_H)
-#    include "catamount/cnos_mpi_os.h"
-#  endif
-#endif
-#include <errno.h>
 
 #include "orte/util/show_help.h"
 #include "opal/util/argv.h"
@@ -46,80 +37,56 @@
 #include "orte/mca/ess/base/base.h"
 #include "orte/mca/ess/alps/ess_alps.h"
 
+#include <errno.h>
+
 static int alps_set_name(void);
 static int rte_init(void);
 static int rte_finalize(void);
-static int get_vpid(orte_vpid_t *outvp,
-                    orte_vpid_t start_vpid);
 
 orte_ess_base_module_t orte_ess_alps_module = {
     rte_init,
     rte_finalize,
     orte_ess_base_app_abort,
-    orte_ess_base_proc_get_locality,
-    orte_ess_base_proc_get_daemon,
-    orte_ess_base_proc_get_hostname,
-    orte_ess_base_proc_get_local_rank,
-    orte_ess_base_proc_get_node_rank,
-    orte_ess_base_proc_get_epoch,
-    orte_ess_base_update_pidmap,
-    orte_ess_base_update_nidmap,
     NULL /* ft_event */
 };
 
 /* Local variables */
 static orte_vpid_t starting_vpid = 0;
 
-static int
-get_vpid(orte_vpid_t *outvp,
-         orte_vpid_t start_vpid)
-{
-#if ORTE_MCA_ESS_ALPS_HAVE_CNOS == 1
-    *outvp = (orte_vpid_t)cnos_get_rank() + start_vpid;
-    return ORTE_SUCCESS;
-#else
-    /* Cray XE6 Notes:
-     * using PMI_GNI_LOC_ADDR to set vpid.
-     */
-    int rank = 0;
-    char *env;
-
-    if (NULL == (env = getenv("PMI_GNI_LOC_ADDR"))) {
-        OPAL_OUTPUT_VERBOSE((0, orte_ess_base_output,
-                             "PMI_GNI_LOC_ADDR not found, cannot continue\n"));
-        ORTE_ERROR_LOG(ORTE_ERROR);
-        return ORTE_ERROR;
-    }
-    errno = 0;
-    rank = (int)strtol(env, (char **)NULL, 10);
-    if (0 != errno) {
-        OPAL_OUTPUT_VERBOSE((0, orte_ess_base_output,
-                             "strtol error detected at %s:%d\n", __FILE__,
-                             __LINE__));
-        ORTE_ERROR_LOG(ORTE_ERROR);
-        return ORTE_ERROR;
-    }
-    *outvp = (orte_vpid_t)(rank + (int)start_vpid);
-    return ORTE_SUCCESS;
-#endif /* ORTE_MCA_ESS_ALPS_HAVE_CNOS == 1 */
-}
 
 static int rte_init(void)
 {
-    int ret, i;
+    int ret;
     char *error = NULL;
     char **hosts = NULL;
+
+    OPAL_OUTPUT_VERBOSE((1, orte_ess_base_framework.framework_output,
+                         "ess:alps in rte_init"));
+
+    /*
+     * shouldn't have been able to open this ess component if
+     * process is app proc
+     */
+
+    if (ORTE_PROC_IS_APP) {
+        error = "mpi rank invoking alps rte_init";
+        ret = ORTE_ERR_NOT_SUPPORTED;
+        goto fn_fail;
+    }
 
     /* run the prolog */
     if (ORTE_SUCCESS != (ret = orte_ess_base_std_prolog())) {
         error = "orte_ess_base_std_prolog";
-        goto error;
+        goto fn_fail;
     }
 
-    /* Start by getting a unique name */
-    alps_set_name();
+    if (ORTE_SUCCESS != (ret = alps_set_name())) {
+        error = "alps_set_name";
+        goto fn_fail;
+    }
 
-    /* if I am a daemon, complete my setup using the
+    /*
+     * if I am a daemon, complete my setup using the
      * default procedure
      */
     if (ORTE_PROC_IS_DAEMON) {
@@ -129,154 +96,120 @@ static int rte_init(void)
                 orte_regex_extract_node_names(orte_node_regex, &hosts)) ||
                 NULL == hosts) {
                 error = "orte_regex_extract_node_names";
-                goto error;
-            }
-
-            /* find our host in the list */
-            for (i=0; NULL != hosts[i]; i++) {
-                if (0 == strncmp(hosts[i], orte_process_info.nodename,
-                                 strlen(hosts[i]))) {
-                    /* correct our vpid */
-                    ORTE_PROC_MY_NAME->vpid = starting_vpid + i;
-                    OPAL_OUTPUT_VERBOSE((1, orte_ess_base_output,
-                                         "ess:alps reset name to %s",
-                                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
-                    break;
-                }
+                goto fn_fail;
             }
         }
         if (ORTE_SUCCESS != (ret = orte_ess_base_orted_setup(hosts))) {
             ORTE_ERROR_LOG(ret);
             error = "orte_ess_base_orted_setup";
-            goto error;
+            goto fn_fail;
         }
-        opal_argv_free(hosts);
-        return ORTE_SUCCESS;
+        if (NULL != hosts) {
+            opal_argv_free(hosts);
+        }
+
+        /*
+         * now synchronize with aprun.
+         */
+
+        if (ORTE_SUCCESS != (ret = orte_ess_alps_sync_start())) {
+            error = "orte_ess_alps_sync";
+            goto fn_fail;
+        }
+
+        ret = ORTE_SUCCESS;
+        goto fn_exit;
     }
+
     if (ORTE_PROC_IS_TOOL) {
         /* otherwise, if I am a tool proc, use that procedure */
         if (ORTE_SUCCESS != (ret = orte_ess_base_tool_setup())) {
             ORTE_ERROR_LOG(ret);
             error = "orte_ess_base_tool_setup";
-            goto error;
+            goto fn_fail;
         }
         /* as a tool, I don't need a nidmap - so just return now */
-        return ORTE_SUCCESS;
-    }
-    /* otherwise, I must be an application process - use
-     * the default procedure to finish my setup
-     */
-    if (ORTE_SUCCESS != (ret = orte_ess_base_app_setup())) {
-        ORTE_ERROR_LOG(ret);
-        error = "orte_ess_base_app_setup";
-        goto error;
-    }
-    /* setup the nidmap arrays */
-    if (ORTE_SUCCESS !=
-        (ret = orte_util_nidmap_init(orte_process_info.sync_buf))) {
-        ORTE_ERROR_LOG(ret);
-        error = "orte_util_nidmap_init";
-        goto error;
+        ret = ORTE_SUCCESS;
+        goto fn_exit;
     }
 
-    return ORTE_SUCCESS;
-
-error:
-    orte_show_help("help-orte-runtime.txt",
-                   "orte_init:startup:internal-failure",
-                   true, error, ORTE_ERROR_NAME(ret), ret);
+   fn_exit:
     return ret;
+
+   fn_fail:
+    if (ORTE_ERR_SILENT != ret && !orte_report_silent_errors) {
+        orte_show_help("help-orte-runtime.txt",
+                       "orte_init:startup:internal-failure",
+                       true, error, ORTE_ERROR_NAME(ret), ret);
+    }
+    goto fn_exit;
 }
 
 static int rte_finalize(void)
 {
-    int ret;
+    int ret = ORTE_SUCCESS;
 
     /* if I am a daemon, finalize using the default procedure */
     if (ORTE_PROC_IS_DAEMON) {
         if (ORTE_SUCCESS != (ret = orte_ess_base_orted_finalize())) {
             ORTE_ERROR_LOG(ret);
+            goto fn_exit;
         }
+
+        /* notify alps that we're done */
+        if (ORTE_SUCCESS != (ret = orte_ess_alps_sync_complete())) {
+            ORTE_ERROR_LOG(ret);
+        }
+
     } else if (ORTE_PROC_IS_TOOL) {
         /* otherwise, if I am a tool proc, use that procedure */
         if (ORTE_SUCCESS != (ret = orte_ess_base_tool_finalize())) {
             ORTE_ERROR_LOG(ret);
         }
-        /* as a tool, I didn't create a nidmap - so just return now */
-        return ret;
-    } else {
-        /* otherwise, I must be an application process
-         * use the default procedure to finish
-         */
-        if (ORTE_SUCCESS != (ret = orte_ess_base_app_finalize())) {
-            ORTE_ERROR_LOG(ret);
-        }
     }
 
-    /* deconstruct my nidmap and jobmap arrays */
-    orte_util_nidmap_finalize();
-
+   fn_exit:
     return ret;
 }
 
 static int alps_set_name(void)
 {
     int rc;
+    int rank;
     orte_jobid_t jobid;
-    char *tmp;
-    orte_vpid_t vpid;
 
-    OPAL_OUTPUT_VERBOSE((1, orte_ess_base_output,
-                         "ess:alps setting name"));
-
-    mca_base_param_reg_string_name("orte", "ess_jobid", "Process jobid",
-                                   true, false, NULL, &tmp);
-    if (NULL == tmp) {
+    if (NULL == orte_ess_base_jobid) {
         ORTE_ERROR_LOG(ORTE_ERR_NOT_FOUND);
         return ORTE_ERR_NOT_FOUND;
     }
-    if (ORTE_SUCCESS != (rc = orte_util_convert_string_to_jobid(&jobid, tmp))) {
+    if (ORTE_SUCCESS != (rc = orte_util_convert_string_to_jobid(&jobid, orte_ess_base_jobid))) {
         ORTE_ERROR_LOG(rc);
         return rc;
     }
-    free(tmp);
 
-    mca_base_param_reg_string_name("orte", "ess_vpid", "Process vpid",
-                                   true, false, NULL, &tmp);
-    if (NULL == tmp) {
+    if (NULL == orte_ess_base_vpid) {
         ORTE_ERROR_LOG(ORTE_ERR_NOT_FOUND);
         return ORTE_ERR_NOT_FOUND;
     }
     if (ORTE_SUCCESS != (rc = orte_util_convert_string_to_vpid(&starting_vpid,
-                                                               tmp))) {
+                                                               orte_ess_base_vpid))) {
         ORTE_ERROR_LOG(rc);
         return(rc);
     }
-    free(tmp);
-
-    if (ORTE_SUCCESS != (rc = get_vpid(&vpid, starting_vpid))) {
-        ORTE_ERROR_LOG(rc);
-        return rc;
-    }
 
     ORTE_PROC_MY_NAME->jobid = jobid;
-    ORTE_PROC_MY_NAME->vpid = vpid;
-    ORTE_EPOCH_SET(ORTE_PROC_MY_NAME->epoch,ORTE_EPOCH_INVALID);
-    ORTE_EPOCH_SET(ORTE_PROC_MY_NAME->epoch,
-                   orte_ess.proc_get_epoch(ORTE_PROC_MY_NAME));
 
-    OPAL_OUTPUT_VERBOSE((1, orte_ess_base_output,
-                         "ess:alps set name to %s",
-                         ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
+    if (ORTE_SUCCESS != (rc = orte_ess_alps_get_first_rank_on_node(&rank))) {
+        ORTE_ERROR_LOG(rc);
+        return(rc);
+    }
+
+    ORTE_PROC_MY_NAME->vpid = (orte_vpid_t)rank + starting_vpid;
 
     /* get the num procs as provided in the cmd line param */
     if (ORTE_SUCCESS != (rc = orte_ess_env_get())) {
         ORTE_ERROR_LOG(rc);
         return rc;
-    }
-
-    if (orte_process_info.max_procs < orte_process_info.num_procs) {
-        orte_process_info.max_procs = orte_process_info.num_procs;
     }
 
     return ORTE_SUCCESS;

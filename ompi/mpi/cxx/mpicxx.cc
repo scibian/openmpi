@@ -1,22 +1,22 @@
 // -*- c++ -*-
-// 
+//
 // Copyright (c) 2004-2005 The Trustees of Indiana University and Indiana
 //                         University Research and Technology
 //                         Corporation.  All rights reserved.
 // Copyright (c) 2004-2005 The University of Tennessee and The University
 //                         of Tennessee Research Foundation.  All rights
 //                         reserved.
-// Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+// Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
 //                         University of Stuttgart.  All rights reserved.
 // Copyright (c) 2004-2005 The Regents of the University of California.
 //                         All rights reserved.
-// Copyright (c) 2007-2009 Cisco Systems, Inc.  All rights reserved.
+// Copyright (c) 2007-2012 Cisco Systems, Inc.  All rights reserved.
 // Copyright (c) 2007      Sun Microsystems, Inc.  All rights reserved.
 // Copyright (c) 2011      FUJITSU LIMITED.  All rights reserved.
 // $COPYRIGHT$
-// 
+//
 // Additional copyrights may follow
-// 
+//
 // $HEADER$
 
 #include "mpicxx.h"
@@ -24,6 +24,8 @@
 /* Need to include ompi_config.h after mpicxx.h so that we get
    SEEK_SET and friends right */
 #include "ompi_config.h"
+
+#include "cxx_glue.h"
 
 #if OPAL_CXX_USE_PRAGMA_IDENT
 #pragma ident OMPI_IDENT_STRING
@@ -33,8 +35,6 @@
 namespace MPI {
     const char ompi_libcxx_version_string[] = OMPI_IDENT_STRING;
 }
-
-#include "ompi/errhandler/errhandler.h"
 
 namespace MPI {
 
@@ -74,9 +74,9 @@ const Datatype DOUBLE_INT(MPI_DOUBLE_INT);
 const Datatype LONG_INT(MPI_LONG_INT);
 const Datatype TWOINT(MPI_2INT);
 const Datatype SHORT_INT(MPI_SHORT_INT);
-const Datatype LONG_DOUBLE_INT(MPI_LONG_DOUBLE);
+const Datatype LONG_DOUBLE_INT(MPI_LONG_DOUBLE_INT);
 
-#if OMPI_WANT_F77_BINDINGS
+#if OMPI_BUILD_FORTRAN_BINDINGS
 // elementary datatype (Fortran)
 const Datatype REAL((MPI_Datatype)&(ompi_mpi_real));
 const Datatype INTEGER((MPI_Datatype)&(ompi_mpi_integer));
@@ -116,6 +116,16 @@ const Datatype LONG_DOUBLE_COMPLEX((MPI_Datatype)&(ompi_mpi_cxx_ldblcplex));
 Intracomm COMM_WORLD(MPI_COMM_WORLD);
 Intracomm COMM_SELF(MPI_COMM_SELF);
 
+// Reported by Paul Hargrove: MIN and MAX are defined on OpenBSD, so
+// we need to #undef them.  See
+// http://www.open-mpi.org/community/lists/devel/2013/12/13521.php.
+#ifdef MAX
+#undef MAX
+#endif
+#ifdef MIN
+#undef MIN
+#endif
+
 // collective operations
 const Op MAX(MPI_MAX);
 const Op MIN(MPI_MIN);
@@ -141,7 +151,7 @@ Comm_Null    COMM_NULL;
 const Datatype     DATATYPE_NULL = MPI_DATATYPE_NULL;
 Request      REQUEST_NULL = MPI_REQUEST_NULL;
 const Op           OP_NULL = MPI_OP_NULL;
-const Errhandler   ERRHANDLER_NULL;  
+const Errhandler   ERRHANDLER_NULL;
 #if OMPI_PROVIDE_MPI_FILE_INTERFACE
 const File FILE_NULL = MPI_FILE_NULL;
 #endif

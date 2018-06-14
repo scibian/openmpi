@@ -1,3 +1,4 @@
+/* -*- Mode: C; c-basic-offset:4 ; indent-tabs-mode:nil -*- */
 /*
  * Copyright (c) 2004-2007 The Trustees of Indiana University and Indiana
  *                         University Research and Technology
@@ -5,16 +6,20 @@
  * Copyright (c) 2004-2005 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2008 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2008 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
  * Copyright (c) 2010      University of Houston.  All rights reserved.
  * Copyright (c) 2012 Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2012-2013 Los Alamos National Security, LLC.  All rights
+ *                         reserved.
+ * Copyright (c) 2015      Research Organization for Information Science
+ *                         and Technology (RIST). All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -28,20 +33,19 @@
 #include "ompi/datatype/ompi_datatype.h"
 #include "ompi/memchecker.h"
 
-#if OPAL_HAVE_WEAK_SYMBOLS && OMPI_PROFILING_DEFINES
+#if OMPI_BUILD_MPI_PROFILING
+#if OPAL_HAVE_WEAK_SYMBOLS
 #pragma weak MPI_Allgatherv = PMPI_Allgatherv
 #endif
-
-#if OMPI_PROFILING_DEFINES
-#include "ompi/mpi/c/profile/defines.h"
+#define MPI_Allgatherv PMPI_Allgatherv
 #endif
 
 static const char FUNC_NAME[] = "MPI_Allgatherv";
 
 
-int MPI_Allgatherv(void *sendbuf, int sendcount, MPI_Datatype sendtype,
-                   void *recvbuf, int *recvcounts,
-                   int *displs, MPI_Datatype recvtype, MPI_Comm comm) 
+int MPI_Allgatherv(const void *sendbuf, int sendcount, MPI_Datatype sendtype,
+                   void *recvbuf, const int recvcounts[],
+                   const int displs[], MPI_Datatype recvtype, MPI_Comm comm)
 {
     int i, size, err;
 
@@ -61,7 +65,7 @@ int MPI_Allgatherv(void *sendbuf, int sendcount, MPI_Datatype sendtype,
                             (char *)(recvbuf)+displs[i]*ext,
                             recvcounts[i], recvtype);
         }
-        
+
         /* check whether the actual send buffer is defined. */
         if (MPI_IN_PLACE == sendbuf) {
             memchecker_call(&opal_memchecker_base_isdefined,
@@ -81,7 +85,7 @@ int MPI_Allgatherv(void *sendbuf, int sendcount, MPI_Datatype sendtype,
         err = MPI_SUCCESS;
         OMPI_ERR_INIT_FINALIZE(FUNC_NAME);
         if (ompi_comm_invalid(comm)) {
-            return OMPI_ERRHANDLER_INVOKE(MPI_COMM_WORLD, MPI_ERR_COMM, 
+            return OMPI_ERRHANDLER_INVOKE(MPI_COMM_WORLD, MPI_ERR_COMM,
                                           FUNC_NAME);
         } else if (MPI_IN_PLACE == recvbuf) {
             return OMPI_ERRHANDLER_INVOKE(comm, MPI_ERR_ARG, FUNC_NAME);
@@ -105,13 +109,13 @@ int MPI_Allgatherv(void *sendbuf, int sendcount, MPI_Datatype sendtype,
             return OMPI_ERRHANDLER_INVOKE(comm, MPI_ERR_COUNT, FUNC_NAME);
           }
         }
-          
+
         if (NULL == displs) {
           return OMPI_ERRHANDLER_INVOKE(comm, MPI_ERR_BUFFER, FUNC_NAME);
         }
     }
 
-    /* Do we need to do anything?  Everyone had to give the same 
+    /* Do we need to do anything?  Everyone had to give the same
        signature, which means that everyone must have given a
        sum(recvounts) > 0 if there's anything to do. */
 
@@ -126,19 +130,16 @@ int MPI_Allgatherv(void *sendbuf, int sendcount, MPI_Datatype sendtype,
 	}
     }
     /* There is no rule that can be applied for inter-communicators, since
-       recvcount(s)=0 only indicates that the processes in the other group 
+       recvcount(s)=0 only indicates that the processes in the other group
        do not send anything, sendcount=0 only indicates that I do not send
-       anything. However, other processes in my group might very well send 
+       anything. However, other processes in my group might very well send
        something */
 
 
-    OPAL_CR_ENTER_LIBRARY();
-
     /* Invoke the coll component to perform the back-end operation */
-
-    err = comm->c_coll.coll_allgatherv(sendbuf, sendcount, sendtype, 
-                                       recvbuf, recvcounts, 
-                                       displs, recvtype, comm,
+    err = comm->c_coll.coll_allgatherv(sendbuf, sendcount, sendtype,
+                                       recvbuf, (int *) recvcounts,
+                                       (int *) displs, recvtype, comm,
                                        comm->c_coll.coll_allgatherv_module);
     OMPI_ERRHANDLER_RETURN(err, comm, err, FUNC_NAME);
 }

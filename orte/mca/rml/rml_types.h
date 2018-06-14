@@ -1,20 +1,22 @@
 /*
- * Copyright (c) 2004-2007 The Trustees of Indiana University and Indiana
+ * Copyright (c) 2004-2010 The Trustees of Indiana University and Indiana
  *                         University Research and Technology
  *                         Corporation.  All rights reserved.
- * Copyright (c) 2004-2005 The University of Tennessee and The University
+ * Copyright (c) 2004-2011 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
- * Copyright (c) 2007      Los Alamos National Security, LLC.  All rights
- *                         reserved. 
+ * Copyright (c) 2007-2012 Los Alamos National Security, LLC.  All rights
+ *                         reserved.
+ * Copyright (c) 2009-2016 Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2014-2015 Intel, Inc. All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 /** @file:
@@ -43,61 +45,9 @@
 
 BEGIN_C_DECLS
 
-
-/* ******************************************************************** */
-
-typedef struct {
-    opal_list_item_t super;
-    orte_process_name_t sender;
-    opal_buffer_t *buffer;
-} orte_msg_packet_t;
-ORTE_DECLSPEC OBJ_CLASS_DECLARATION(orte_msg_packet_t);
-
-#ifndef __WINDOWS__
-#define ORTE_PROCESS_MESSAGE(rlist, lck, flg, fd, crt, sndr, buf)   \
-    do {                                                            \
-        orte_msg_packet_t *pkt;                                     \
-        int data=1;                                                 \
-        pkt = OBJ_NEW(orte_msg_packet_t);                           \
-        pkt->sender.jobid = (sndr)->jobid;                          \
-        pkt->sender.vpid = (sndr)->vpid;                            \
-        if ((crt)) {                                                \
-            pkt->buffer = OBJ_NEW(opal_buffer_t);                   \
-            opal_dss.copy_payload(pkt->buffer, *(buf));             \
-        } else {                                                    \
-            pkt->buffer = *(buf);                                   \
-            *(buf) = NULL;                                          \
-        }                                                           \
-        OPAL_THREAD_LOCK((lck));                                    \
-        opal_list_append((rlist), &pkt->super);                     \
-        if (!(flg)) {                                               \
-            write((fd), &data, sizeof(data));                       \
-        }                                                           \
-        OPAL_THREAD_UNLOCK((lck));                                  \
-    } while(0);
-#else
-#define ORTE_PROCESS_MESSAGE(rlist, lck, flg, fd, crt, sndr, buf)   \
-    do {                                                            \
-        orte_msg_packet_t *pkt;                                     \
-        int data=1;                                                 \
-        pkt = OBJ_NEW(orte_msg_packet_t);                           \
-        pkt->sender.jobid = (sndr)->jobid;                          \
-        pkt->sender.vpid = (sndr)->vpid;                            \
-        if ((crt)) {                                                \
-            pkt->buffer = OBJ_NEW(opal_buffer_t);                   \
-            opal_dss.copy_payload(pkt->buffer, *(buf));             \
-        } else {                                                    \
-            pkt->buffer = *(buf);                                   \
-            *(buf) = NULL;                                          \
-        }                                                           \
-        OPAL_THREAD_LOCK((lck));                                    \
-        opal_list_append((rlist), &pkt->super);                     \
-        if (!(flg)) {                                               \
-            send((fd), (const char*) &data, sizeof(data), 0);       \
-        }                                                           \
-        OPAL_THREAD_UNLOCK((lck));                                  \
-    } while(0);
-#endif
+/* Convenience def for readability */
+#define ORTE_RML_PERSISTENT      true
+#define ORTE_RML_NON_PERSISTENT  false
 
 
 /**
@@ -112,23 +62,19 @@ ORTE_DECLSPEC OBJ_CLASS_DECLARATION(orte_msg_packet_t);
 #define ORTE_RML_TAG_IOF_PROXY               3
 #define ORTE_RML_TAG_XCAST_BARRIER           4
 #define ORTE_RML_TAG_PLM                     5
-#define ORTE_RML_TAG_PLM_PROXY               6
+#define ORTE_RML_TAG_LAUNCH_RESP             6
 #define ORTE_RML_TAG_ERRMGR                  7
 #define ORTE_RML_TAG_WIREUP                  8
 #define ORTE_RML_TAG_RML_INFO_UPDATE         9
 #define ORTE_RML_TAG_ORTED_CALLBACK         10
-#define ORTE_RML_TAG_APP_LAUNCH_CALLBACK    11
+#define ORTE_RML_TAG_ROLLUP                 11
 #define ORTE_RML_TAG_REPORT_REMOTE_LAUNCH   12
 
 #define ORTE_RML_TAG_CKPT                   13
 
 #define ORTE_RML_TAG_RML_ROUTE              14
+#define ORTE_RML_TAG_XCAST                  15
 
-#define ORTE_RML_TAG_ALLGATHER              15
-#define ORTE_RML_TAG_ALLGATHER_LIST         16
-#define ORTE_RML_TAG_BARRIER                17
-
-#define ORTE_RML_TAG_INIT_ROUTES            18
 #define ORTE_RML_TAG_UPDATE_ROUTE_ACK       19
 #define ORTE_RML_TAG_SYNC                   20
 
@@ -153,28 +99,78 @@ ORTE_DECLSPEC OBJ_CLASS_DECLARATION(orte_msg_packet_t);
 /* timing related */
 #define ORTE_RML_TAG_COLLECTIVE_TIMER       29
 
-/* daemon collectives */
-#define ORTE_RML_TAG_DAEMON_COLLECTIVE      30
+/* collectives */
+#define ORTE_RML_TAG_COLLECTIVE             30
+#define ORTE_RML_TAG_COLL_RELEASE           31
+#define ORTE_RML_TAG_DAEMON_COLL            32
+#define ORTE_RML_TAG_ALLGATHER_DIRECT       33
+#define ORTE_RML_TAG_ALLGATHER_BRUCKS       34
+#define ORTE_RML_TAG_ALLGATHER_RCD          35
 
 /* show help */
-#define ORTE_RML_TAG_SHOW_HELP              31
+#define ORTE_RML_TAG_SHOW_HELP              36
 
 /* debugger release */
-#define ORTE_RML_TAG_DEBUGGER_RELEASE       32
-
-/* profile data */
-#define ORTE_RML_TAG_GRPCOMM_PROFILE        33
-
-/* onesided barrier */
-#define ORTE_RML_TAG_ONESIDED_BARRIER       34
+#define ORTE_RML_TAG_DEBUGGER_RELEASE       37
 
 /* bootstrap */
-#define ORTE_RML_TAG_BOOTSTRAP              35
+#define ORTE_RML_TAG_BOOTSTRAP              38
+
+/* report a missed msg */
+#define ORTE_RML_TAG_MISSED_MSG             39
+
+/* tag for receiving ack of abort msg */
+#define ORTE_RML_TAG_ABORT                  40
+
+/* tag for receiving heartbeats */
+#define ORTE_RML_TAG_HEARTBEAT              41
+
+/* Process Migration Tool Tag */
+#define ORTE_RML_TAG_MIGRATE                42
+
+/* For SStore Framework */
+#define ORTE_RML_TAG_SSTORE                 43
+#define ORTE_RML_TAG_SSTORE_INTERNAL        44
+
+#define ORTE_RML_TAG_SUBSCRIBE              45
+
+
+/* Notify of failed processes */
+#define ORTE_RML_TAG_FAILURE_NOTICE         46
+
+/* distributed file system */
+#define ORTE_RML_TAG_DFS_CMD                47
+#define ORTE_RML_TAG_DFS_DATA               48
+
+/* sensor data */
+#define ORTE_RML_TAG_SENSOR_DATA            49
+
+/* direct modex support */
+#define ORTE_RML_TAG_DIRECT_MODEX           50
+#define ORTE_RML_TAG_DIRECT_MODEX_RESP      51
+
+/* notifier support */
+#define ORTE_RML_TAG_NOTIFIER_HNP           52
+
+/* confirm spawn by tool */
+#define ORTE_RML_TAG_CONFIRM_SPAWN          53
+
+/*** QOS specific  RML TAGS ***/
+#define ORTE_RML_TAG_OPEN_CHANNEL_REQ       54
+#define ORTE_RML_TAG_OPEN_CHANNEL_RESP      55
+#define ORTE_RML_TAG_MSG_ACK                56
+#define ORTE_RML_TAG_CLOSE_CHANNEL_REQ      57
+#define ORTE_RML_TAG_CLOSE_CHANNEL_ACCEPT   58
+
+/* error notifications */
+#define ORTE_RML_TAG_NOTIFICATION           59
 
 #define ORTE_RML_TAG_MAX                   100
 
+#define ORTE_RML_TAG_NTOH(t) ntohl(t)
+#define ORTE_RML_TAG_HTON(t) htonl(t)
 
-/** 
+/**
  * Message matching tag
  *
  * Message matching tag.  Unlike MPI, there is no wildcard receive,
@@ -194,47 +190,6 @@ typedef uint32_t orte_rml_tag_t;
 typedef uint8_t orte_rml_cmd_flag_t;
 #define ORTE_RML_CMD    OPAL_UINT8
 #define ORTE_RML_UPDATE_CMD    1
-
-
-/* ******************************************************************** */
-/* Flags to send/recv */
-
-/**
- * Non-persistent request that can be deleted when the request is
- * completed.  This is the default behavior.
- */
-#define ORTE_RML_NON_PERSISTENT          0x00000000
-
-/**
- * flag to oob_recv to allow caller to peek a portion of the next
- * available message w/out removing the message from the queue.
- */
-#define ORTE_RML_PEEK                    0x00000001
-
-/** 
- * flag to oob_recv to return the actual size of the message even if
- * the receive buffer is smaller than the number of bytes available 
- */
-#define ORTE_RML_TRUNC                   0x00000002
-
-/** 
- * flag to oob_recv to request the oob to allocate a buffer of the
- * appropriate size for the receive and return the allocated buffer
- * and size in the first element of the iovec array.
- */
-#define ORTE_RML_ALLOC                   0x00000004
-
-/**
- * posted non-blocking recv is persistent 
- */
-#define ORTE_RML_PERSISTENT              0x00000008
-
-/**
- * The request is a non-blocking request that can have its callback
- * triggered as soon as the request is completed, even if the OOB is
- * currently in the middle of another non-blocking request callback.
- */
-#define ORTE_RML_FLAG_RECURSIVE_CALLBACK 0x00000010
 
 
 typedef enum {

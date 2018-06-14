@@ -52,7 +52,7 @@
  * MPI_APPNUM is set as the result of a GPR subscription.
  *
  * MPI_LASTUSEDCODE is set to an initial value and is reset every time
- * MPI_ADD_ERROR_CLASS or MPI_ADD_ERROR_CODE is invoked.  
+ * MPI_ADD_ERROR_CLASS or MPI_ADD_ERROR_CODE is invoked.
  * Its copy function is set to
  * MPI_COMM_NULL_COPY_FN, meaning that *only* MPI_COMM_WORLD will have
  * this attribute value.  As such, we only have to update
@@ -81,9 +81,7 @@
 
 #include "ompi_config.h"
 
-#ifdef HAVE_STDLIB_H
 #include <stdlib.h>
-#endif
 
 #include "mpi.h"
 
@@ -92,7 +90,6 @@
 #include "ompi/errhandler/errcode.h"
 #include "ompi/communicator/communicator.h"
 #include "ompi/mca/pml/pml.h"
-#include "orte/util/proc_info.h"
 
 /*
  * Private functions
@@ -128,6 +125,8 @@ int ompi_attr_create_predefined(void)
         OMPI_SUCCESS != (ret = create_win(MPI_WIN_BASE)) ||
         OMPI_SUCCESS != (ret = create_win(MPI_WIN_SIZE)) ||
         OMPI_SUCCESS != (ret = create_win(MPI_WIN_DISP_UNIT)) ||
+        OMPI_SUCCESS != (ret = create_win(MPI_WIN_CREATE_FLAVOR)) ||
+        OMPI_SUCCESS != (ret = create_win(MPI_WIN_MODEL)) ||
 #if 0
         /* JMS For when we implement IMPI */
         OMPI_SUCCESS != (ret = create_comm(IMPI_CLIENT_SIZE, true)) ||
@@ -173,12 +172,9 @@ int ompi_attr_create_predefined(void)
     if (OMPI_SUCCESS != ret) {
         return ret;
     }
-    
-    /* check the app_num - if it was set, then define it - otherwise, don't */
-    if (orte_process_info.app_num >= 0) {
-        ret = set_f(MPI_APPNUM, orte_process_info.app_num);
-    }
-    
+
+    ret = set_f(MPI_APPNUM, ompi_process_info.app_num);
+
     return ret;
 }
 
@@ -197,6 +193,8 @@ int ompi_attr_free_predefined(void)
         OMPI_SUCCESS != (ret = free_win(MPI_WIN_BASE)) ||
         OMPI_SUCCESS != (ret = free_win(MPI_WIN_SIZE)) ||
         OMPI_SUCCESS != (ret = free_win(MPI_WIN_DISP_UNIT)) ||
+        OMPI_SUCCESS != (ret = free_win(MPI_WIN_CREATE_FLAVOR)) ||
+        OMPI_SUCCESS != (ret = free_win(MPI_WIN_MODEL)) ||
 #if 0
         /* JMS For when we implement IMPI */
         OMPI_SUCCESS != (ret = free_comm(IMPI_CLIENT_SIZE)) ||

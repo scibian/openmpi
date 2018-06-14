@@ -1,3 +1,4 @@
+/* -*- Mode: C; c-basic-offset:4 ; indent-tabs-mode:nil -*- */
 /*
  * Copyright (c) 2004-2010 The Trustees of Indiana University and Indiana
  *                         University Research and Technology
@@ -5,15 +6,19 @@
  * Copyright (c) 2004-2008 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2006 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2006 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2006 The Regents of the University of California.
  *                         All rights reserved.
  * Copyright (c) 2007-2008 Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2015      Los Alamos National Security, LLC. All rights
+ *                         reserved.
+ * Copyright (c) 2015      Research Organization for Information Science
+ *                         and Technology (RIST). All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -60,17 +65,13 @@ typedef struct {
     bool ldi_syslog;
     int ldi_syslog_priority;
 
-#ifndef __WINDOWS__
     char *ldi_syslog_ident;
-#else
-    HANDLE ldi_syslog_ident;
-#endif
     char *ldi_prefix;
     int ldi_prefix_len;
 
     char *ldi_suffix;
     int ldi_suffix_len;
-    
+
     bool ldi_stdout;
     bool ldi_stderr;
 
@@ -88,17 +89,21 @@ static void construct(opal_object_t *stream);
 static int do_open(int output_id, opal_output_stream_t * lds);
 static int open_file(int i);
 static void free_descriptor(int output_id);
-static int make_string(char **no_newline_string, output_desc_t *ldi, 
+static int make_string(char **no_newline_string, output_desc_t *ldi,
                        const char *format, va_list arglist);
 static int output(int output_id, const char *format, va_list arglist);
 
 
 #define OPAL_OUTPUT_MAX_STREAMS 64
-#if defined(__WINDOWS__) || defined(HAVE_SYSLOG)
+#if defined(HAVE_SYSLOG)
 #define USE_SYSLOG 1
 #else
 #define USE_SYSLOG 0
 #endif
+
+/* global state */
+bool opal_output_redirected_to_syslog = false;
+int opal_output_redirected_syslog_pri = -1;
 
 /*
  * Local state
@@ -109,8 +114,10 @@ static output_desc_t info[OPAL_OUTPUT_MAX_STREAMS];
 static char *temp_str = 0;
 static size_t temp_str_len = 0;
 static opal_mutex_t mutex;
+#if defined(HAVE_SYSLOG)
 static bool syslog_opened = false;
-
+#endif
+static char *redirect_syslog_ident = NULL;
 
 OBJ_CLASS_INSTANCE(opal_output_stream_t, opal_object_t, construct, NULL);
 
@@ -120,7 +127,7 @@ OBJ_CLASS_INSTANCE(opal_output_stream_t, opal_object_t, construct, NULL);
 bool opal_output_init(void)
 {
     int i;
-    char hostname[32];
+    char hostname[OPAL_MAXHOSTNAMELEN];
     char *str;
 
     if (initialized) {
@@ -131,23 +138,52 @@ bool opal_output_init(void)
     if (NULL != str) {
         default_stderr_fd = atoi(str);
     }
+    str = getenv("OPAL_OUTPUT_REDIRECT");
+    if (NULL != str) {
+        if (0 == strcasecmp(str, "syslog")) {
+            opal_output_redirected_to_syslog = true;
+        }
+    }
+    str = getenv("OPAL_OUTPUT_SYSLOG_PRI");
+    if (NULL != str) {
+        if (0 == strcasecmp(str, "info")) {
+            opal_output_redirected_syslog_pri = LOG_INFO;
+        } else if (0 == strcasecmp(str, "error")) {
+            opal_output_redirected_syslog_pri = LOG_ERR;
+        } else if (0 == strcasecmp(str, "warn")) {
+            opal_output_redirected_syslog_pri = LOG_WARNING;
+        } else {
+            opal_output_redirected_syslog_pri = LOG_ERR;
+        }
+    } else {
+        opal_output_redirected_syslog_pri = LOG_ERR;
+    }
+
+    str = getenv("OPAL_OUTPUT_SYSLOG_IDENT");
+    if (NULL != str) {
+        redirect_syslog_ident = strdup(str);
+    }
 
     OBJ_CONSTRUCT(&verbose, opal_output_stream_t);
-#if defined(__WINDOWS__)
-    {
-        WSADATA wsaData;
-        WSAStartup( MAKEWORD(2,2), &wsaData );
+    if (opal_output_redirected_to_syslog) {
+        verbose.lds_want_syslog = true;
+        verbose.lds_syslog_priority = opal_output_redirected_syslog_pri;
+        if (NULL != str) {
+            verbose.lds_syslog_ident = strdup(redirect_syslog_ident);
+        }
+        verbose.lds_want_stderr = false;
+        verbose.lds_want_stdout = false;
+    } else {
+        verbose.lds_want_stderr = true;
     }
-#endif  /* defined(__WINDOWS__) */
     gethostname(hostname, sizeof(hostname));
-    verbose.lds_want_stderr = true;
     asprintf(&verbose.lds_prefix, "[%s:%05d] ", hostname, getpid());
 
     for (i = 0; i < OPAL_OUTPUT_MAX_STREAMS; ++i) {
         info[i].ldi_used = false;
         info[i].ldi_enabled = false;
 
-        info[i].ldi_syslog = false;
+        info[i].ldi_syslog = opal_output_redirected_to_syslog;
         info[i].ldi_file = false;
         info[i].ldi_file_suffix = NULL;
         info[i].ldi_file_want_append = false;
@@ -217,7 +253,7 @@ bool opal_output_switch(int output_id, bool enable)
 void opal_output_reopen_all(void)
 {
     char *str;
-    char hostname[32];
+    char hostname[OPAL_MAXHOSTNAMELEN];
 
     str = getenv("OPAL_OUTPUT_STDERR_FD");
     if (NULL != str) {
@@ -244,7 +280,7 @@ void opal_output_reopen_all(void)
             break;
         }
 
-        /* 
+        /*
          * set this to zero to ensure that opal_output_open will
          * return this same index as the output stream id
          */
@@ -266,7 +302,7 @@ void opal_output_reopen_all(void)
         lds.lds_want_file_append = true;
         lds.lds_file_suffix = info[i].ldi_file_suffix;
 
-        /* 
+        /*
          * call opal_output_open to open the stream. The return value
          * is guaranteed to be i.  So we can ignore it.
          */
@@ -298,7 +334,7 @@ void opal_output_close(int output_id)
         free_descriptor(output_id);
 
         /* If no one has the syslog open, we should close it */
-        
+
         for (i = 0; i < OPAL_OUTPUT_MAX_STREAMS; ++i) {
             if (info[i].ldi_used && info[i].ldi_syslog) {
                 break;
@@ -309,20 +345,9 @@ void opal_output_close(int output_id)
         if (i >= OPAL_OUTPUT_MAX_STREAMS && syslog_opened) {
             closelog();
         }
-#elif defined(__WINDOWS__)
-        if(info[output_id].ldi_syslog_ident != NULL) {
-            DeregisterEventSource(info[output_id].ldi_syslog_ident);
-        }
 #endif
     }
 
-    /* Somewhat of a hack to free up the temp_str */
-
-    if (NULL != temp_str) {
-        free(temp_str);
-        temp_str = NULL;
-        temp_str_len = 0;
-    }
     OPAL_THREAD_UNLOCK(&mutex);
 }
 
@@ -359,7 +384,7 @@ void opal_output_verbose(int level, int output_id, const char *format, ...)
 /*
  * Send a message to a stream if the verbose level is high enough
  */
-void opal_output_vverbose(int level, int output_id, const char *format, 
+void opal_output_vverbose(int level, int output_id, const char *format,
                           va_list arglist)
 {
     if (output_id >= 0 && output_id < OPAL_OUTPUT_MAX_STREAMS &&
@@ -395,7 +420,7 @@ char *opal_output_string(int level, int output_id, const char *format, ...)
 /*
  * Send a message to a string if the verbose level is high enough
  */
-char *opal_output_vstring(int level, int output_id, const char *format,  
+char *opal_output_vstring(int level, int output_id, const char *format,
                           va_list arglist)
 {
     int rc;
@@ -460,16 +485,26 @@ void opal_output_finalize(void)
             opal_output_close(verbose_stream);
         }
         free(verbose.lds_prefix);
+        verbose.lds_prefix = NULL;
+
         verbose_stream = -1;
 
         free (output_prefix);
+        output_prefix = NULL;
+
         free (output_dir);
+        output_dir = NULL;
+
+        if(NULL != temp_str) {
+	    free(temp_str);
+	    temp_str = NULL;
+	    temp_str_len = 0;
+	}
         OBJ_DESTRUCT(&verbose);
         OBJ_DESTRUCT(&mutex);
     }
-#if defined(__WINDOWS__)
-    WSACleanup();
-#endif  /* defined(__WINDOWS__) */
+
+    initialized = false;
 }
 
 /************************************************************************/
@@ -503,12 +538,20 @@ static void construct(opal_object_t *obj)
 static int do_open(int output_id, opal_output_stream_t * lds)
 {
     int i;
+    bool redirect_to_file = false;
+    char *str, *sfx;
 
     /* Setup */
 
     if (!initialized) {
         opal_output_init();
     }
+
+    str = getenv("OPAL_OUTPUT_REDIRECT");
+    if (NULL != str && 0 == strcasecmp(str, "file")) {
+        redirect_to_file = true;
+    }
+    sfx = getenv("OPAL_OUTPUT_SUFFIX");
 
     /* If output_id == -1, find an available stream, or return
      * OPAL_ERROR */
@@ -552,28 +595,40 @@ static int do_open(int output_id, opal_output_stream_t * lds)
     info[i].ldi_verbose_level = lds->lds_verbose_level;
 
 #if USE_SYSLOG
-    info[i].ldi_syslog = lds->lds_want_syslog;
-    if (lds->lds_want_syslog) {
-
 #if defined(HAVE_SYSLOG)
-        if (NULL != lds->lds_syslog_ident) {
-            info[i].ldi_syslog_ident = strdup(lds->lds_syslog_ident);
-            openlog(lds->lds_syslog_ident, LOG_PID, LOG_USER);
+    if (opal_output_redirected_to_syslog) {
+        info[i].ldi_syslog = true;
+        info[i].ldi_syslog_priority = opal_output_redirected_syslog_pri;
+        if (NULL != redirect_syslog_ident) {
+            info[i].ldi_syslog_ident = strdup(redirect_syslog_ident);
+            openlog(redirect_syslog_ident, LOG_PID, LOG_USER);
         } else {
             info[i].ldi_syslog_ident = NULL;
             openlog("opal", LOG_PID, LOG_USER);
         }
-#elif defined(__WINDOWS__)
-        if (NULL == (info[i].ldi_syslog_ident =
-                     RegisterEventSource(NULL, TEXT("opal: ")))) {
-            /* handle the error */
-            return OPAL_ERROR;
+        syslog_opened = true;
+    } else {
+#endif
+        info[i].ldi_syslog = lds->lds_want_syslog;
+        if (lds->lds_want_syslog) {
+
+#if defined(HAVE_SYSLOG)
+            if (NULL != lds->lds_syslog_ident) {
+                info[i].ldi_syslog_ident = strdup(lds->lds_syslog_ident);
+                openlog(lds->lds_syslog_ident, LOG_PID, LOG_USER);
+            } else {
+                info[i].ldi_syslog_ident = NULL;
+                openlog("opal", LOG_PID, LOG_USER);
+            }
+#endif
+            syslog_opened = true;
+            info[i].ldi_syslog_priority = lds->lds_syslog_priority;
         }
+
+#if defined(HAVE_SYSLOG)
+    }
 #endif
 
-        syslog_opened = true;
-        info[i].ldi_syslog_priority = lds->lds_syslog_priority;
-    }
 #else
     info[i].ldi_syslog = false;
 #endif
@@ -593,16 +648,39 @@ static int do_open(int output_id, opal_output_stream_t * lds)
         info[i].ldi_suffix = NULL;
         info[i].ldi_suffix_len = 0;
     }
-    
-    info[i].ldi_stdout = lds->lds_want_stdout;
-    info[i].ldi_stderr = lds->lds_want_stderr;
 
-    info[i].ldi_fd = -1;
-    info[i].ldi_file = lds->lds_want_file;
-    info[i].ldi_file_suffix = (NULL == lds->lds_file_suffix) ? NULL :
-        strdup(lds->lds_file_suffix);
-    info[i].ldi_file_want_append = lds->lds_want_file_append;
-    info[i].ldi_file_num_lines_lost = 0;
+    if (opal_output_redirected_to_syslog) {
+        /* since all is redirected to syslog, ensure
+         * we don't duplicate the output to the std places
+         */
+        info[i].ldi_stdout = false;
+        info[i].ldi_stderr = false;
+        info[i].ldi_file = false;
+        info[i].ldi_fd = -1;
+    } else {
+        /* since we aren't redirecting to syslog, use what was
+         * given to us
+         */
+        if (NULL != str && redirect_to_file) {
+            info[i].ldi_stdout = false;
+            info[i].ldi_stderr = false;
+            info[i].ldi_file = true;
+        } else {
+            info[i].ldi_stdout = lds->lds_want_stdout;
+            info[i].ldi_stderr = lds->lds_want_stderr;
+
+            info[i].ldi_fd = -1;
+            info[i].ldi_file = lds->lds_want_file;
+        }
+        if (NULL != sfx) {
+            info[i].ldi_file_suffix = strdup(sfx);
+        } else {
+            info[i].ldi_file_suffix = (NULL == lds->lds_file_suffix) ? NULL :
+                strdup(lds->lds_file_suffix);
+        }
+        info[i].ldi_file_want_append = lds->lds_want_file_append;
+        info[i].ldi_file_num_lines_lost = 0;
+    }
 
     /* Don't open a file in the session directory now -- do that lazily
      * so that if there's no output, we don't have an empty file */
@@ -615,6 +693,42 @@ static int open_file(int i)
 {
     int flags;
     char *filename;
+    int n;
+
+    /* first check to see if this file is already open
+     * on someone else's stream - if so, we don't want
+     * to open it twice
+     */
+    for (n=0; n < OPAL_OUTPUT_MAX_STREAMS; n++) {
+        if (i == n) {
+            continue;
+        }
+        if (!info[n].ldi_used) {
+            continue;
+        }
+        if (!info[n].ldi_file) {
+            continue;
+        }
+        if (NULL != info[i].ldi_file_suffix &&
+            NULL != info[n].ldi_file_suffix) {
+            if (0 != strcmp(info[i].ldi_file_suffix, info[n].ldi_file_suffix)) {
+                break;
+            }
+        }
+        if (NULL == info[i].ldi_file_suffix &&
+            NULL != info[n].ldi_file_suffix) {
+            break;
+        }
+        if (NULL != info[i].ldi_file_suffix &&
+            NULL == info[n].ldi_file_suffix) {
+            break;
+        }
+        if (info[n].ldi_fd < 0) {
+            break;
+        }
+        info[i].ldi_fd = info[n].ldi_fd;
+        return OPAL_SUCCESS;
+    }
 
     /* Setup the filename and open flags */
 
@@ -641,23 +755,17 @@ static int open_file(int i)
 
         /* Actually open the file */
         info[i].ldi_fd = open(filename, flags, 0644);
+        free(filename);  /* release the filename in all cases */
         if (-1 == info[i].ldi_fd) {
             info[i].ldi_used = false;
-            free(filename);
             return OPAL_ERR_IN_ERRNO;
         }
 
-        free(filename);
-
         /* Make the file be close-on-exec to prevent child inheritance
          * problems */
-
-#ifndef __WINDOWS__
-        /* TODO: Need to find out the equivalent in windows */
         if (-1 == fcntl(info[i].ldi_fd, F_SETFD, 1)) {
            return OPAL_ERR_IN_ERRNO;
         }
-#endif
 
     }
 
@@ -695,23 +803,21 @@ static void free_descriptor(int output_id)
         free(ldi->ldi_suffix);
     }
     ldi->ldi_suffix = NULL;
-    
+
     if (NULL != ldi->ldi_file_suffix) {
 	    free(ldi->ldi_file_suffix);
 	}
 	ldi->ldi_file_suffix = NULL;
 
-#ifndef __WINDOWS__
 	if (NULL != ldi->ldi_syslog_ident) {
 	    free(ldi->ldi_syslog_ident);
 	}
 	ldi->ldi_syslog_ident = NULL;
-#endif
     }
 }
 
 
-static int make_string(char **no_newline_string, output_desc_t *ldi, 
+static int make_string(char **no_newline_string, output_desc_t *ldi,
                        const char *format, va_list arglist)
 {
     size_t len, total_len;
@@ -755,7 +861,7 @@ static int make_string(char **no_newline_string, output_desc_t *ldi,
             snprintf(temp_str, temp_str_len, "%s%s%s\n",
                      ldi->ldi_prefix, *no_newline_string, ldi->ldi_suffix);
         } else {
-            snprintf(temp_str, temp_str_len, "%s%s%s", ldi->ldi_prefix, 
+            snprintf(temp_str, temp_str_len, "%s%s%s", ldi->ldi_prefix,
                      *no_newline_string, ldi->ldi_suffix);
         }
     } else if (NULL != ldi->ldi_prefix) {
@@ -763,7 +869,7 @@ static int make_string(char **no_newline_string, output_desc_t *ldi,
             snprintf(temp_str, temp_str_len, "%s%s\n",
                      ldi->ldi_prefix, *no_newline_string);
         } else {
-            snprintf(temp_str, temp_str_len, "%s%s", ldi->ldi_prefix, 
+            snprintf(temp_str, temp_str_len, "%s%s", ldi->ldi_prefix,
                      *no_newline_string);
         }
     } else if (NULL != ldi->ldi_suffix) {
@@ -771,7 +877,7 @@ static int make_string(char **no_newline_string, output_desc_t *ldi,
             snprintf(temp_str, temp_str_len, "%s%s\n",
                      *no_newline_string, ldi->ldi_suffix);
         } else {
-            snprintf(temp_str, temp_str_len, "%s%s", 
+            snprintf(temp_str, temp_str_len, "%s%s",
                      *no_newline_string, ldi->ldi_suffix);
         }
     } else {
@@ -781,10 +887,10 @@ static int make_string(char **no_newline_string, output_desc_t *ldi,
             snprintf(temp_str, temp_str_len, "%s", *no_newline_string);
         }
     }
-    
+
     return OPAL_SUCCESS;
 }
-    
+
 /*
  * Do the actual output.  Take a va_list so that we can be called from
  * multiple different places, even functions that took "..." as input
@@ -829,15 +935,15 @@ static int output(int output_id, const char *format, va_list arglist)
 
         /* stdout output */
         if (ldi->ldi_stdout) {
-            write(fileno(stdout), out, (int)strlen(out)); 
+            write(fileno(stdout), out, (int)strlen(out));
             fflush(stdout);
         }
 
         /* stderr output */
         if (ldi->ldi_stderr) {
-            write((-1 == default_stderr_fd) ? 
+            write((-1 == default_stderr_fd) ?
                   fileno(stderr) : default_stderr_fd,
-                  out, (int)strlen(out)); 
+                  out, (int)strlen(out));
             fflush(stderr);
         }
 

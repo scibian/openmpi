@@ -1,3 +1,4 @@
+/* -*- Mode: C; c-basic-offset:4 ; indent-tabs-mode:nil -*- */
 /*
  * Copyright (c) 2004-2005 The Trustees of Indiana University and Indiana
  *                         University Research and Technology
@@ -5,15 +6,19 @@
  * Copyright (c) 2004-2005 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
  * Copyright (c) 2009      Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2015-2016 Los Alamos National Security, LLC. All rights
+ *                         reserved.
+ * Copyright (c) 2016      Research Organization for Information Science
+ *                         and Technology (RIST). All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -74,6 +79,12 @@ BEGIN_C_DECLS
 typedef int (*opal_memory_base_component_process_fn_t)(void);
 
 /**
+ * Prototype for a function that is invoked when the memory base is
+ * trying to select a component. This funtionality is required.
+ */
+typedef int (*opal_memory_base_component_query_fn_t)(int *priority);
+
+/**
  * Prototype for a function that is invoked when Open MPI starts to
  * "care" about a specific memory region.  That is, Open MPI declares
  * that it wants to be notified if the memory mapping for this region
@@ -83,13 +94,13 @@ typedef int (*opal_memory_base_component_process_fn_t)(void);
  * can use the value opal_memory_base_register_empty (an empty
  * implementation of this function).
  */
-typedef int (*opal_memory_base_component_register_fn_t)(void *base, 
+typedef int (*opal_memory_base_component_register_fn_t)(void *base,
                                                         size_t len,
                                                         uint64_t cookie);
 
 
 /**
- *  Prototype for a function that is the opposite of
+ * Prototype for a function that is the opposite of
  * opal_memory_base_component_register_fn_t: this function is invoked
  * when Open MPI stops to "caring" about a specific memory region.
  * That is, Open MPI declares that it no longer wants to be notified
@@ -103,10 +114,21 @@ typedef int (*opal_memory_base_component_register_fn_t)(void *base,
  * can use the value opal_memory_base_deregister_empty (an empty
  * implementation of this function).
  */
-typedef int (*opal_memory_base_component_deregister_fn_t)(void *base, 
+typedef int (*opal_memory_base_component_deregister_fn_t)(void *base,
                                                           size_t len,
                                                           uint64_t cookie);
 
+
+/**
+ * Prototype for a function that set the memory alignment
+ */
+typedef void (*opal_memory_base_component_set_alignment_fn_t)(int use_memalign,
+                                                              size_t memalign_threshold);
+
+/**
+ * Function to be called when initializing malloc hooks
+ */
+typedef void (*opal_memory_base_component_init_hook_fn_t)(void);
 
 /**
  * Structure for memory components.
@@ -116,6 +138,12 @@ typedef struct opal_memory_base_component_2_0_0_t {
     mca_base_component_t memoryc_version;
     /** MCA base data */
     mca_base_component_data_t memoryc_data;
+
+    opal_memory_base_component_query_fn_t memoryc_query;
+
+    /** This function will be called when the malloc hooks are
+     * initialized. It may be NULL if no hooks are needed. */
+    opal_memory_base_component_init_hook_fn_t memoryc_init_hook;
 
     /** Function to call when something has changed, as indicated by
         opal_memory_changed().  Will be ignored if the component does
@@ -129,6 +157,8 @@ typedef struct opal_memory_base_component_2_0_0_t {
     /** Function invoked when Open MPI stops "caring" about a
         specific memory region */
     opal_memory_base_component_deregister_fn_t memoryc_deregister;
+    /** Function invoked in order to set malloc'ed memory alignment */
+    opal_memory_base_component_set_alignment_fn_t memoryc_set_alignment;
 } opal_memory_base_component_2_0_0_t;
 
 OPAL_DECLSPEC extern opal_memory_base_component_2_0_0_t *opal_memory;
@@ -139,7 +169,6 @@ END_C_DECLS
  * Macro for use in components that are of type memory
  */
 #define OPAL_MEMORY_BASE_VERSION_2_0_0 \
-    MCA_BASE_VERSION_2_0_0, \
-    "memory", 2, 0, 0
+    OPAL_MCA_BASE_VERSION_2_1_0("memory", 2, 0, 0)
 
 #endif /* OPAL_MCA_MEMORY_MEMORY_H */

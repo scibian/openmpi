@@ -5,19 +5,19 @@
  * Copyright (c) 2004-2005 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
  * Copyright (c) 2006      Cisco Systems, Inc.  All rights reserved.
  * Copyright (c) 2010-2011 IBM Corporation.  All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
- 
+
 #include "orte_config.h"
 
 #include <errno.h>
@@ -38,7 +38,7 @@
 /*
  * Local functions
  */
-static int orte_ras_loadleveler_allocate(opal_list_t *nodes);
+static int orte_ras_loadleveler_allocate(orte_job_t *jdata, opal_list_t *nodes);
 static int orte_ras_loadleveler_finalize(void);
 
 static int orte_ras_loadleveler_discover(opal_list_t *nodelist);
@@ -50,7 +50,9 @@ static int ll_getline(FILE *fp, char *input);
  * Global variable
  */
 orte_ras_base_module_t orte_ras_loadleveler_module = {
+    NULL,
     orte_ras_loadleveler_allocate,
+    NULL,
     orte_ras_loadleveler_finalize
 };
 
@@ -59,7 +61,7 @@ orte_ras_base_module_t orte_ras_loadleveler_module = {
  * Discover available (pre-allocated) nodes.  Allocate the
  * requested number of nodes/process slots to the job.
  */
-static int orte_ras_loadleveler_allocate(opal_list_t *nodes)
+static int orte_ras_loadleveler_allocate(orte_job_t *jdata, opal_list_t *nodes)
 {
     int ret = ORTE_SUCCESS;
 
@@ -72,12 +74,12 @@ static int orte_ras_loadleveler_allocate(opal_list_t *nodes)
       * is an unrecoverable error - report it
       */
     if (opal_list_is_empty(nodes)) {
-        opal_output(orte_ras_base.ras_output,
+        opal_output(orte_ras_base_framework.framework_output,
                 "ras:loadleveler:allocate: No nodes were found in the LOADL_HOSTFILE - %s",
 		getenv("LOADL_HOSTFILE"));
         return ORTE_ERR_NOT_FOUND;
     }
-    
+
     return ret;
 }
 
@@ -86,7 +88,7 @@ static int orte_ras_loadleveler_allocate(opal_list_t *nodes)
  */
 static int orte_ras_loadleveler_finalize(void)
 {
-    OPAL_OUTPUT_VERBOSE((1, orte_ras_base.ras_output, 
+    OPAL_OUTPUT_VERBOSE((1, orte_ras_base_framework.framework_output,
                 "ras:loadleveler:finalize: success (nothing to do)"));
     return ORTE_SUCCESS;
 }
@@ -109,7 +111,7 @@ static int orte_ras_loadleveler_discover(opal_list_t* nodelist)
        getting nodes only from LoadLeveler. */
     filename = getenv("LOADL_HOSTFILE");
     if(NULL == filename) {
-        opal_output(orte_ras_base.ras_output,
+        opal_output(orte_ras_base_framework.framework_output,
                 "ras:loadleveler:allocate:discover: LOADL_HOSTFILE not set. "
                 "Unable to discover allocated nodes.");
         return ORTE_ERROR;
@@ -123,7 +125,7 @@ static int orte_ras_loadleveler_discover(opal_list_t* nodelist)
     /* Iterate through all the nodes and make an entry for each */
     while (0 != ll_getline(fp, input)) {
         hostname = strdup(input);
-        OPAL_OUTPUT_VERBOSE((1, orte_ras_base.ras_output,
+        OPAL_OUTPUT_VERBOSE((1, orte_ras_base_framework.framework_output,
                              "%s ras:loadleveler:allocate:discover: got hostname %s",
                              ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), hostname));
 
@@ -136,7 +138,7 @@ static int orte_ras_loadleveler_discover(opal_list_t* nodelist)
             if (0 == strcmp(node->name, hostname)) {
                 ++node->slots;
 
-                OPAL_OUTPUT_VERBOSE((1, orte_ras_base.ras_output,
+                OPAL_OUTPUT_VERBOSE((1, orte_ras_base_framework.framework_output,
                                      "%s ras:loadleveler:allocate:discover: found -- bumped slots to %d",
                                      ORTE_NAME_PRINT(ORTE_PROC_MY_NAME), node->slots));
                 break;
@@ -146,7 +148,7 @@ static int orte_ras_loadleveler_discover(opal_list_t* nodelist)
         /* Did we find it? */
         if (opal_list_get_end(nodelist) == item) {
             /* Nope -- didn't find it, so add a new item to the list */
-            OPAL_OUTPUT_VERBOSE((1, orte_ras_base.ras_output,
+            OPAL_OUTPUT_VERBOSE((1, orte_ras_base_framework.framework_output,
                                  "%s ras:loadleveler:allocate:discover: not found -- added to list",
                                  ORTE_NAME_PRINT(ORTE_PROC_MY_NAME)));
 

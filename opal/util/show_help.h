@@ -5,15 +5,15 @@
  * Copyright (c) 2004-2006 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
- * Copyright (c) 2008      Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2008-2011 Cisco Systems, Inc.  All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 /**
@@ -33,14 +33,14 @@
  * display it.  Its important parameters are a filename, message name,
  * and printf()-style varargs parameters used to substitute into the
  * message.
- * 
- * There's work pending about i18n-like support (nothing near as
- * complex as GNU gettext -- just a simple mechanism that may be
- * used).  But I won't describe it here until/if it's actually used.
- * So right now, the file lookup is quite straightforward -- the
- * caller passes in the filename to find the help message, and the SHS
- * looks for that file in $pkgdatadir (typically
- * $prefix/share/openmpi).
+ *
+ * It was originally intended that this system would support a very
+ * simple version of i18n-like support, but we got (strong) feedback
+ * that i18n support was not desired.  So it never happened.
+ *
+ * As such, the file lookup is quite straightforward -- the caller
+ * passes in the filename to find the help message, and the SHS looks
+ * for that file in $pkgdatadir (typically $prefix/share/openmpi).
  *
  * Once the file is successfully opened, the SHS looks for the
  * appropriate help message to display.  It looks for the message name
@@ -55,7 +55,7 @@
  *   ignored.  It is not possible to escape a #.
  * - Message names are on a line by themselves and marked with [].
  *   Names can be any ASCII string within the [] (excluding the
- *   characters newline, linefeed, [, ], and #).  
+ *   characters newline, linefeed, [, ], and #).
  * - Messages are any characters between message names and/or the end
  *   of the file.
  *
@@ -128,7 +128,7 @@ OPAL_DECLSPEC int opal_show_help_finalize(void);
  * based on the topic, and displays it.  If want_error_header is
  * true, a header and footer of asterisks are also displayed.
  */
-typedef int (*opal_show_help_fn_t)(const char *filename, const char *topic, 
+typedef int (*opal_show_help_fn_t)(const char *filename, const char *topic,
                                    bool want_error_header, ...);
 OPAL_DECLSPEC extern opal_show_help_fn_t opal_show_help;
 
@@ -136,7 +136,7 @@ OPAL_DECLSPEC extern opal_show_help_fn_t opal_show_help;
  * This function does the same thing as opal_show_help(), but accepts
  * a va_list form of varargs.
  */
-typedef int (*opal_show_vhelp_fn_t)(const char *filename, const char *topic, 
+typedef int (*opal_show_vhelp_fn_t)(const char *filename, const char *topic,
                                     bool want_error_header, va_list ap);
 OPAL_DECLSPEC extern opal_show_vhelp_fn_t opal_show_vhelp;
 
@@ -144,16 +144,16 @@ OPAL_DECLSPEC extern opal_show_vhelp_fn_t opal_show_vhelp;
  * This function does the same thing as opal_show_help(), but returns
  * its output in a string (that must be freed by the caller).
  */
-OPAL_DECLSPEC char* opal_show_help_string(const char *filename, 
-                                          const char *topic, 
+OPAL_DECLSPEC char* opal_show_help_string(const char *filename,
+                                          const char *topic,
                                           bool want_error_header, ...);
 
 /**
  * This function does the same thing as opal_show_help_string(), but
  * accepts a va_list form of varargs.
  */
-OPAL_DECLSPEC char* opal_show_help_vstring(const char *filename, 
-                                          const char *topic, 
+OPAL_DECLSPEC char* opal_show_help_vstring(const char *filename,
+                                          const char *topic,
                                           bool want_error_header, va_list ap);
 
 /**
@@ -170,17 +170,6 @@ OPAL_DECLSPEC char* opal_show_help_vstring(const char *filename,
  * interfering with the linked ORTE libs when they need to do show_help.
  */
 OPAL_DECLSPEC int opal_show_help_add_dir(const char *directory);
-
-/** 
- * \internal
- *
- * Internal function to help clean up the flex parser.
- *
- * This function is called internally by the SHS to shut down the
- * flex parser since we may not hit the <<EOF>> rule and call this
- * function automatically.
- */
-OPAL_DECLSPEC int opal_show_help_finish_parsing(void);
 
 END_C_DECLS
 

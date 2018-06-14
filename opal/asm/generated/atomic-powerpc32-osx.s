@@ -21,10 +21,10 @@ _opal_atomic_wmb:
 
 	.globl _opal_atomic_cmpset_32
 _opal_atomic_cmpset_32:
-	L1: lwarx   r0, 0, r3  
-	   cmpw    0, r0, r4  
+	L1: lwarx   r0, 0, r3
+	   cmpw    0, r0, r4
 	   bne-    L2
-	   stwcx.  r5, 0, r3  
+	   stwcx.  r5, 0, r3
 	   bne-    L1
 	L2:
 	xor r3,r0,r4
@@ -35,12 +35,12 @@ _opal_atomic_cmpset_32:
 
 	.globl _opal_atomic_cmpset_acq_32
 _opal_atomic_cmpset_acq_32:
-	L3: lwarx   r0, 0, r3  
-	   cmpw    0, r0, r4  
-	   bne-    L4         
-	   stwcx.  r5, 0, r3  
+	L3: lwarx   r0, 0, r3
+	   cmpw    0, r0, r4
+	   bne-    L4
+	   stwcx.  r5, 0, r3
 	   bne-    L3
-	sync 
+	sync
 	L4:
 	xor r3,r0,r4
 	subfic r5,r3,0
@@ -52,12 +52,12 @@ _opal_atomic_cmpset_acq_32:
 	.globl _opal_atomic_cmpset_rel_32
 _opal_atomic_cmpset_rel_32:
 	eieio
-	L5: lwarx   r0, 0, r3  
-	   cmpw    0, r0, r4  
+	L5: lwarx   r0, 0, r3
+	   cmpw    0, r0, r4
 	   bne-    L6
-	   stwcx.  r5, 0, r3  
+	   stwcx.  r5, 0, r3
 	   bne-    L5
-	sync 
+	sync
 	L6:
 	xor r3,r0,r4
 	subfic r5,r3,0
@@ -68,9 +68,9 @@ _opal_atomic_cmpset_rel_32:
 
 	.globl _opal_atomic_add_32
 _opal_atomic_add_32:
-	L13:   lwarx r0, 0, r3 
-	     add  r0, r4, r0                
-	     stwcx.   r0, 0, r3              
+	L13:   lwarx r0, 0, r3
+	     add  r0, r4, r0
+	     stwcx.   r0, 0, r3
 	     bne-  L13
 	mr	r3,r0
 	blr
@@ -79,9 +79,9 @@ _opal_atomic_add_32:
 	.globl _opal_atomic_sub_32
 _opal_atomic_sub_32:
 	L14:   lwarx r0,0,r3
-	     subf  r0,r4,r0                
-	     stwcx.   r0,0,r3              
-	     bne-  L14             
+	     subf  r0,r4,r0
+	     stwcx.   r0,0,r3
+	     bne-  L14
 	mr	r3,r0
 	blr
 

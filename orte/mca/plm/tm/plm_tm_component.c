@@ -1,3 +1,4 @@
+/* -*- Mode: C; c-basic-offset:4 ; indent-tabs-mode:nil -*- */
 /*
  * Copyright (c) 2004-2008 The Trustees of Indiana University and Indiana
  *                         University Research and Technology
@@ -5,15 +6,17 @@
  * Copyright (c) 2004-2005 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
  * Copyright (c) 2006      Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2015      Los Alamos National Security, LLC. All rights
+ *                         reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  *
  * These symbols are in a file by themselves to provide nice linker
@@ -26,7 +29,6 @@
 #include "orte_config.h"
 #include "orte/constants.h"
 
-#include "opal/mca/base/mca_base_param.h"
 #include "opal/util/argv.h"
 
 
@@ -47,6 +49,7 @@ const char *mca_plm_tm_component_version_string =
 /*
  * Local function
  */
+static int plm_tm_register(void);
 static int plm_tm_open(void);
 static int plm_tm_close(void);
 static int orte_plm_tm_component_query(mca_base_module_t **module, int *priority);
@@ -62,40 +65,46 @@ orte_plm_tm_component_t mca_plm_tm_component = {
         /* First, the mca_component_t struct containing meta information
            about the component itself */
 
-        {
+        .base_version = {
             ORTE_PLM_BASE_VERSION_2_0_0,
 
             /* Component name and version */
-            "tm",
-            ORTE_MAJOR_VERSION,
-            ORTE_MINOR_VERSION,
-            ORTE_RELEASE_VERSION,
+            .mca_component_name = "tm",
+            MCA_BASE_MAKE_VERSION(component, ORTE_MAJOR_VERSION, ORTE_MINOR_VERSION,
+                                  ORTE_RELEASE_VERSION),
 
             /* Component open and close functions */
-            plm_tm_open,
-            plm_tm_close,
-            orte_plm_tm_component_query
+            .mca_open_component = plm_tm_open,
+            .mca_close_component = plm_tm_close,
+            .mca_query_component = orte_plm_tm_component_query,
+            .mca_register_component_params = plm_tm_register,
         },
-        {
+        .base_data = {
             /* The component is checkpoint ready */
             MCA_BASE_METADATA_PARAM_CHECKPOINT
-        }
+        },
     }
 };
 
+static int plm_tm_register(void)
+{
+    mca_base_component_t *comp = &mca_plm_tm_component.super.base_version;
+
+    mca_plm_tm_component.want_path_check = true;
+    (void) mca_base_component_var_register (comp, "want_path_check",
+                                            "Whether the launching process should check for the plm_tm_orted executable in the PATH before launching (the TM API does not give an indication of failure; this is a somewhat-lame workaround; non-zero values enable this check)",
+                                            MCA_BASE_VAR_TYPE_BOOL, NULL, 0, 0,
+                                            OPAL_INFO_LVL_9,
+                                            MCA_BASE_VAR_SCOPE_READONLY,
+                                            &mca_plm_tm_component.want_path_check);
+
+    return ORTE_SUCCESS;
+}
 
 static int plm_tm_open(void)
 {
-    int tmp;
-    mca_base_component_t *comp = &mca_plm_tm_component.super.base_version;
-
-    mca_base_param_reg_int(comp, "want_path_check",
-                           "Whether the launching process should check for the plm_tm_orted executable in the PATH before launching (the TM API does not give an indication of failure; this is a somewhat-lame workaround; non-zero values enable this check)",
-                           false, false, (int) true, &tmp);
-    mca_plm_tm_component.want_path_check = OPAL_INT_TO_BOOL(tmp);
-    
     mca_plm_tm_component.checked_paths = NULL;
-   
+
     return ORTE_SUCCESS;
 }
 

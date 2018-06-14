@@ -5,22 +5,23 @@
 # Copyright (c) 2004-2005 The University of Tennessee and The University
 #                         of Tennessee Research Foundation.  All rights
 #                         reserved.
-# Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+# Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
 #                         University of Stuttgart.  All rights reserved.
 # Copyright (c) 2004-2005 The Regents of the University of California.
 #                         All rights reserved.
 # Copyright (c) 2008      Voltaire. All rights reserved
-# 
+#
+# Copyright (c) 2010      Cisco Systems, Inc.  All rights reserved.
 # $COPYRIGHT$
-# 
+#
 # Additional copyrights may follow
-# 
+#
 # $HEADER$
 #
 
 AM_LFLAGS = -Porte_rmaps_rank_file_
 LEX_OUTPUT_ROOT = lex.orte_rmaps_rank_file_
-dist_pkgdata_DATA = help-rmaps_rank_file.txt
+dist_ortedata_DATA = help-rmaps_rank_file.txt
 
 sources = \
         rmaps_rank_file.c \
@@ -33,7 +34,7 @@ sources = \
 # mca_<type>_<name>.la (for DSO builds) or libmca_<type>_<name>.la
 # (for static builds).
 
-if OMPI_BUILD_rmaps_rank_file_DSO
+if MCA_BUILD_orte_rmaps_rank_file_DSO
 component_noinst =
 component_install = mca_rmaps_rank_file.la
 else
@@ -41,7 +42,7 @@ component_noinst = libmca_rmaps_rank_file.la
 component_install =
 endif
 
-mcacomponentdir = $(pkglibdir)
+mcacomponentdir = $(ortelibdir)
 mcacomponent_LTLIBRARIES = $(component_install)
 mca_rmaps_rank_file_la_SOURCES = $(sources)
 mca_rmaps_rank_file_la_LDFLAGS = -module -avoid-version

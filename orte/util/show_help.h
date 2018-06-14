@@ -5,15 +5,16 @@
  * Copyright (c) 2004-2006 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
  * Copyright (c) 2008-2011 Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2013      Los Alamos National Security, LLC.  All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -70,20 +71,39 @@ ORTE_DECLSPEC bool orte_show_help_is_available(void);
 ORTE_DECLSPEC void orte_show_help_finalize(void);
 
 /**
- * Show help
+ * Show help.
  *
- * Sends show help messages to the HNP if on a backend node
+ * Sends show help messages to the HNP if on a backend node.  Note
+ * that aggregation is not currently supported on HNP-less systems
+ * (e.g., cray).
  */
-ORTE_DECLSPEC int orte_show_help(const char *filename, const char *topic, 
+ORTE_DECLSPEC int orte_show_help(const char *filename, const char *topic,
                                  bool want_error_header, ...);
 
-#if !ORTE_DISABLE_FULL_SUPPORT
+/**
+ * Exactly the same as orte_show_help, but pass in a rendered string,
+ * rather than a varargs list which must be rendered.
+ */
+ORTE_DECLSPEC int orte_show_help_norender(const char *filename,
+                                          const char *topic,
+                                          bool want_error_header,
+                                          const char *output);
+
+/**
+ * Pretend that this message has already been shown.
+ *
+ * Sends a control message to the HNP that will effecitvely suppress
+ * this message from being shown.  Primitive *-wildcarding is
+ * possible.
+ *
+ * Not currently supported on HNP-less systems (e.g., cray).
+ */
+ORTE_DECLSPEC int orte_show_help_suppress(const char *filename,
+                                          const char *topic);
 
 ORTE_DECLSPEC void orte_show_help_recv(int status, orte_process_name_t* sender,
                                        opal_buffer_t *buffer, orte_rml_tag_t tag,
                                        void* cbdata);
-
-#endif /* ORTE_DISABLE_FULL_SUPPORT */
 
 END_C_DECLS
 #endif

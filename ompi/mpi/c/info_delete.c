@@ -1,3 +1,4 @@
+/* -*- Mode: C; c-basic-offset:4 ; indent-tabs-mode:nil -*- */
 /*
  * Copyright (c) 2004-2007 The Trustees of Indiana University and Indiana
  *                         University Research and Technology
@@ -5,14 +6,18 @@
  * Copyright (c) 2004-2005 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
+ * Copyright (c) 2013      Los Alamos National Security, LLC.  All rights
+ *                         reserved.
+ * Copyright (c) 2015      Research Organization for Information Science
+ *                         and Technology (RIST). All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -26,12 +31,11 @@
 #include <stdlib.h>
 #include <string.h>
 
-#if OPAL_HAVE_WEAK_SYMBOLS && OMPI_PROFILING_DEFINES
+#if OMPI_BUILD_MPI_PROFILING
+#if OPAL_HAVE_WEAK_SYMBOLS
 #pragma weak MPI_Info_delete = PMPI_Info_delete
 #endif
-
-#if OMPI_PROFILING_DEFINES
-#include "ompi/mpi/c/profile/defines.h"
+#define MPI_Info_delete PMPI_Info_delete
 #endif
 
 static const char FUNC_NAME[] = "MPI_Info_delete";
@@ -41,14 +45,14 @@ static const char FUNC_NAME[] = "MPI_Info_delete";
  * Delete a (key,value) pair from "info"
  *
  * @param info MPI_Info handle on which we need to operate
- * @param key The key portion of the (key,value) pair that 
+ * @param key The key portion of the (key,value) pair that
  *            needs to be deleted
  *
  * @retval MPI_SUCCESS If the (key,val) pair was deleted
  * @retval MPI_ERR_INFO
  * @retval MPI_ERR_INFO_KEYY
  */
-int MPI_Info_delete(MPI_Info info, char *key) {
+int MPI_Info_delete(MPI_Info info, const char *key) {
     int key_length;
     int err;
 
@@ -70,8 +74,6 @@ int MPI_Info_delete(MPI_Info info, char *key) {
                                         FUNC_NAME);
         }
     }
-
-    OPAL_CR_ENTER_LIBRARY();
 
     err = ompi_info_delete (info, key);
     OMPI_ERRHANDLER_RETURN(err, MPI_COMM_WORLD, err, FUNC_NAME);

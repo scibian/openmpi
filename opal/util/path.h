@@ -5,14 +5,17 @@
  * Copyright (c) 2004-2007 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
+ * Copyright (c) 2012      Los Alamos National Security, LLC.
+ *                         All rights reserved.
+ * Copyright (c) 2016      University of Houston. All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  *
  * @file
@@ -23,6 +26,8 @@
 
 #include "opal_config.h"
 
+#include "opal/constants.h"
+
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
 #endif
@@ -31,7 +36,7 @@ BEGIN_C_DECLS
 
 /**
  *  Locates a file with certain permissions
- *  
+ *
  *  @param fname File name
  *  @param pathv Array of search directories
  *  @param mode  Permissions which must be satisfied (see access(2))
@@ -69,7 +74,7 @@ OPAL_DECLSPEC char *opal_path_find(char *fname, char **pathv, int mode,
  *
  * The caller is responsible for freeing the returned string.
  */
-OPAL_DECLSPEC char *opal_path_findv(char *fname, int mode, 
+OPAL_DECLSPEC char *opal_path_findv(char *fname, int mode,
                                     char **envv, char *wrkdir) __opal_attribute_malloc__ __opal_attribute_warn_unused_result__;
 /**
  *  Detect if the requested path is absolute or relative.
@@ -122,20 +127,35 @@ OPAL_DECLSPEC char *opal_path_access(char *fname, char *path, int mode) __opal_a
 
 /**
  * @brief Figure out, whether fname is on network file system
+ * and return fstype if known
  *
  * Try to figure out, whether the file name specified through fname is
- * on any network file system (currently NFS, Lustre and Panasas).
+ * on any network file system (currently NFS, Lustre, GPFS,  Panasas
+ * and PVFS2 ).
  *
  * If the file is not created, the parent directory is checked.
  * This allows checking for NFS prior to opening the file.
  *
- * @param[in]     fname        File name to check
+ * @fname[in]     File name to check
+ * @fstype[out]   File system type if retval is true
  *
  * @retval true                If fname is on NFS, Lustre or Panasas
  * @retval false               otherwise
  */
-OPAL_DECLSPEC bool opal_path_nfs(char *fname) __opal_attribute_warn_unused_result__;
+OPAL_DECLSPEC bool opal_path_nfs(char *fname, char **fstype) __opal_attribute_warn_unused_result__;
+
+/**
+ * @brief Returns the disk usage of path.
+ *
+ * @param[in] path       Path to check
+ * @out_avail[out]       Amount of free space available on path (if successful)
+ *
+ * @retval OPAL_SUCCESS  If the operation was successful
+ * @retval OPAL_ERROR    otherwise
+ */
+OPAL_DECLSPEC int
+opal_path_df(const char *path,
+             uint64_t *out_avail)__opal_attribute_warn_unused_result__;
 
 END_C_DECLS
 #endif /* OPAL_PATH_H */
-

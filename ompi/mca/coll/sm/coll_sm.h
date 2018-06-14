@@ -1,21 +1,21 @@
-/* 
+/*
  * Copyright (c) 2004-2007 The Trustees of Indiana University and Indiana
  *                         University Research and Technology
  *                         Corporation.  All rights reserved.
- * Copyright (c) 2004-2006 The University of Tennessee and The University
+ * Copyright (c) 2004-2014 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
- * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart, 
+ * Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
  * Copyright (c) 2008-2009 Cisco Systems, Inc.  All rights reserved.
- * Copyright (c) 2011      Los Alamos National Security, LLC.
- *                         All rights reserved.
+ * Copyright (c) 2015      Research Organization for Information Science
+ *                         and Technology (RIST). All rights reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 /** @file */
@@ -26,11 +26,10 @@
 #include "ompi_config.h"
 
 #include "mpi.h"
-#include "opal/mca/mca.h"
+#include "ompi/mca/mca.h"
 #include "opal/datatype/opal_convertor.h"
-#include "orte/types.h"
+#include "opal/mca/common/sm/common_sm.h"
 #include "ompi/mca/coll/coll.h"
-#include "ompi/mca/common/sm/common_sm.h"
 
 BEGIN_C_DECLS
 
@@ -46,13 +45,13 @@ BEGIN_C_DECLS
        } \
        opal_progress(); \
   } while (1); \
-  exit_label: 
+  exit_label:
 
-    /** 
+    /**
      * Structure to hold the sm coll component.  First it holds the
      * base coll component, and then holds a bunch of
      * sm-coll-component-specific stuff (e.g., current MCA param
-     * values). 
+     * values).
      */
     typedef struct mca_coll_sm_component_t {
         /** Base coll component */
@@ -144,7 +143,7 @@ BEGIN_C_DECLS
     typedef struct mca_coll_sm_comm_t {
         /* Meta data that we get back from the common mmap allocation
            function */
-        mca_common_sm_module_t *mcb_mmap;
+        mca_common_sm_module_t *sm_bootstrap_meta;
 
         /** Pointer to my barrier control pages (odd index pages are
             "in", even index pages are "out") */
@@ -198,7 +197,7 @@ BEGIN_C_DECLS
 	mca_coll_base_module_t *previous_reduce_module;
     } mca_coll_sm_module_t;
     OBJ_CLASS_DECLARATION(mca_coll_sm_module_t);
-    
+
     /**
      * Global component instance
      */
@@ -212,113 +211,113 @@ BEGIN_C_DECLS
 
     mca_coll_base_module_t *
     mca_coll_sm_comm_query(struct ompi_communicator_t *comm, int *priority);
-    
+
     /* Lazily enable a module (since it involves expensive/slow mmap
        allocation, etc.) */
     int ompi_coll_sm_lazy_enable(mca_coll_base_module_t *module,
                                  struct ompi_communicator_t *comm);
 
-    int mca_coll_sm_allgather_intra(void *sbuf, int scount, 
-				    struct ompi_datatype_t *sdtype, 
-				    void *rbuf, int rcount, 
-				    struct ompi_datatype_t *rdtype, 
+    int mca_coll_sm_allgather_intra(const void *sbuf, int scount,
+				    struct ompi_datatype_t *sdtype,
+				    void *rbuf, int rcount,
+				    struct ompi_datatype_t *rdtype,
 				    struct ompi_communicator_t *comm,
 				    mca_coll_base_module_t *module);
 
-    int mca_coll_sm_allgatherv_intra(void *sbuf, int scount, 
-				     struct ompi_datatype_t *sdtype, 
-				     void * rbuf, int *rcounts, int *disps, 
-				     struct ompi_datatype_t *rdtype, 
+    int mca_coll_sm_allgatherv_intra(const void *sbuf, int scount,
+				     struct ompi_datatype_t *sdtype,
+				     void * rbuf, const int *rcounts, const int *disps,
+				     struct ompi_datatype_t *rdtype,
 				     struct ompi_communicator_t *comm,
 				     mca_coll_base_module_t *module);
-    int mca_coll_sm_allreduce_intra(void *sbuf, void *rbuf, int count, 
-				    struct ompi_datatype_t *dtype, 
-				    struct ompi_op_t *op, 
+    int mca_coll_sm_allreduce_intra(const void *sbuf, void *rbuf, int count,
+				    struct ompi_datatype_t *dtype,
+				    struct ompi_op_t *op,
 				    struct ompi_communicator_t *comm,
 				    mca_coll_base_module_t *module);
-    int mca_coll_sm_alltoall_intra(void *sbuf, int scount, 
-				   struct ompi_datatype_t *sdtype, 
-				   void* rbuf, int rcount, 
-				   struct ompi_datatype_t *rdtype, 
+    int mca_coll_sm_alltoall_intra(const void *sbuf, int scount,
+				   struct ompi_datatype_t *sdtype,
+				   void* rbuf, int rcount,
+				   struct ompi_datatype_t *rdtype,
 				   struct ompi_communicator_t *comm,
 				   mca_coll_base_module_t *module);
-    int mca_coll_sm_alltoallv_intra(void *sbuf, int *scounts, int *sdisps, 
-				    struct ompi_datatype_t *sdtype, 
-				    void *rbuf, int *rcounts, int *rdisps, 
-				    struct ompi_datatype_t *rdtype, 
+    int mca_coll_sm_alltoallv_intra(const void *sbuf, const int *scounts, const int *sdisps,
+				    struct ompi_datatype_t *sdtype,
+				    void *rbuf, const int *rcounts, const int *rdisps,
+				    struct ompi_datatype_t *rdtype,
 				    struct ompi_communicator_t *comm,
 				    mca_coll_base_module_t *module);
-    int mca_coll_sm_alltoallw_intra(void *sbuf, int *scounts, int *sdisps, 
-				    struct ompi_datatype_t **sdtypes, 
-				    void *rbuf, int *rcounts, int *rdisps, 
-				    struct ompi_datatype_t **rdtypes, 
+    int mca_coll_sm_alltoallw_intra(const void *sbuf, const int *scounts, const int *sdisps,
+				    struct ompi_datatype_t * const *sdtypes,
+				    void *rbuf, const int *rcounts, const int *rdisps,
+				    struct ompi_datatype_t * const *rdtypes,
 				    struct ompi_communicator_t *comm,
 				    mca_coll_base_module_t *module);
     int mca_coll_sm_barrier_intra(struct ompi_communicator_t *comm,
 				  mca_coll_base_module_t *module);
-    int mca_coll_sm_bcast_intra(void *buff, int count, 
+    int mca_coll_sm_bcast_intra(void *buff, int count,
 				struct ompi_datatype_t *datatype,
-				int root, 
+				int root,
 				struct ompi_communicator_t *comm,
 				mca_coll_base_module_t *module);
-    int mca_coll_sm_bcast_log_intra(void *buff, int count, 
-				    struct ompi_datatype_t *datatype, 
-				    int root, 
-				    struct ompi_communicator_t *comm, 
+    int mca_coll_sm_bcast_log_intra(void *buff, int count,
+				    struct ompi_datatype_t *datatype,
+				    int root,
+				    struct ompi_communicator_t *comm,
 				    mca_coll_base_module_t *module);
-    int mca_coll_sm_exscan_intra(void *sbuf, void *rbuf, int count, 
-				 struct ompi_datatype_t *dtype, 
-				 struct ompi_op_t *op, 
-				 struct ompi_communicator_t *comm, 
+    int mca_coll_sm_exscan_intra(const void *sbuf, void *rbuf, int count,
+				 struct ompi_datatype_t *dtype,
+				 struct ompi_op_t *op,
+				 struct ompi_communicator_t *comm,
 				 mca_coll_base_module_t *module);
-    int mca_coll_sm_gather_intra(void *sbuf, int scount, 
-				 struct ompi_datatype_t *sdtype, void *rbuf, 
-				 int rcount, struct ompi_datatype_t *rdtype, 
+    int mca_coll_sm_gather_intra(void *sbuf, int scount,
+				 struct ompi_datatype_t *sdtype, void *rbuf,
+				 int rcount, struct ompi_datatype_t *rdtype,
 				 int root, struct ompi_communicator_t *comm,
 				 mca_coll_base_module_t *module);
-    int mca_coll_sm_gatherv_intra(void *sbuf, int scount, 
-				  struct ompi_datatype_t *sdtype, void *rbuf, 
-				  int *rcounts, int *disps, 
-				  struct ompi_datatype_t *rdtype, int root, 
+    int mca_coll_sm_gatherv_intra(void *sbuf, int scount,
+				  struct ompi_datatype_t *sdtype, void *rbuf,
+				  int *rcounts, int *disps,
+				  struct ompi_datatype_t *rdtype, int root,
 				  struct ompi_communicator_t *comm,
 				  mca_coll_base_module_t *module);
-    int mca_coll_sm_reduce_intra(void *sbuf, void* rbuf, int count, 
-				 struct ompi_datatype_t *dtype, 
-				 struct ompi_op_t *op, 
+    int mca_coll_sm_reduce_intra(const void *sbuf, void* rbuf, int count,
+				 struct ompi_datatype_t *dtype,
+				 struct ompi_op_t *op,
 				 int root,
 				 struct ompi_communicator_t *comm,
 				 mca_coll_base_module_t *module);
-    int mca_coll_sm_reduce_log_intra(void *sbuf, void* rbuf, int count, 
-				     struct ompi_datatype_t *dtype, 
-				     struct ompi_op_t *op, 
-				     int root, 
+    int mca_coll_sm_reduce_log_intra(const void *sbuf, void* rbuf, int count,
+				     struct ompi_datatype_t *dtype,
+				     struct ompi_op_t *op,
+				     int root,
 				     struct ompi_communicator_t *comm,
 				     mca_coll_base_module_t *module);
-    int mca_coll_sm_reduce_scatter_intra(void *sbuf, void *rbuf, 
-					 int *rcounts, 
-					 struct ompi_datatype_t *dtype, 
-					 struct ompi_op_t *op, 
+    int mca_coll_sm_reduce_scatter_intra(const void *sbuf, void *rbuf,
+					 int *rcounts,
+					 struct ompi_datatype_t *dtype,
+					 struct ompi_op_t *op,
 					 struct ompi_communicator_t *comm,
 					 mca_coll_base_module_t *module);
-    int mca_coll_sm_scan_intra(void *sbuf, void *rbuf, int count, 
-			       struct ompi_datatype_t *dtype, 
-			       struct ompi_op_t *op, 
+    int mca_coll_sm_scan_intra(const void *sbuf, void *rbuf, int count,
+			       struct ompi_datatype_t *dtype,
+			       struct ompi_op_t *op,
 			       struct ompi_communicator_t *comm,
 			       mca_coll_base_module_t *module);
-    int mca_coll_sm_scatter_intra(void *sbuf, int scount, 
-				  struct ompi_datatype_t *sdtype, void *rbuf, 
-				  int rcount, struct ompi_datatype_t *rdtype, 
+    int mca_coll_sm_scatter_intra(const void *sbuf, int scount,
+				  struct ompi_datatype_t *sdtype, void *rbuf,
+				  int rcount, struct ompi_datatype_t *rdtype,
 				  int root, struct ompi_communicator_t *comm,
 				  mca_coll_base_module_t *module);
-    int mca_coll_sm_scatterv_intra(void *sbuf, int *scounts, int *disps, 
-				   struct ompi_datatype_t *sdtype, 
-				   void* rbuf, int rcount, 
-				   struct ompi_datatype_t *rdtype, int root, 
+    int mca_coll_sm_scatterv_intra(const void *sbuf, const int *scounts, const int *disps,
+				   struct ompi_datatype_t *sdtype,
+				   void* rbuf, int rcount,
+				   struct ompi_datatype_t *rdtype, int root,
 				   struct ompi_communicator_t *comm,
 				   mca_coll_base_module_t *module);
 
     int mca_coll_sm_ft_event(int state);
-    
+
 /**
  * Global variables used in the macros (essentially constants, so
  * these are thread safe)
@@ -359,7 +358,7 @@ extern uint32_t mca_coll_sm_one;
  * Macro to release an in-use flag from this process
  */
 #define FLAG_RELEASE(flag) \
-    opal_atomic_add(&(flag)->mcsiuf_num_procs_using, -1)
+    (void)opal_atomic_add(&(flag)->mcsiuf_num_procs_using, -1)
 
 /**
  * Macro to copy a single segment in from a user buffer to a shared
@@ -395,7 +394,7 @@ extern uint32_t mca_coll_sm_one;
              mca_coll_sm_component.sm_fragment_size)), \
            (len))
 
-/** 
+/**
  * Macro to tell children that a segment is ready (normalize
  * the child's ID based on the shift used to calculate the "me" node
  * in the tree).  Used in fan out opertations.

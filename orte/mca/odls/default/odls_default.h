@@ -24,7 +24,7 @@
 
 #include "orte_config.h"
 
-#include "opal/mca/mca.h"
+#include "orte/mca/mca.h"
 
 #include "orte/mca/odls/odls.h"
 
@@ -42,9 +42,6 @@ int orte_odls_default_component_query(mca_base_module_t **module, int *priority)
  */
 extern orte_odls_base_module_t orte_odls_default_module;
 ORTE_MODULE_DECLSPEC extern orte_odls_base_component_t mca_odls_default_component;
-
-/* dedicated debug output flag */
-ORTE_MODULE_DECLSPEC extern bool orte_odls_default_report_bindings;
 
 END_C_DECLS
 

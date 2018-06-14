@@ -1,10 +1,11 @@
+/* -*- Mode: C; c-basic-offset:4 ; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2006-2007 Los Alamos National Security, LLC.  All rights
- *                         reserved. 
+ * Copyright (c) 2006-2015 Los Alamos National Security, LLC.  All rights
+ *                         reserved.
  * $COPYRIGHT$
- * 
+ *
  * Additional copyrights may follow
- * 
+ *
  * $HEADER$
  */
 
@@ -37,9 +38,26 @@ struct opal_install_dirs_t {
     char* includedir;
     char* infodir;
     char* mandir;
-    char* pkgdatadir;
-    char* pkglibdir;
-    char* pkgincludedir;
+
+    /* Note that the following fields intentionally have an "ompi"
+       prefix, even though they're down in the OPAL layer.  This is
+       not abstraction break because the "ompi" they're referring to
+       is for the build system of the overall software tree -- not an
+       individual project within that overall tree.
+
+       Rather than using pkg{data,lib,includedir}, use our own
+       ompi{data,lib,includedir}, which is always set to
+       {datadir,libdir,includedir}/openmpi. This will keep us from
+       having help files in prefix/share/open-rte when building
+       without Open MPI, but in prefix/share/openmpi when building
+       with Open MPI.
+
+       Note that these field names match macros set by configure that
+       are used in Makefile.am files.  E.g., project help files are
+       installed into $(opaldatadir). */
+    char* opaldatadir;
+    char* opallibdir;
+    char* opalincludedir;
 };
 typedef struct opal_install_dirs_t opal_install_dirs_t;
 
@@ -72,8 +90,7 @@ typedef struct opal_installdirs_base_component_2_0_0_t opal_installdirs_base_com
  * Macro for use in components that are of type installdirs
  */
 #define OPAL_INSTALLDIRS_BASE_VERSION_2_0_0 \
-    MCA_BASE_VERSION_2_0_0, \
-    "installdirs", 2, 0, 0
+    OPAL_MCA_BASE_VERSION_2_1_0("installdirs", 2, 0, 0)
 
 END_C_DECLS
 

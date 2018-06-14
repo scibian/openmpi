@@ -1,5 +1,9 @@
+.\" -*- nroff -*-
+.\" Copyright 2013 Los Alamos National Security, LLC. All rights reserved.
+.\" Copyright 2010 Cisco Systems, Inc.  All rights reserved.
 .\" Copyright 2006-2008 Sun Microsystems, Inc.
 .\" Copyright (c) 1996 Thinking Machines Corporation
+.\" $COPYRIGHT$
 .TH MPI_Unpack_external 3 "#OMPI_DATE#" "#PACKAGE_VERSION#" "#PACKAGE_NAME#"
 
 .SH NAME
@@ -11,7 +15,7 @@
 .SH C Syntax
 .nf
 #include <mpi.h>
-int MPI_Unpack_external(char *\fIdatarep\fP, void *\fIinbuf\fP,
+int MPI_Unpack_external(const char \fIdatarep\fP[], const void *\fIinbuf\fP,
 	MPI_Aint \fIinsize\fP, MPI_Aint *\fIposition\fP,
 	void *\fIoutbuf\fP, int \fIoutcount\fP,
 	MPI_Datatype \fIdatatype\fP)
@@ -24,7 +28,7 @@ MPI_UNPACK_EXTERNAL(\fIDATAREP, INBUF, INSIZE, POSITION,
 	OUTBUF, OUTCOUNT, DATATYPE, IERROR\fP)
 
 	INTEGER		\fIOUTCOUNT, DATATYPE, IERROR\fP
-	INTEGER (KIND=MPI_ADDRESS_KIND) \fIINSIZE, POSITION\fP
+	INTEGER(KIND=MPI_ADDRESS_KIND) \fIINSIZE, POSITION\fP
 	CHARACTER*(*)	\fIDATAREP\fP
 	<type>		\fIINBUF(*), OUTBUF(*)\fP
 
@@ -45,33 +49,33 @@ datarep
 Data Representation (string).
 .ft R
 .TP 1i
-inbuf      
+inbuf
 Input buffer start (choice).
 .TP 1i
-insize      
+insize
 Size of input buffer, in bytes (integer).
 .TP 1i
-outcount      
+outcount
 Number of items to be unpacked (integer).
 .TP 1i
-datatype      
+datatype
 Datatype of each output data item (handle).
 
 .SH INPUT/OUTPUT PARAMETER
 .ft R
 .TP 1i
-position      
+position
 Current position in buffer, in bytes (integer).
 
 .SH OUTPUT PARAMETERS
 .ft R
 .TP 1i
-outbuf      
+outbuf
 Output buffer start (choice).
 .ft R
 .TP 1i
 IERROR
-Fortran only: Error status (integer). 
+Fortran only: Error status (integer).
 
 .SH DESCRIPTION
 .ft R
@@ -124,12 +128,12 @@ equivalent information that would have been stored in a message by one
 send call with a send buffer that is the "concatenation" of the
 individual send buffers.
 .sp
-A packing unit can be sent using type MPI_PACKED. Any point-to-point
+A packing unit can be sent using type MPI_BYTE. Any point-to-point
 or collective communication function can be used to move the sequence
 of bytes that forms the packing unit from one process to another. This
 packing unit can now be received using any receive operation, with any
 datatype: The type-matching rules are relaxed for messages sent with
-type MPI_PACKED.
+type MPI_BYTE.
 .sp
 A packing unit can be unpacked into several successive messages. This
 is effected by several successive related calls to
@@ -152,7 +156,7 @@ Almost all MPI routines return an error value; C routines as
 the value of the function and Fortran routines in the last argument. C++
 functions do not return errors. If the default error handler is set to
 MPI::ERRORS_THROW_EXCEPTIONS, then on error the C++ exception mechanism
-will be used to throw an MPI:Exception object.
+will be used to throw an MPI::Exception object.
 .sp
 Before the error value is returned, the current MPI error handler is
 called. By default, this error handler aborts the MPI job, except for

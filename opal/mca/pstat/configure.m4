@@ -1,13 +1,13 @@
 dnl -*- shell-script -*-
 dnl
 dnl Copyright (c) 2007      Los Alamos National Security, LLC.
-dnl                         All rights reserved. 
+dnl                         All rights reserved.
 dnl $COPYRIGHT$
-dnl 
+dnl
 dnl Additional copyrights may follow
-dnl 
+dnl
 dnl $HEADER$
 dnl
 
 dnl we only want those at same priority
-m4_define(MCA_pstat_CONFIGURE_MODE, STOP_AT_FIRST_PRIORITY)
+m4_define(MCA_opal_pstat_CONFIGURE_MODE, STOP_AT_FIRST_PRIORITY)
