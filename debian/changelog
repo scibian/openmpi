@@ -1,3 +1,10 @@
+openmpi (2.0.2-2sci9+opa10.7u2) scibian9+opa10.7; urgency=medium
+
+  * Fix performance regression due to CPU frequency-dependent timer issues
+    - add patch timer.patch
+
+ -- Mehdi Dogguy <mehdi.dogguy@edf.fr>  Thu, 11 Oct 2018 12:43:45 +0200
+
 openmpi (2.0.2-2sci9+opa10.7u1) scibian9+opa10.7; urgency=medium
 
   * Scibian9+OPA10.7 release
