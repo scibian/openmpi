@@ -71,7 +71,7 @@ override_dh_auto_configure:
                 sed -e 's%@TRIPLET@%${DEB_HOST_MULTIARCH}%g' < debian/$$f.in  > debian/$$f ; \
                 done
 	dh_auto_configure -- \
-		$(VERBS) $(FABRIC) $(PSM) \
+		$(VERBS) $(FABRIC) $(PSM) $(PSM2) \
 		$(JAVA) \
 		$(STATIC_CONFIG_PARAMS) \
 		$(BTL_TESTS) \
