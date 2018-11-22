@@ -87,6 +87,8 @@ override_dh_auto_configure:
 		--without-tm \
 		--enable-heterogeneous \
 		--disable-vt \
+		--with-pmi \
+		--with-pmi-libdir=/usr/lib/$(DEB_HOST_MULTIARCH) \
 		--sysconfdir=/etc/openmpi 		\
 		--libdir=\$${prefix}/lib/${DEB_HOST_MULTIARCH}/openmpi/lib	\
 		--includedir=\$${prefix}/lib/${DEB_HOST_MULTIARCH}/openmpi/include 

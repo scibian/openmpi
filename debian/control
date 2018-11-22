@@ -15,6 +15,7 @@ Build-Depends: dpkg-dev (>= 1.16.1~), debhelper (>= 9),
  libpsm2-dev [amd64],
  libcr-dev [amd64 armel armhf i386 powerpc], 
  libnuma-dev [amd64 i386 ia64 mips mipsel mipsn32 mipsn32el mips64 mips64el powerpc ppc64el],
+ libpmi0-dev,
  default-jdk,
  flex
 Build-Conflicts: libmpich-dev, libopenmpi-dev
