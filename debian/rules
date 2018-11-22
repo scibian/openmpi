@@ -85,7 +85,6 @@ override_dh_auto_configure:
 		--with-slurm \
 		--with-sge \
 		--without-tm \
-		--enable-heterogeneous \
 		--disable-vt \
 		--with-pmi \
 		--with-pmi-libdir=/usr/lib/$(DEB_HOST_MULTIARCH) \
