@@ -1,3 +1,11 @@
+openmpi (2.0.2-2sci9+opa10.7u3) scibian9+opa10.7; urgency=medium
+
+  * Add missing PSM2 flag in configure command line
+  * Add support for PMI1
+  * Disable heterogenous support
+
+ -- Rémi Palancher <remi-externe.palancher@edf.fr>  Thu, 22 Nov 2018 15:46:12 +0100
+
 openmpi (2.0.2-2sci9+opa10.7u2) scibian9+opa10.7; urgency=medium
 
   * Fix performance regression due to CPU frequency-dependent timer issues
