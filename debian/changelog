@@ -1,3 +1,9 @@
+openmpi (2.0.2-2sci9+opa10.7u4) scibian9+opa10.7; urgency=medium
+
+  * Add IO ROMIO flags in configure
+
+ -- Rémi Palancher <remi-externe.palancher@edf.fr>  Tue, 06 Dec 2018 08:27:13 +0100
+
 openmpi (2.0.2-2sci9+opa10.7u3) scibian9+opa10.7; urgency=medium
 
   * Add missing PSM2 flag in configure command line
