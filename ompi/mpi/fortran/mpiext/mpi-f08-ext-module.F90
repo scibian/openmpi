@@ -12,12 +12,12 @@ module mpi_f08_ext
       parameter (OMPI_HAVE_MPI_EXT=1)
 !
 !
-!     Enabled Extension: affinity
+!     Enabled Extension: cuda
 !     No "use mpi_f08" bindings available
 !
 
 !
-!     Enabled Extension: cuda
+!     Enabled Extension: affinity
 !     No "use mpi_f08" bindings available
 !
 

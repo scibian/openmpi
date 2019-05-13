@@ -1,0 +1,21 @@
+Source: openmpi
+Maintainer: Brian T. Smith <bsmith@systemfabricworks.com>
+Section: net
+Priority: extra
+Standards-Version: 3.9.8
+Homepage: https://www.open-mpi.org/
+Build-Depends: debhelper (>= 10),
+               dpkg-dev (>= 1.16.1~),
+               dh-autoreconf,
+               gfortran,
+               librdmacm-dev,
+               libibverbs-dev,
+               pkg-config,
+               libnuma-dev,
+               zlib1g-dev,
+               g++ (>=4.9),
+               flex,
+               libpsm2-dev,
+               libfabric-dev,
+               libpsm-infinipath1-dev,
+

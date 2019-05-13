@@ -13,9 +13,10 @@
  * Copyright (c) 2009-2010 Oracle and/or its affiliates.  All rights reserved.
  * Copyright (c) 2012-2013 Los Alamos National Security, LLC.
  *                         All rights reserved
- * Copyright (c) 2013-2016 Intel, Inc.  All rights reserved.
+ * Copyright (c) 2013-2017 Intel, Inc. All rights reserved.
  * Copyright (c) 2014      Research Organization for Information Science
  *                         and Technology (RIST). All rights reserved.
+ * Copyright (c) 2017      IBM Corporation.  All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -276,7 +277,7 @@ int orte_register_params(void)
                                   "Test debugger colaunch after debugger attachment",
                                   MCA_BASE_VAR_TYPE_BOOL, NULL, 0, 0,
                                   OPAL_INFO_LVL_9, MCA_BASE_VAR_SCOPE_READONLY,
-                                  &orte_debugger_test_attach);
+                                  &orte_debugger_test_daemon);
 
     orte_debugger_check_rate = 0;
     (void) mca_base_var_register ("orte", "orte", NULL, "debugger_check_rate",
@@ -523,6 +524,18 @@ int orte_register_params(void)
                                   OPAL_INFO_LVL_9, MCA_BASE_VAR_SCOPE_READONLY,
                                   &orte_map_stddiag_to_stderr);
 
+    /* whether or not to map stddiag to stderr */
+    orte_map_stddiag_to_stdout = false;
+    (void) mca_base_var_register ("orte", "orte", NULL, "map_stddiag_to_stdout",
+                                  "Map output from opal_output to stdout of the local process [default: no]",
+                                  MCA_BASE_VAR_TYPE_BOOL, NULL, 0, 0,
+                                  OPAL_INFO_LVL_9, MCA_BASE_VAR_SCOPE_READONLY,
+                                  &orte_map_stddiag_to_stdout);
+    if( orte_map_stddiag_to_stderr && orte_map_stddiag_to_stdout ) {
+        opal_output(0, "The options \"orte_map_stddiag_to_stderr\" and \"orte_map_stddiag_to_stdout\" are mutually exclusive. They cannot both be set to true.");
+        return ORTE_ERROR;
+    }
+
     /* generate new terminal windows to display output from specified ranks */
     orte_xterm = NULL;
     (void) mca_base_var_register ("orte", "orte", NULL, "xterm",
@@ -742,6 +755,16 @@ int orte_register_params(void)
                                 &orte_direct_modex_cutoff);
     /* register a synonym for old name */
     mca_base_var_register_synonym (id, "ompi", "ompi", "hostname", "cutoff", MCA_BASE_VAR_SYN_FLAG_DEPRECATED);
+
+
+    /* Amount of time to wait for a stack trace to return from the daemons */
+    orte_stack_trace_wait_timeout = 30;
+    (void) mca_base_var_register ("orte", "orte", NULL, "timeout_for_stack_trace",
+                                  "Seconds to wait for stack traces to return before terminating "
+                                  "the job (<= 0 wait forever)",
+                                  MCA_BASE_VAR_TYPE_INT, NULL, 0, 0,
+                                  OPAL_INFO_LVL_9, MCA_BASE_VAR_SCOPE_READONLY,
+                                  &orte_stack_trace_wait_timeout);
 
     return ORTE_SUCCESS;
 }

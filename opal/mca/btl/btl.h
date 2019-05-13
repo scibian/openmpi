@@ -10,7 +10,7 @@
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
- * Copyright (c) 2006-2015 Los Alamos National Security, LLC.  All rights
+ * Copyright (c) 2006-2016 Los Alamos National Security, LLC.  All rights
  *                         reserved.
  * Copyright (c) 2010      Oracle and/or its affiliates.  All rights reserved.
  * Copyright (c) 2012-2013 NVIDIA Corporation.  All rights reserved.
@@ -122,6 +122,7 @@
 #include "opal/datatype/opal_convertor.h"
 #include "opal/mca/mca.h"
 #include "opal/mca/mpool/mpool.h"
+#include "opal/mca/rcache/rcache.h"
 
 BEGIN_C_DECLS
 
@@ -132,7 +133,6 @@ BEGIN_C_DECLS
 struct mca_btl_base_module_t;
 struct mca_btl_base_endpoint_t;
 struct mca_btl_base_descriptor_t;
-struct mca_mpool_base_resources_t;
 struct opal_proc_t;
 
 /**
@@ -257,23 +257,23 @@ enum {
     /** Allow local write on the registered region. If a region is registered
      * with this flag the registration can be used as the local handle for a
      * btl_get operation. */
-    MCA_BTL_REG_FLAG_LOCAL_WRITE   = MCA_MPOOL_ACCESS_LOCAL_WRITE,
+    MCA_BTL_REG_FLAG_LOCAL_WRITE   = MCA_RCACHE_ACCESS_LOCAL_WRITE,
     /** Allow remote read on the registered region. If a region is registered
      * with this flag the registration can be used as the remote handle for a
      * btl_get operation. */
-    MCA_BTL_REG_FLAG_REMOTE_READ   = MCA_MPOOL_ACCESS_REMOTE_READ,
+    MCA_BTL_REG_FLAG_REMOTE_READ   = MCA_RCACHE_ACCESS_REMOTE_READ,
     /** Allow remote write on the registered region. If a region is registered
      * with this flag the registration can be used as the remote handle for a
      * btl_put operation. */
-    MCA_BTL_REG_FLAG_REMOTE_WRITE  = MCA_MPOOL_ACCESS_REMOTE_WRITE,
+    MCA_BTL_REG_FLAG_REMOTE_WRITE  = MCA_RCACHE_ACCESS_REMOTE_WRITE,
     /** Allow remote atomic operations on the registered region. If a region is
      * registered with this flag the registration can be used as the remote
      * handle for a btl_atomic_op or btl_atomic_fop operation. */
-    MCA_BTL_REG_FLAG_REMOTE_ATOMIC = MCA_MPOOL_ACCESS_REMOTE_ATOMIC,
+    MCA_BTL_REG_FLAG_REMOTE_ATOMIC = MCA_RCACHE_ACCESS_REMOTE_ATOMIC,
     /** Allow any btl operation on the registered region. If a region is registered
      * with this flag the registration can be used as the local or remote handle for
      * any btl operation. */
-    MCA_BTL_REG_FLAG_ACCESS_ANY    = MCA_MPOOL_ACCESS_ANY,
+    MCA_BTL_REG_FLAG_ACCESS_ANY    = MCA_RCACHE_ACCESS_ANY,
 #if OPAL_CUDA_GDR_SUPPORT
     /** Region is in GPU memory */
     MCA_BTL_REG_FLAG_CUDA_GPU_MEM  = 0x00010000,
@@ -290,10 +290,43 @@ enum {
     MCA_BTL_ATOMIC_SUPPORTS_OR     = 0x00000400,
     /** The btl supports atomic bitwise exclusive or */
     MCA_BTL_ATOMIC_SUPPORTS_XOR    = 0x00000800,
+
+    /** The btl supports logical and */
+    MCA_BTL_ATOMIC_SUPPORTS_LAND   = 0x00001000,
+    /** The btl supports logical or */
+    MCA_BTL_ATOMIC_SUPPORTS_LOR    = 0x00002000,
+    /** The btl supports logical exclusive or */
+    MCA_BTL_ATOMIC_SUPPORTS_LXOR   = 0x00004000,
+
+    /** The btl supports atomic swap */
+    MCA_BTL_ATOMIC_SUPPORTS_SWAP   = 0x00010000,
+
+    /** The btl supports atomic min */
+    MCA_BTL_ATOMIC_SUPPORTS_MIN    = 0x00100000,
+    /** The btl supports atomic min */
+    MCA_BTL_ATOMIC_SUPPORTS_MAX    = 0x00200000,
+
+    /** The btl supports 32-bit integer operations. Keep in mind the btl may
+     * support only a subset of the available atomics. */
+    MCA_BTL_ATOMIC_SUPPORTS_32BIT  = 0x01000000,
+
+    /** The btl supports floating-point operations. Keep in mind the btl may
+     * support only a subset of the available atomics and may not support
+     * both 64 or 32-bit floating point. */
+    MCA_BTL_ATOMIC_SUPPORTS_FLOAT  = 0x02000000,
+
     /** The btl supports atomic compare-and-swap */
     MCA_BTL_ATOMIC_SUPPORTS_CSWAP  = 0x10000000,
+
     /** The btl guarantees global atomicity (can mix btl atomics with cpu atomics) */
     MCA_BTL_ATOMIC_SUPPORTS_GLOB   = 0x20000000,
+};
+
+enum {
+    /** Use 32-bit atomics */
+    MCA_BTL_ATOMIC_FLAG_32BIT = 0x00000001,
+    /** Use floating-point atomics */
+    MCA_BTL_ATOMIC_FLAG_FLOAT = 0x00000002,
 };
 
 enum mca_btl_base_atomic_op_t {
@@ -305,6 +338,20 @@ enum mca_btl_base_atomic_op_t {
     MCA_BTL_ATOMIC_OR  = 0x0012,
     /** Atomic xor: (*remote_address) = (*remote_address) ^ operand */
     MCA_BTL_ATOMIC_XOR = 0x0014,
+    /** Atomic logical and: (*remote_address) = (*remote_address) && operand */
+    MCA_BTL_ATOMIC_LAND = 0x0015,
+    /** Atomic logical or: (*remote_address) = (*remote_address) || operand */
+    MCA_BTL_ATOMIC_LOR = 0x0016,
+    /** Atomic logical xor: (*remote_address) = (*remote_address) != operand */
+    MCA_BTL_ATOMIC_LXOR = 0x0017,
+    /** Atomic swap: (*remote_address) = operand */
+    MCA_BTL_ATOMIC_SWAP = 0x001a,
+    /** Atomic min */
+    MCA_BTL_ATOMIC_MIN = 0x0020,
+    /** Atomic max */
+    MCA_BTL_ATOMIC_MAX = 0x0021,
+
+    MCA_BTL_ATOMIC_LAST,
 };
 typedef enum mca_btl_base_atomic_op_t mca_btl_base_atomic_op_t;
 
@@ -974,7 +1021,7 @@ typedef int (*mca_btl_base_module_get_fn_t) (struct mca_btl_base_module_t *btl,
  *                            (remote_address, remote_address + 8)
  * @param op (IN)             Operation to perform
  * @param operand (IN)        Operand for the operation
- * @param flags (IN)          Flags for this put operation
+ * @param flags (IN)          Flags for this atomic operation
  * @param order (IN)          Ordering
  * @param cbfunc (IN)         Function to call on completion (if queued)
  * @param cbcontext (IN)      Context for the callback
@@ -1018,7 +1065,7 @@ typedef int (*mca_btl_base_module_atomic_op64_fn_t) (struct mca_btl_base_module_
  *                            (remote_address, remote_address + 8)
  * @param op (IN)             Operation to perform
  * @param operand (IN)        Operand for the operation
- * @param flags (IN)          Flags for this put operation
+ * @param flags (IN)          Flags for this atomic operation
  * @param order (IN)          Ordering
  * @param cbfunc (IN)         Function to call on completion (if queued)
  * @param cbcontext (IN)      Context for the callback
@@ -1064,7 +1111,7 @@ typedef int (*mca_btl_base_module_atomic_fop64_fn_t) (struct mca_btl_base_module
  *                            (remote_address, remote_address + 8)
  * @param compare (IN)        Operand for the operation
  * @param value (IN)          Value to store on success
- * @param flags (IN)          Flags for this put operation
+ * @param flags (IN)          Flags for this atomic operation
  * @param order (IN)          Ordering
  * @param cbfunc (IN)         Function to call on completion (if queued)
  * @param cbcontext (IN)      Context for the callback

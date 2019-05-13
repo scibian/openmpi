@@ -1,0 +1,14 @@
+
+Package: @PACKAGE_NAME@
+Architecture: linux-any
+Depends: mpi-selector,
+         ${misc:Depends},
+         ${shlibs:Depends}
+Description: Powerful implementation of MPI/SHMEM @PACKAGE_DESC@
+ Open MPI is an open source implementation of the Message Passing
+ Interface specification (http://www.mpi-forum.org/) developed and
+ maintained by a consortium of research, academic, and industry
+ partners.
+ .
+ This package contains all the tools necessary to compile, link, and run
+ Open MPI jobs.

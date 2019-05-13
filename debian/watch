@@ -1,2 +1,2 @@
-version=3
-http://www.open-mpi.org/software/ompi/v1.6/ .*/openmpi-([\d+\.]+)\.tar\.gz
+# The upstream source is pulled from IntelOPA-IFS. Each release has a unique
+# URL that cannot be precomputed.

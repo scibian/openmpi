@@ -86,6 +86,9 @@
 
 #define OPAL_BTL_USNIC_NUM_COMPLETIONS 500
 
+/* MPI_THREAD_MULTIPLE_SUPPORT */
+opal_recursive_mutex_t btl_usnic_lock =  OPAL_RECURSIVE_MUTEX_STATIC_INIT;
+
 /* RNG buffer definition */
 opal_rng_buff_t opal_btl_usnic_rand_buff = {{0}};
 
@@ -221,6 +224,8 @@ static int usnic_component_close(void)
     /* clean up the unit test infrastructure */
     opal_btl_usnic_cleanup_tests();
 #endif
+
+    OBJ_DESTRUCT(&btl_usnic_lock);
 
     return OPAL_SUCCESS;
 }
@@ -612,12 +617,20 @@ static mca_btl_base_module_t** usnic_component_init(int* num_btl_modules,
 
     *num_btl_modules = 0;
 
-    /* Currently refuse to run if MPI_THREAD_MULTIPLE is enabled */
+    /* MPI_THREAD_MULTIPLE is only supported in 2.0+ */
     if (want_mpi_threads && !mca_btl_base_thread_multiple_override) {
-        opal_output_verbose(5, USNIC_OUT,
-                            "btl:usnic: MPI_THREAD_MULTIPLE not supported; skipping this component");
-        return NULL;
+	if (OPAL_MAJOR_VERSION >= 2) {
+            opal_output_verbose(5, USNIC_OUT,
+                                "btl:usnic: MPI_THREAD_MULTIPLE support is in testing phase.");
+	}
+	else {
+            opal_output_verbose(5, USNIC_OUT,
+                                "btl:usnic: MPI_THREAD_MULTIPLE is not supported in version < 2.");
+	    return NULL;
+	}
     }
+
+    OBJ_CONSTRUCT(&btl_usnic_lock, opal_recursive_mutex_t);
 
     /* There are multiple dimensions to consider when requesting an
        API version number from libfabric:
@@ -691,6 +704,8 @@ static mca_btl_base_module_t** usnic_component_init(int* num_btl_modules,
     struct fi_info hints = {0};
     struct fi_ep_attr ep_attr = {0};
     struct fi_fabric_attr fabric_attr = {0};
+    struct fi_rx_attr rx_attr = {0};
+    struct fi_tx_attr tx_attr = {0};
 
     /* We only want providers named "usnic" that are of type EP_DGRAM */
     fabric_attr.prov_name = "usnic";
@@ -701,6 +716,11 @@ static mca_btl_base_module_t** usnic_component_init(int* num_btl_modules,
     hints.addr_format = FI_SOCKADDR;
     hints.ep_attr = &ep_attr;
     hints.fabric_attr = &fabric_attr;
+    hints.tx_attr = &tx_attr;
+    hints.rx_attr = &rx_attr;
+
+    tx_attr.iov_limit = 1;
+    rx_attr.iov_limit = 1;
 
     ret = fi_getinfo(libfabric_api, NULL, 0, 0, &hints, &info_list);
     if (0 != ret) {
@@ -1178,6 +1198,8 @@ static int usnic_handle_completion(
     /* Make the completion be Valgrind-defined */
     opal_memchecker_base_mem_defined(seg, sizeof(*seg));
 
+    OPAL_THREAD_LOCK(&btl_usnic_lock);
+
     /* Handle work completions */
     switch(seg->us_type) {
 
@@ -1210,6 +1232,8 @@ static int usnic_handle_completion(
         BTL_ERROR(("Unhandled completion segment type %d", seg->us_type));
         break;
     }
+
+    OPAL_THREAD_UNLOCK(&btl_usnic_lock);
     return 1;
 }
 

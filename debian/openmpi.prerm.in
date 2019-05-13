@@ -1,0 +1,11 @@
+#!/bin/sh
+set -e
+
+MPI_SELECTOR=`which mpi-selector` || true
+
+if [ ! -z "$MPI_SELECTOR" ] ; then
+	mpi-selector --unregister @MPISELNAME@ --yes || \
+		true >/dev/null 2>/dev/null
+fi
+
+#DEBHELPER#

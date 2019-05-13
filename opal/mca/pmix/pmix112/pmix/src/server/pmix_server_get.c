@@ -7,7 +7,7 @@
  *                         All rights reserved.
  * Copyright (c) 2016      Mellanox Technologies, Inc.
  *                         All rights reserved.
- * Copyright (c) 2016      IBM Corporation.  All rights reserved.
+ * Copyright (c) 2016-2017 IBM Corporation.  All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -55,6 +55,10 @@
 #include "src/usock/usock.h"
 #include "src/sec/pmix_sec.h"
 
+#if defined(PMIX_ENABLE_DSTORE) && (PMIX_ENABLE_DSTORE == 1)
+#include "src/dstore/pmix_dstore.h"
+#endif /* PMIX_ENABLE_DSTORE */
+
 #include "pmix_server_ops.h"
 
 extern pmix_server_module_t pmix_host_server;
@@ -62,6 +66,7 @@ extern pmix_server_module_t pmix_host_server;
 typedef struct {
     pmix_object_t super;
     pmix_event_t ev;
+    volatile bool active;
     pmix_status_t status;
     const char *data;
     size_t ndata;
@@ -361,7 +366,7 @@ static pmix_status_t _satisfy_request(pmix_nspace_t *nptr, int rank,
     size_t sz;
     int cur_rank;
     int found = 0;
-    pmix_buffer_t xfer, pbkt, *xptr;
+    pmix_buffer_t pbkt;
     void *last;
     pmix_hash_table_t *hts[3];
     pmix_hash_table_t **htptr;
@@ -410,6 +415,21 @@ static pmix_status_t _satisfy_request(pmix_nspace_t *nptr, int rank,
         }
         while (PMIX_SUCCESS == rc) {
             if (NULL != val) {
+#if defined(PMIX_ENABLE_DSTORE) && (PMIX_ENABLE_DSTORE == 1)
+            pmix_kval_t *kv;
+
+            /* setup to xfer the data */
+            kv = PMIX_NEW(pmix_kval_t);
+            kv->key = strdup("modex");
+            kv->value = (pmix_value_t *)malloc(sizeof(pmix_value_t));
+            rc = pmix_value_xfer(kv->value, val);
+            if (PMIX_SUCCESS != (rc = pmix_dstore_store(nptr->nspace, cur_rank, kv))) {
+                    PMIX_ERROR_LOG(rc);
+            }
+            PMIX_RELEASE(kv);
+#else
+                pmix_buffer_t xfer, *xptr;
+
                 pmix_bfrop.pack(&pbkt, &cur_rank, 1, PMIX_INT);
                 /* the client is expecting this to arrive as a byte object
                  * containing a buffer, so package it accordingly */
@@ -420,6 +440,7 @@ static pmix_status_t _satisfy_request(pmix_nspace_t *nptr, int rank,
                 xfer.base_ptr = NULL; // protect the passed data
                 xfer.bytes_used = 0;
                 PMIX_DESTRUCT(&xfer);
+#endif /* PMIX_ENABLE_DSTORE */
                 PMIX_VALUE_RELEASE(val);
                 found++;
             }
@@ -497,6 +518,9 @@ static void _process_dmdx_reply(int fd, short args, void *cbdata)
     pmix_kval_t *kp;
     pmix_nspace_t *ns, *nptr;
     pmix_status_t rc;
+
+    /* need to acquire the cb object from its originating thread */
+    PMIX_ACQUIRE_OBJECT(caddy);
 
     pmix_output_verbose(2, pmix_globals.debug_output,
                     "[%s:%d] process dmdx reply from %s:%d",
@@ -583,9 +607,6 @@ static void dmdx_cbfunc(pmix_status_t status,
                         "[%s:%d] queue dmdx reply for %s:%d",
                         __FILE__, __LINE__,
                         caddy->lcd->proc.nspace, caddy->lcd->proc.rank);
-    event_assign(&caddy->ev, pmix_globals.evbase, -1, EV_WRITE,
-                 _process_dmdx_reply, caddy);
-    event_priority_set(&caddy->ev, 0);
-    event_active(&caddy->ev, EV_WRITE, 1);
+    PMIX_THREADSHIFT(caddy, _process_dmdx_reply);
 }
 

@@ -11,7 +11,7 @@
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
  * Copyright (c) 2007      Cisco Systems, Inc.  All rights reserved.
- * Copyright (c) 2013-2015 Intel, Inc. All rights reserved
+ * Copyright (c) 2013-2017 Intel, Inc. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -119,6 +119,7 @@
 #define PMIX_OBJECT_H
 
 #include <src/include/pmix_config.h>
+#include <pmix/pmix_common.h>
 
 #include <assert.h>
 #ifdef HAVE_STDLIB_H
@@ -173,6 +174,7 @@ struct pmix_class_t {
 #else
 #define PMIX_PMIX_STATIC_INIT(BASE_CLASS) { PMIX_CLASS(BASE_CLASS), 1 }
 #endif
+#define PMIX_OBJ_STATIC_INIT(BASE_CLASS) PMIX_PMIX_STATIC_INIT(BASE_CLASS)
 
 /**
  * Base object.
@@ -378,7 +380,7 @@ do {                                                            \
 } while (0)
 #endif
 
-PMIX_DECLSPEC PMIX_CLASS_DECLARATION(pmix_object_t);
+PMIX_EXPORT PMIX_CLASS_DECLARATION(pmix_object_t);
 
 /* declarations *******************************************************/
 
@@ -390,7 +392,7 @@ PMIX_DECLSPEC PMIX_CLASS_DECLARATION(pmix_object_t);
  *
  * @param class    Pointer to class descriptor
  */
-PMIX_DECLSPEC void pmix_class_initialize(pmix_class_t *);
+PMIX_EXPORT void pmix_class_initialize(pmix_class_t *);
 
 /**
  * Shut down the class system and release all memory
@@ -401,7 +403,7 @@ PMIX_DECLSPEC void pmix_class_initialize(pmix_class_t *);
  * tools like valgrind and purify don't report still-reachable memory
  * upon process termination.
  */
-PMIX_DECLSPEC int pmix_class_finalize(void);
+PMIX_EXPORT int pmix_class_finalize(void);
 
 /**
  * Run the hierarchy of class constructors for this object, in a
@@ -498,4 +500,3 @@ static inline int pmix_obj_update(pmix_object_t *object, int inc)
 END_C_DECLS
 
 #endif
-

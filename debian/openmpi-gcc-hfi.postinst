@@ -1,0 +1,13 @@
+#!/bin/sh
+set -e
+
+MPI_SELECTOR=`which mpi-selector` || true
+
+if [ ! -z "$MPI_SELECTOR" ] ; then
+	mpi-selector \
+        --register openmpi_gcc_hfi-2.1.2 \
+        --source-dir /usr/mpi/gcc/openmpi-2.1.2-hfi/bin \
+        --yes
+fi
+
+#DEBHELPER#

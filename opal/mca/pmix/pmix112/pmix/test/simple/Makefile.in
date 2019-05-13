@@ -127,11 +127,13 @@ am__aclocal_m4_deps = $(top_srcdir)/config/c_get_alignment.m4 \
 	$(top_srcdir)/config/pmix_check_compiler_version.m4 \
 	$(top_srcdir)/config/pmix_check_icc.m4 \
 	$(top_srcdir)/config/pmix_check_ident.m4 \
+	$(top_srcdir)/config/pmix_check_lock.m4 \
 	$(top_srcdir)/config/pmix_check_munge.m4 \
 	$(top_srcdir)/config/pmix_check_package.m4 \
 	$(top_srcdir)/config/pmix_check_sasl.m4 \
 	$(top_srcdir)/config/pmix_check_vendor.m4 \
 	$(top_srcdir)/config/pmix_check_visibility.m4 \
+	$(top_srcdir)/config/pmix_config_asm.m4 \
 	$(top_srcdir)/config/pmix_ensure_contains_optflags.m4 \
 	$(top_srcdir)/config/pmix_functions.m4 \
 	$(top_srcdir)/config/pmix_load_platform.m4 \
@@ -139,6 +141,7 @@ am__aclocal_m4_deps = $(top_srcdir)/config/c_get_alignment.m4 \
 	$(top_srcdir)/config/pmix_setup_cc.m4 \
 	$(top_srcdir)/config/pmix_setup_hwloc.m4 \
 	$(top_srcdir)/config/pmix_setup_libevent.m4 \
+	$(top_srcdir)/config/pmix_try_assemble.m4 \
 	$(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
@@ -263,6 +266,9 @@ AUTOHEADER = @AUTOHEADER@
 AUTOMAKE = @AUTOMAKE@
 AWK = @AWK@
 CC = @CC@
+CCAS = @CCAS@
+CCASDEPMODE = @CCASDEPMODE@
+CCASFLAGS = @CCASFLAGS@
 CCDEPMODE = @CCDEPMODE@
 CC_FOR_BUILD = @CC_FOR_BUILD@
 CFLAGS = @CFLAGS@
@@ -318,6 +324,17 @@ PACKAGE_TARNAME = @PACKAGE_TARNAME@
 PACKAGE_URL = @PACKAGE_URL@
 PACKAGE_VERSION = @PACKAGE_VERSION@
 PATH_SEPARATOR = @PATH_SEPARATOR@
+PERL = @PERL@
+PMIX_ASM_GSYM = @PMIX_ASM_GSYM@
+PMIX_ASM_LSYM = @PMIX_ASM_LSYM@
+PMIX_ASM_SUPPORT_64BIT = @PMIX_ASM_SUPPORT_64BIT@
+PMIX_ASM_TEXT = @PMIX_ASM_TEXT@
+PMIX_ASM_TYPE = @PMIX_ASM_TYPE@
+PMIX_ASSEMBLY_ARCH = @PMIX_ASSEMBLY_ARCH@
+PMIX_ASSEMBLY_BUILTIN = @PMIX_ASSEMBLY_BUILTIN@
+PMIX_ASSEMBLY_FORMAT = @PMIX_ASSEMBLY_FORMAT@
+PMIX_AS_GLOBAL = @PMIX_AS_GLOBAL@
+PMIX_AS_LABEL_SUFFIX = @PMIX_AS_LABEL_SUFFIX@
 PMIX_CC_ABSOLUTE = @PMIX_CC_ABSOLUTE@
 PMIX_CONFIGURE_DATE = @PMIX_CONFIGURE_DATE@
 PMIX_CONFIGURE_HOST = @PMIX_CONFIGURE_HOST@
@@ -382,6 +399,8 @@ pdfdir = @pdfdir@
 pmixdatadir = @pmixdatadir@
 pmixincludedir = @pmixincludedir@
 pmixlibdir = @pmixlibdir@
+pmixmajor = @pmixmajor@
+pmixminor = @pmixminor@
 prefix = @prefix@
 program_transform_name = @program_transform_name@
 psdir = @psdir@

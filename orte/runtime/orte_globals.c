@@ -9,13 +9,14 @@
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
- * Copyright (c) 2007-2011 Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2007-2017 Cisco Systems, Inc.  All rights reserved
  * Copyright (c) 2009-2010 Oracle and/or its affiliates.  All rights reserved.
  * Copyright (c) 2011-2013 Los Alamos National Security, LLC.
  *                         All rights reserved.
  * Copyright (c) 2013-2015 Intel, Inc. All rights reserved
  * Copyright (c) 2014-2015 Research Organization for Information Science
  *                         and Technology (RIST). All rights reserved.
+ * Copyright (c) 2017      IBM Corporation.  All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -31,7 +32,7 @@
 #include <sys/time.h>
 #endif
 
-#include "opal/mca/hwloc/hwloc.h"
+#include "opal/mca/hwloc/hwloc-internal.h"
 #include "opal/mca/pmix/pmix.h"
 #include "opal/util/argv.h"
 #include "opal/util/output.h"
@@ -129,6 +130,8 @@ orte_timer_t *orte_mpiexec_timeout = NULL;
 
 opal_buffer_t *orte_tree_launch_cmd = NULL;
 
+int orte_stack_trace_wait_timeout = 30;
+
 /* global arrays for data storage */
 opal_pointer_array_t *orte_job_data = NULL;
 opal_pointer_array_t *orte_node_pool = NULL;
@@ -188,6 +191,7 @@ bool orte_staged_execution = false;
 
 /* map stddiag output to stderr so it isn't forwarded to mpirun */
 bool orte_map_stddiag_to_stderr = false;
+bool orte_map_stddiag_to_stdout = false;
 
 /* maximum size of virtual machine - used to subdivide allocation */
 int orte_max_vm_size = -1;

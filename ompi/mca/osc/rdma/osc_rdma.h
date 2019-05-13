@@ -8,7 +8,7 @@
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
- * Copyright (c) 2007-2015 Los Alamos National Security, LLC.  All rights
+ * Copyright (c) 2007-2017 Los Alamos National Security, LLC.  All rights
  *                         reserved.
  * Copyright (c) 2010      Cisco Systems, Inc.  All rights reserved.
  * Copyright (c) 2012-2013 Sandia National Laboratories.  All rights reserved.
@@ -86,6 +86,12 @@ struct ompi_osc_rdma_component_t {
     /** Default value of the no_locks info key for new windows */
     bool no_locks;
 
+    /** Accumulate operations will only operate on a single intrinsic datatype */
+    bool acc_single_intrinsic;
+
+    /** Use network AMOs when available */
+    bool acc_use_amo;
+
     /** Priority of the osc/rdma component */
     unsigned int priority;
 
@@ -121,11 +127,15 @@ struct ompi_osc_rdma_module_t {
     /** value of same_size info key for this window */
     bool same_size;
 
-    /** window should have accumulate ordering... */
-    bool accumulate_ordering;
+    /** CPU atomics can be used */
+    bool use_cpu_atomics;
 
     /** passive-target synchronization will not be used in this window */
     bool no_locks;
+
+    bool acc_single_intrinsic;
+
+    bool acc_use_amo;
 
     /** flavor of this window */
     int flavor;
@@ -502,6 +512,14 @@ static inline void ompi_osc_rdma_aggregation_return (ompi_osc_rdma_aggregation_t
     }
 
     opal_free_list_return(&mca_osc_rdma_component.aggregate, (opal_free_list_item_t *) aggregation);
+}
+
+
+__opal_attribute_always_inline__
+static inline bool ompi_osc_rdma_oor (int rc)
+{
+    /* check for OPAL_SUCCESS first to short-circuit the statement in the common case */
+    return (OPAL_SUCCESS != rc && (OPAL_ERR_OUT_OF_RESOURCE == rc || OPAL_ERR_TEMP_OUT_OF_RESOURCE == rc));
 }
 
 #endif /* OMPI_OSC_RDMA_H */

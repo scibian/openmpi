@@ -21,6 +21,7 @@
 #include "opal/runtime/opal.h"
 #include "opal/memoryhooks/memory.h"
 #include "opal/util/opal_environ.h"
+#include "opal/mca/memory/base/base.h"
 #include "opal/mca/pmix/pmix.h"
 #include "ompi/mca/pml/base/pml_base_bsend.h"
 #include "ompi/message/message.h"
@@ -112,6 +113,8 @@ int mca_pml_yalla_open(void)
 
     PML_YALLA_VERBOSE(1, "mca_pml_yalla_open");
 
+    (void)mca_base_framework_open(&opal_memory_base_framework, 0);
+
     /* Set memory hooks */
     if ((OPAL_MEMORY_FREE_SUPPORT | OPAL_MEMORY_MUNMAP_SUPPORT) ==
         ((OPAL_MEMORY_FREE_SUPPORT | OPAL_MEMORY_MUNMAP_SUPPORT) &
@@ -156,6 +159,7 @@ int mca_pml_yalla_close(void)
         mxm_cleanup(ompi_pml_yalla.mxm_context);
         ompi_pml_yalla.mxm_context = NULL;
     }
+    mca_base_framework_close(&opal_memory_base_framework);
     return 0;
 }
 
@@ -368,6 +372,7 @@ int mca_pml_yalla_recv(void *buf, size_t count, ompi_datatype_t *datatype, int s
 {
     mxm_recv_req_t rreq;
     mxm_error_t error;
+    int rc;
 
     PML_YALLA_INIT_MXM_RECV_REQ(&rreq, buf, count, datatype, src, tag, comm, recv);
     PML_YALLA_INIT_BLOCKING_MXM_RECV_REQ(&rreq);
@@ -386,10 +391,10 @@ int mca_pml_yalla_recv(void *buf, size_t count, ompi_datatype_t *datatype, int s
                       rreq.completion.sender_imm, rreq.completion.sender_tag,
                       rreq.tag, rreq.tag_mask,
                       rreq.completion.actual_len);
-    PML_YALLA_SET_RECV_STATUS(&rreq, rreq.completion.actual_len, status);
+    rc = PML_YALLA_SET_RECV_STATUS(&rreq, rreq.completion.actual_len, status);
     PML_YALLA_FREE_BLOCKING_MXM_REQ(&rreq.base);
 
-    return OMPI_SUCCESS;
+    return rc;
 }
 
 int mca_pml_yalla_isend_init(const void *buf, size_t count, ompi_datatype_t *datatype,
@@ -677,8 +682,7 @@ int mca_pml_yalla_mrecv(void *buf, size_t count, ompi_datatype_t *datatype,
                       rreq.completion.sender_imm, rreq.completion.sender_tag,
                       rreq.tag, rreq.tag_mask,
                       rreq.completion.actual_len);
-    PML_YALLA_SET_RECV_STATUS(&rreq, rreq.completion.actual_len, status);
-    return OMPI_SUCCESS;
+    return PML_YALLA_SET_RECV_STATUS(&rreq, rreq.completion.actual_len, status);
 }
 
 int mca_pml_yalla_start(size_t count, ompi_request_t** requests)

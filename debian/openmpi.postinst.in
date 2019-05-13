@@ -1,0 +1,13 @@
+#!/bin/sh
+set -e
+
+MPI_SELECTOR=`which mpi-selector` || true
+
+if [ ! -z "$MPI_SELECTOR" ] ; then
+	mpi-selector \
+        --register @MPISELNAME@ \
+        --source-dir @MPIHOME@/bin \
+        --yes
+fi
+
+#DEBHELPER#

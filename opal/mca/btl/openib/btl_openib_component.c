@@ -10,7 +10,7 @@
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
- * Copyright (c) 2006-2016 Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2006-2017 Cisco Systems, Inc.  All rights reserved
  * Copyright (c) 2006-2015 Mellanox Technologies. All rights reserved.
  * Copyright (c) 2006-2015 Los Alamos National Security, LLC.  All rights
  *                         reserved.
@@ -59,7 +59,7 @@
    know its exact path.  We have to rely on the framework header files
    to find the right hwloc verbs helper file for us. */
 #define OPAL_HWLOC_WANT_VERBS_HELPER 1
-#include "opal/mca/hwloc/hwloc.h"
+#include "opal/mca/hwloc/hwloc-internal.h"
 #include "opal/mca/hwloc/base/base.h"
 #include "opal/mca/installdirs/installdirs.h"
 #include "opal_stdint.h"
@@ -67,7 +67,8 @@
 #include "opal/mca/btl/btl.h"
 #include "opal/mca/btl/base/base.h"
 #include "opal/mca/mpool/base/base.h"
-#include "opal/mca/mpool/grdma/mpool_grdma.h"
+#include "opal/mca/rcache/rcache.h"
+#include "opal/mca/rcache/base/base.h"
 #include "opal/mca/common/cuda/common_cuda.h"
 #include "opal/mca/common/verbs/common_verbs.h"
 #include "opal/runtime/opal_params.h"
@@ -504,27 +505,27 @@ static void btl_openib_control(mca_btl_base_module_t* btl,
     }
 }
 
-static int openib_reg_mr(void *reg_data, void *base, size_t size,
-        mca_mpool_base_registration_t *reg)
+static int openib_reg_mr (void *reg_data, void *base, size_t size,
+                          mca_rcache_base_registration_t *reg)
 {
     mca_btl_openib_device_t *device = (mca_btl_openib_device_t*)reg_data;
     mca_btl_openib_reg_t *openib_reg = (mca_btl_openib_reg_t*)reg;
     enum ibv_access_flags access_flag = 0;
 
-    if (reg->access_flags & MCA_MPOOL_ACCESS_REMOTE_READ) {
+    if (reg->access_flags & MCA_RCACHE_ACCESS_REMOTE_READ) {
         access_flag |= IBV_ACCESS_REMOTE_READ;
     }
 
-    if (reg->access_flags & MCA_MPOOL_ACCESS_REMOTE_WRITE) {
+    if (reg->access_flags & MCA_RCACHE_ACCESS_REMOTE_WRITE) {
         access_flag |= IBV_ACCESS_REMOTE_WRITE | IBV_ACCESS_LOCAL_WRITE;
     }
 
-    if (reg->access_flags & MCA_MPOOL_ACCESS_LOCAL_WRITE) {
+    if (reg->access_flags & MCA_RCACHE_ACCESS_LOCAL_WRITE) {
         access_flag |= IBV_ACCESS_LOCAL_WRITE;
     }
 
 #if HAVE_DECL_IBV_ATOMIC_HCA
-    if (reg->access_flags & MCA_MPOOL_ACCESS_REMOTE_ATOMIC) {
+    if (reg->access_flags & MCA_RCACHE_ACCESS_REMOTE_ATOMIC) {
         access_flag |= IBV_ACCESS_REMOTE_ATOMIC | IBV_ACCESS_LOCAL_WRITE;
     }
 #endif
@@ -537,7 +538,7 @@ static int openib_reg_mr(void *reg_data, void *base, size_t size,
     device->mem_reg_active += size;
 
 #if HAVE_DECL_IBV_ACCESS_SO
-    if (reg->flags & MCA_MPOOL_FLAGS_SO_MEM) {
+    if (reg->flags & MCA_RCACHE_FLAGS_SO_MEM) {
         access_flag |= IBV_ACCESS_SO;
     }
 #endif
@@ -559,16 +560,16 @@ static int openib_reg_mr(void *reg_data, void *base, size_t size,
                          (int) (reg->bound - reg->base + 1), reg->flags));
 
 #if OPAL_CUDA_SUPPORT
-    if (reg->flags & MCA_MPOOL_FLAGS_CUDA_REGISTER_MEM) {
-        mca_common_cuda_register(base, size,
-            openib_reg->base.mpool->mpool_component->mpool_version.mca_component_name);
+    if (reg->flags & MCA_RCACHE_FLAGS_CUDA_REGISTER_MEM) {
+        mca_common_cuda_register (base, size,
+            openib_reg->base.rcache->rcache_component->rcache_version.mca_component_name);
     }
 #endif
 
     return OPAL_SUCCESS;
 }
 
-static int openib_dereg_mr(void *reg_data, mca_mpool_base_registration_t *reg)
+static int openib_dereg_mr(void *reg_data, mca_rcache_base_registration_t *reg)
 {
     mca_btl_openib_device_t *device = (mca_btl_openib_device_t*)reg_data;
     mca_btl_openib_reg_t *openib_reg = (mca_btl_openib_reg_t*)reg;
@@ -585,9 +586,9 @@ static int openib_dereg_mr(void *reg_data, mca_mpool_base_registration_t *reg)
         }
 
 #if OPAL_CUDA_SUPPORT
-        if (reg->flags & MCA_MPOOL_FLAGS_CUDA_REGISTER_MEM) {
+        if (reg->flags & MCA_RCACHE_FLAGS_CUDA_REGISTER_MEM) {
             mca_common_cuda_unregister(openib_reg->base.base,
-                openib_reg->base.mpool->mpool_component->mpool_version.mca_component_name);
+                openib_reg->base.rcache->rcache_component->rcache_version.mca_component_name);
         }
 #endif
 
@@ -874,6 +875,7 @@ static void device_construct(mca_btl_openib_device_t *device)
     device->ib_dev_context = NULL;
     device->ib_pd = NULL;
     device->mpool = NULL;
+    device->rcache = NULL;
 #if OPAL_ENABLE_PROGRESS_THREADS == 1
     device->ib_channel = NULL;
 #endif
@@ -956,8 +958,8 @@ static void device_destruct(mca_btl_openib_device_t *device)
         }
     }
 
-    if (OPAL_SUCCESS != mca_mpool_base_module_destroy(device->mpool)) {
-        BTL_VERBOSE(("Failed to release mpool"));
+    if (OPAL_SUCCESS != mca_rcache_base_module_destroy (device->rcache)) {
+        BTL_VERBOSE(("failed to release registration cache"));
         goto device_error;
     }
 
@@ -1586,7 +1588,7 @@ static uint64_t calculate_max_reg (const char *device_name)
 
 static int init_one_device(opal_list_t *btl_list, struct ibv_device* ib_dev)
 {
-    struct mca_mpool_base_resources_t mpool_resources;
+    mca_rcache_base_resources_t rcache_resources;
     mca_btl_openib_device_t *device;
     uint8_t i, k = 0;
     int ret = -1, port_cnt;
@@ -1713,7 +1715,11 @@ static int init_one_device(opal_list_t *btl_list, struct ibv_device* ib_dev)
     /* If we did find values for this device (or in the defaults
        section), handle them */
     merge_values(&values, &default_values);
-    if (values.mtu_set) {
+    /*  If MCA param was set, use it. If not, check the INI file
+        or default to IBV_MTU_1024 */
+    if (0 < mca_btl_openib_component.ib_mtu) {
+        device->mtu = mca_btl_openib_component.ib_mtu;
+    } else if (values.mtu_set) {
         switch (values.mtu) {
         case 256:
             device->mtu = IBV_MTU_256;
@@ -1732,11 +1738,11 @@ static int init_one_device(opal_list_t *btl_list, struct ibv_device* ib_dev)
             break;
         default:
             BTL_ERROR(("invalid MTU value specified in INI file (%d); ignored", values.mtu));
-            device->mtu = mca_btl_openib_component.ib_mtu;
+            device->mtu = IBV_MTU_1024 ;
             break;
         }
     } else {
-        device->mtu = mca_btl_openib_component.ib_mtu;
+        device->mtu = IBV_MTU_1024 ;
     }
 
     /* Allocate the protection domain for the device */
@@ -1805,18 +1811,23 @@ static int init_one_device(opal_list_t *btl_list, struct ibv_device* ib_dev)
                        "eager RDMA and progress threads", true);
     }
 
-    asprintf (&mpool_resources.pool_name, "verbs.%" PRIu64, device->ib_dev_attr.node_guid);
-    mpool_resources.reg_data = (void*)device;
-    mpool_resources.sizeof_reg = sizeof(mca_btl_openib_reg_t);
-    mpool_resources.register_mem = openib_reg_mr;
-    mpool_resources.deregister_mem = openib_dereg_mr;
-    device->mpool =
-        mca_mpool_base_module_create(mca_btl_openib_component.ib_mpool_name,
-                device, &mpool_resources);
-    if(NULL == device->mpool){
+    asprintf (&rcache_resources.cache_name, "verbs.%" PRIu64, device->ib_dev_attr.node_guid);
+    rcache_resources.reg_data = (void*)device;
+    rcache_resources.sizeof_reg = sizeof(mca_btl_openib_reg_t);
+    rcache_resources.register_mem = openib_reg_mr;
+    rcache_resources.deregister_mem = openib_dereg_mr;
+    device->rcache =
+        mca_rcache_base_module_create (mca_btl_openib_component.ib_rcache_name,
+                                       device, &rcache_resources);
+    if (NULL == device->rcache) {
         /* Don't print an error message here -- we'll get one from
            mpool_create anyway */
          goto error;
+    }
+
+    device->mpool = mca_mpool_base_module_lookup (mca_btl_openib_component.ib_mpool_hints);
+    if (NULL == device->mpool) {
+        goto error;
     }
 
 #if OPAL_ENABLE_PROGRESS_THREADS
@@ -2499,7 +2510,7 @@ btl_openib_component_init(int *num_btl_modules,
     mca_btl_openib_frag_init_data_t *init_data;
     struct dev_distance *dev_sorted;
     float distance;
-    int index, value;
+    int index;
     bool found;
     mca_base_var_source_t source;
     int list_count = 0;
@@ -2528,39 +2539,6 @@ btl_openib_component_init(int *num_btl_modules,
     if (OPAL_SUCCESS != (ret = opal_btl_openib_ini_init())) {
         goto no_btls;
     }
-
-    /* If we are using ptmalloc2 and there are no posix threads
-       available, this will cause memory corruption.  Refuse to run.
-       Right now, ptmalloc2 is the only memory manager that we have on
-       OS's that support OpenFabrics that provide both FREE and MUNMAP
-       support, so the following test is [currently] good enough... */
-    value = opal_mem_hooks_support_level();
-
-    /* If we have a memory manager available, and
-       opal_leave_pinned==-1, then unless the user explicitly set
-       opal_leave_pinned_pipeline==0, then set opal_leave_pinned to 1.
-
-       We have a memory manager if we have both FREE and MUNMAP
-       support */
-    if ((OPAL_MEMORY_FREE_SUPPORT | OPAL_MEMORY_MUNMAP_SUPPORT) ==
-        ((OPAL_MEMORY_FREE_SUPPORT | OPAL_MEMORY_MUNMAP_SUPPORT) & value)) {
-        if (0 == opal_leave_pinned_pipeline &&
-            -1 == opal_leave_pinned) {
-            opal_leave_pinned = 1;
-        }
-    } else {
-        opal_leave_pinned = 0;
-        opal_leave_pinned_pipeline = 0;
-    }
-
-#if OPAL_CUDA_SUPPORT
-    if (mca_btl_openib_component.cuda_want_gdr && (0 == opal_leave_pinned)) {
-        opal_show_help("help-mpi-btl-openib.txt",
-                       "CUDA_gdr_and_nopinned", true,
-                       opal_process_info.nodename);
-        goto no_btls;
-    }
-#endif /* OPAL_CUDA_SUPPORT */
 
     index = mca_base_var_find("ompi", "btl", "openib", "max_inline_data");
     if (index >= 0) {
@@ -2897,6 +2875,15 @@ btl_openib_component_init(int *num_btl_modules,
         opal_argv_free(mca_btl_openib_component.if_exclude_list);
         mca_btl_openib_component.if_exclude_list = NULL;
     }
+
+#if OPAL_CUDA_SUPPORT
+   if (mca_btl_openib_component.cuda_want_gdr && (0 == opal_leave_pinned)) {
+        opal_show_help("help-mpi-btl-openib.txt",
+                       "CUDA_gdr_and_nopinned", true,
+                       opal_process_info.nodename);
+        goto no_btls;
+    }
+#endif /* OPAL_CUDA_SUPPORT */
 
     mca_btl_openib_component.memory_registration_verbose = opal_output_open(NULL);
     opal_output_set_verbosity (mca_btl_openib_component.memory_registration_verbose,

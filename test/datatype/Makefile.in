@@ -22,6 +22,7 @@
 # Copyright (c) 2009      Oak Ridge National Labs.  All rights reserved.
 # Copyright (c) 2014-2015 Research Organization for Information Science
 #                         and Technology (RIST). All rights reserved.
+# Copyright (c) 2016      IBM Corporation.  All rights reserved.
 # $COPYRIGHT$
 #
 # Additional copyrights may follow
@@ -175,7 +176,6 @@ am__aclocal_m4_deps = $(top_srcdir)/config/c_get_alignment.m4 \
 	$(top_srcdir)/config/opal_check_compiler_version.m4 \
 	$(top_srcdir)/config/opal_check_compiler_works.m4 \
 	$(top_srcdir)/config/opal_check_cray_pmi.m4 \
-	$(top_srcdir)/config/opal_check_cray_xpmem.m4 \
 	$(top_srcdir)/config/opal_check_cuda.m4 \
 	$(top_srcdir)/config/opal_check_icc.m4 \
 	$(top_srcdir)/config/opal_check_ident.m4 \
@@ -194,6 +194,7 @@ am__aclocal_m4_deps = $(top_srcdir)/config/c_get_alignment.m4 \
 	$(top_srcdir)/config/opal_check_verbs.m4 \
 	$(top_srcdir)/config/opal_check_visibility.m4 \
 	$(top_srcdir)/config/opal_check_withdir.m4 \
+	$(top_srcdir)/config/opal_check_xpmem.m4 \
 	$(top_srcdir)/config/opal_config_asm.m4 \
 	$(top_srcdir)/config/opal_config_files.m4 \
 	$(top_srcdir)/config/opal_config_pthreads.m4 \
@@ -216,6 +217,7 @@ am__aclocal_m4_deps = $(top_srcdir)/config/c_get_alignment.m4 \
 	$(top_srcdir)/config/opal_setup_java.m4 \
 	$(top_srcdir)/config/opal_setup_wrappers.m4 \
 	$(top_srcdir)/config/opal_strip_optflags.m4 \
+	$(top_srcdir)/config/opal_summary.m4 \
 	$(top_srcdir)/config/opal_try_assemble.m4 \
 	$(top_srcdir)/config/orte_check_alps.m4 \
 	$(top_srcdir)/config/orte_check_loadleveler.m4 \
@@ -241,26 +243,26 @@ am__aclocal_m4_deps = $(top_srcdir)/config/c_get_alignment.m4 \
 	$(top_srcdir)/opal/mca/memory/configure.m4 \
 	$(top_srcdir)/opal/mca/pstat/configure.m4 \
 	$(top_srcdir)/opal/mca/timer/configure.m4 \
-	$(top_srcdir)/opal/mca/common/sm/configure.m4 \
-	$(top_srcdir)/opal/mca/common/verbs/configure.m4 \
 	$(top_srcdir)/opal/mca/common/cuda/configure.m4 \
-	$(top_srcdir)/opal/mca/common/libfabric/configure.m4 \
 	$(top_srcdir)/opal/mca/common/ugni/configure.m4 \
+	$(top_srcdir)/opal/mca/common/libfabric/configure.m4 \
+	$(top_srcdir)/opal/mca/common/verbs/configure.m4 \
+	$(top_srcdir)/opal/mca/common/sm/configure.m4 \
 	$(top_srcdir)/opal/mca/common/verbs_usnic/configure.m4 \
 	$(top_srcdir)/opal/mca/backtrace/execinfo/configure.m4 \
 	$(top_srcdir)/opal/mca/backtrace/printstack/configure.m4 \
 	$(top_srcdir)/opal/mca/backtrace/none/configure.m4 \
-	$(top_srcdir)/opal/mca/btl/portals4/configure.m4 \
-	$(top_srcdir)/opal/mca/btl/sm/configure.m4 \
-	$(top_srcdir)/opal/mca/btl/tcp/configure.m4 \
-	$(top_srcdir)/opal/mca/btl/usnic/configure.m4 \
-	$(top_srcdir)/opal/mca/btl/openib/configure.m4 \
 	$(top_srcdir)/opal/mca/btl/vader/configure.m4 \
-	$(top_srcdir)/opal/mca/btl/scif/configure.m4 \
+	$(top_srcdir)/opal/mca/btl/portals4/configure.m4 \
 	$(top_srcdir)/opal/mca/btl/ugni/configure.m4 \
 	$(top_srcdir)/opal/mca/btl/smcuda/configure.m4 \
-	$(top_srcdir)/opal/mca/dl/libltdl/configure.m4 \
+	$(top_srcdir)/opal/mca/btl/scif/configure.m4 \
+	$(top_srcdir)/opal/mca/btl/usnic/configure.m4 \
+	$(top_srcdir)/opal/mca/btl/sm/configure.m4 \
+	$(top_srcdir)/opal/mca/btl/openib/configure.m4 \
+	$(top_srcdir)/opal/mca/btl/tcp/configure.m4 \
 	$(top_srcdir)/opal/mca/dl/dlopen/configure.m4 \
+	$(top_srcdir)/opal/mca/dl/libltdl/configure.m4 \
 	$(top_srcdir)/opal/mca/event/libevent2022/configure.m4 \
 	$(top_srcdir)/opal/mca/event/external/configure.m4 \
 	$(top_srcdir)/opal/mca/hwloc/hwloc1112/configure.m4 \
@@ -271,60 +273,60 @@ am__aclocal_m4_deps = $(top_srcdir)/config/c_get_alignment.m4 \
 	$(top_srcdir)/opal/mca/hwloc/hwloc1112/hwloc/config/hwloc_check_vendor.m4 \
 	$(top_srcdir)/opal/mca/hwloc/hwloc1112/hwloc/config/hwloc_components.m4 \
 	$(top_srcdir)/opal/mca/hwloc/external/configure.m4 \
-	$(top_srcdir)/opal/mca/if/solaris_ipv6/configure.m4 \
 	$(top_srcdir)/opal/mca/if/posix_ipv4/configure.m4 \
-	$(top_srcdir)/opal/mca/if/bsdx_ipv6/configure.m4 \
 	$(top_srcdir)/opal/mca/if/linux_ipv6/configure.m4 \
+	$(top_srcdir)/opal/mca/if/bsdx_ipv6/configure.m4 \
 	$(top_srcdir)/opal/mca/if/bsdx_ipv4/configure.m4 \
+	$(top_srcdir)/opal/mca/if/solaris_ipv6/configure.m4 \
 	$(top_srcdir)/opal/mca/installdirs/env/configure.m4 \
 	$(top_srcdir)/opal/mca/installdirs/config/configure.m4 \
 	$(top_srcdir)/opal/mca/memchecker/valgrind/configure.m4 \
 	$(top_srcdir)/opal/mca/memory/malloc_solaris/configure.m4 \
 	$(top_srcdir)/opal/mca/memory/patcher/configure.m4 \
-	$(top_srcdir)/opal/mca/memory/linux/configure.m4 \
-	$(top_srcdir)/opal/mca/mpool/rgpusm/configure.m4 \
-	$(top_srcdir)/opal/mca/mpool/udreg/configure.m4 \
-	$(top_srcdir)/opal/mca/mpool/gpusm/configure.m4 \
+	$(top_srcdir)/opal/mca/mpool/memkind/configure.m4 \
 	$(top_srcdir)/opal/mca/patcher/overwrite/configure.m4 \
 	$(top_srcdir)/opal/mca/pmix/s2/configure.m4 \
-	$(top_srcdir)/opal/mca/pmix/pmix112/configure.m4 \
-	$(top_srcdir)/opal/mca/pmix/external/configure.m4 \
 	$(top_srcdir)/opal/mca/pmix/s1/configure.m4 \
+	$(top_srcdir)/opal/mca/pmix/pmix112/configure.m4 \
 	$(top_srcdir)/opal/mca/pmix/cray/configure.m4 \
-	$(top_srcdir)/opal/mca/pstat/test/configure.m4 \
+	$(top_srcdir)/opal/mca/pmix/external/configure.m4 \
 	$(top_srcdir)/opal/mca/pstat/linux/configure.m4 \
+	$(top_srcdir)/opal/mca/pstat/test/configure.m4 \
+	$(top_srcdir)/opal/mca/rcache/rgpusm/configure.m4 \
+	$(top_srcdir)/opal/mca/rcache/udreg/configure.m4 \
+	$(top_srcdir)/opal/mca/rcache/gpusm/configure.m4 \
 	$(top_srcdir)/opal/mca/sec/keystone/configure.m4 \
 	$(top_srcdir)/opal/mca/sec/munge/configure.m4 \
-	$(top_srcdir)/opal/mca/shmem/mmap/configure.m4 \
 	$(top_srcdir)/opal/mca/shmem/posix/configure.m4 \
 	$(top_srcdir)/opal/mca/shmem/sysv/configure.m4 \
-	$(top_srcdir)/opal/mca/timer/altix/configure.m4 \
-	$(top_srcdir)/opal/mca/timer/darwin/configure.m4 \
+	$(top_srcdir)/opal/mca/shmem/mmap/configure.m4 \
 	$(top_srcdir)/opal/mca/timer/linux/configure.m4 \
+	$(top_srcdir)/opal/mca/timer/darwin/configure.m4 \
 	$(top_srcdir)/opal/mca/timer/solaris/configure.m4 \
+	$(top_srcdir)/opal/mca/timer/altix/configure.m4 \
 	$(top_srcdir)/orte/mca/common/alps/configure.m4 \
-	$(top_srcdir)/orte/mca/ess/alps/configure.m4 \
 	$(top_srcdir)/orte/mca/ess/tm/configure.m4 \
 	$(top_srcdir)/orte/mca/ess/lsf/configure.m4 \
 	$(top_srcdir)/orte/mca/ess/slurm/configure.m4 \
+	$(top_srcdir)/orte/mca/ess/alps/configure.m4 \
 	$(top_srcdir)/orte/mca/odls/alps/configure.m4 \
 	$(top_srcdir)/orte/mca/odls/default/configure.m4 \
-	$(top_srcdir)/orte/mca/oob/tcp/configure.m4 \
+	$(top_srcdir)/orte/mca/oob/usock/configure.m4 \
 	$(top_srcdir)/orte/mca/oob/alps/configure.m4 \
 	$(top_srcdir)/orte/mca/oob/ud/configure.m4 \
-	$(top_srcdir)/orte/mca/oob/usock/configure.m4 \
+	$(top_srcdir)/orte/mca/oob/tcp/configure.m4 \
 	$(top_srcdir)/orte/mca/plm/rsh/configure.m4 \
-	$(top_srcdir)/orte/mca/plm/alps/configure.m4 \
-	$(top_srcdir)/orte/mca/plm/tm/configure.m4 \
 	$(top_srcdir)/orte/mca/plm/isolated/configure.m4 \
+	$(top_srcdir)/orte/mca/plm/tm/configure.m4 \
 	$(top_srcdir)/orte/mca/plm/lsf/configure.m4 \
 	$(top_srcdir)/orte/mca/plm/slurm/configure.m4 \
-	$(top_srcdir)/orte/mca/ras/gridengine/configure.m4 \
-	$(top_srcdir)/orte/mca/ras/alps/configure.m4 \
+	$(top_srcdir)/orte/mca/plm/alps/configure.m4 \
 	$(top_srcdir)/orte/mca/ras/tm/configure.m4 \
-	$(top_srcdir)/orte/mca/ras/lsf/configure.m4 \
+	$(top_srcdir)/orte/mca/ras/gridengine/configure.m4 \
 	$(top_srcdir)/orte/mca/ras/loadleveler/configure.m4 \
+	$(top_srcdir)/orte/mca/ras/lsf/configure.m4 \
 	$(top_srcdir)/orte/mca/ras/slurm/configure.m4 \
+	$(top_srcdir)/orte/mca/ras/alps/configure.m4 \
 	$(top_srcdir)/orte/mca/rml/ftrm/configure.m4 \
 	$(top_srcdir)/orte/mca/rtc/freq/configure.m4 \
 	$(top_srcdir)/ompi/mca/fbtl/configure.m4 \
@@ -336,44 +338,44 @@ am__aclocal_m4_deps = $(top_srcdir)/config/c_get_alignment.m4 \
 	$(top_srcdir)/ompi/mca/rte/configure.m4 \
 	$(top_srcdir)/ompi/mca/sharedfp/configure.m4 \
 	$(top_srcdir)/ompi/mca/bml/r2/configure.m4 \
-	$(top_srcdir)/ompi/mca/coll/portals4/configure.m4 \
-	$(top_srcdir)/ompi/mca/coll/fca/configure.m4 \
-	$(top_srcdir)/ompi/mca/coll/cuda/configure.m4 \
 	$(top_srcdir)/ompi/mca/coll/hcoll/configure.m4 \
+	$(top_srcdir)/ompi/mca/coll/portals4/configure.m4 \
+	$(top_srcdir)/ompi/mca/coll/cuda/configure.m4 \
+	$(top_srcdir)/ompi/mca/coll/fca/configure.m4 \
+	$(top_srcdir)/ompi/mca/fbtl/posix/configure.m4 \
 	$(top_srcdir)/ompi/mca/fbtl/plfs/configure.m4 \
 	$(top_srcdir)/ompi/mca/fbtl/pvfs2/configure.m4 \
-	$(top_srcdir)/ompi/mca/fbtl/posix/configure.m4 \
-	$(top_srcdir)/ompi/mca/fs/plfs/configure.m4 \
 	$(top_srcdir)/ompi/mca/fs/lustre/configure.m4 \
+	$(top_srcdir)/ompi/mca/fs/plfs/configure.m4 \
 	$(top_srcdir)/ompi/mca/fs/pvfs2/configure.m4 \
 	$(top_srcdir)/ompi/mca/io/romio314/configure.m4 \
-	$(top_srcdir)/ompi/mca/mtl/portals4/configure.m4 \
-	$(top_srcdir)/ompi/mca/mtl/ofi/configure.m4 \
+	$(top_srcdir)/ompi/mca/io/ompio/configure.m4 \
 	$(top_srcdir)/ompi/mca/mtl/mxm/configure.m4 \
-	$(top_srcdir)/ompi/mca/mtl/psm2/configure.m4 \
+	$(top_srcdir)/ompi/mca/mtl/portals4/configure.m4 \
 	$(top_srcdir)/ompi/mca/mtl/psm/configure.m4 \
+	$(top_srcdir)/ompi/mca/mtl/ofi/configure.m4 \
+	$(top_srcdir)/ompi/mca/mtl/psm2/configure.m4 \
 	$(top_srcdir)/ompi/mca/osc/portals4/configure.m4 \
-	$(top_srcdir)/ompi/mca/osc/pt2pt/configure.m4 \
 	$(top_srcdir)/ompi/mca/osc/rdma/configure.m4 \
+	$(top_srcdir)/ompi/mca/osc/pt2pt/configure.m4 \
 	$(top_srcdir)/ompi/mca/pml/ucx/configure.m4 \
 	$(top_srcdir)/ompi/mca/pml/yalla/configure.m4 \
-	$(top_srcdir)/ompi/mca/pml/v/configure.m4 \
 	$(top_srcdir)/ompi/mca/pml/ob1/configure.m4 \
+	$(top_srcdir)/ompi/mca/pml/v/configure.m4 \
 	$(top_srcdir)/ompi/mca/rte/orte/configure.m4 \
 	$(top_srcdir)/ompi/mca/sharedfp/sm/configure.m4 \
 	$(top_srcdir)/oshmem/mca/memheap/configure.m4 \
 	$(top_srcdir)/oshmem/mca/spml/configure.m4 \
-	$(top_srcdir)/oshmem/mca/atomic/ucx/configure.m4 \
 	$(top_srcdir)/oshmem/mca/atomic/mxm/configure.m4 \
+	$(top_srcdir)/oshmem/mca/atomic/ucx/configure.m4 \
 	$(top_srcdir)/oshmem/mca/scoll/fca/configure.m4 \
 	$(top_srcdir)/oshmem/mca/spml/ucx/configure.m4 \
 	$(top_srcdir)/oshmem/mca/spml/ikrit/configure.m4 \
-	$(top_srcdir)/oshmem/mca/sshmem/verbs/configure.m4 \
-	$(top_srcdir)/oshmem/mca/sshmem/mmap/configure.m4 \
 	$(top_srcdir)/oshmem/mca/sshmem/sysv/configure.m4 \
-	$(top_srcdir)/ompi/mpiext/affinity/configure.m4 \
-	$(top_srcdir)/ompi/mpiext/cr/configure.m4 \
+	$(top_srcdir)/oshmem/mca/sshmem/mmap/configure.m4 \
+	$(top_srcdir)/oshmem/mca/sshmem/verbs/configure.m4 \
 	$(top_srcdir)/ompi/mpiext/cuda/configure.m4 \
+	$(top_srcdir)/ompi/mpiext/affinity/configure.m4 \
 	$(top_srcdir)/ompi/contrib/libompitrace/configure.m4 \
 	$(top_srcdir)/config/opal_get_version.m4 \
 	$(top_srcdir)/configure.ac
@@ -392,12 +394,13 @@ CONFIG_CLEAN_VPATH_FILES =
 @PROJECT_OMPI_TRUE@am__EXEEXT_1 = checksum$(EXEEXT) position$(EXEEXT) \
 @PROJECT_OMPI_TRUE@	position_noncontig$(EXEEXT) \
 @PROJECT_OMPI_TRUE@	ddt_test$(EXEEXT) ddt_raw$(EXEEXT) \
-@PROJECT_OMPI_TRUE@	unpack_ooo$(EXEEXT) ddt_pack$(EXEEXT)
+@PROJECT_OMPI_TRUE@	unpack_ooo$(EXEEXT) ddt_pack$(EXEEXT) \
+@PROJECT_OMPI_TRUE@	external32$(EXEEXT)
 am__EXEEXT_2 = opal_datatype_test$(EXEEXT) $(am__EXEEXT_1)
 @PROJECT_OMPI_TRUE@am__EXEEXT_3 = to_self$(EXEEXT)
 am_checksum_OBJECTS = checksum.$(OBJEXT)
 checksum_OBJECTS = $(am_checksum_OBJECTS)
-checksum_DEPENDENCIES = $(top_builddir)/ompi/libmpi.la \
+checksum_DEPENDENCIES = $(top_builddir)/ompi/lib@OMPI_LIBMPI_NAME@.la \
 	$(top_builddir)/opal/lib@OPAL_LIB_PREFIX@open-pal.la
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
@@ -408,25 +411,32 @@ checksum_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
 	$(checksum_LDFLAGS) $(LDFLAGS) -o $@
 am_ddt_pack_OBJECTS = ddt_pack.$(OBJEXT)
 ddt_pack_OBJECTS = $(am_ddt_pack_OBJECTS)
-ddt_pack_DEPENDENCIES = $(top_builddir)/ompi/libmpi.la \
+ddt_pack_DEPENDENCIES = $(top_builddir)/ompi/lib@OMPI_LIBMPI_NAME@.la \
 	$(top_builddir)/opal/lib@OPAL_LIB_PREFIX@open-pal.la
 ddt_pack_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
 	$(ddt_pack_LDFLAGS) $(LDFLAGS) -o $@
 am_ddt_raw_OBJECTS = ddt_raw.$(OBJEXT) ddt_lib.$(OBJEXT)
 ddt_raw_OBJECTS = $(am_ddt_raw_OBJECTS)
-ddt_raw_DEPENDENCIES = $(top_builddir)/ompi/libmpi.la \
+ddt_raw_DEPENDENCIES = $(top_builddir)/ompi/lib@OMPI_LIBMPI_NAME@.la \
 	$(top_builddir)/opal/lib@OPAL_LIB_PREFIX@open-pal.la
 ddt_raw_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
 	$(ddt_raw_LDFLAGS) $(LDFLAGS) -o $@
 am_ddt_test_OBJECTS = ddt_test.$(OBJEXT) ddt_lib.$(OBJEXT)
 ddt_test_OBJECTS = $(am_ddt_test_OBJECTS)
-ddt_test_DEPENDENCIES = $(top_builddir)/ompi/libmpi.la \
+ddt_test_DEPENDENCIES = $(top_builddir)/ompi/lib@OMPI_LIBMPI_NAME@.la \
 	$(top_builddir)/opal/lib@OPAL_LIB_PREFIX@open-pal.la
 ddt_test_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
 	$(ddt_test_LDFLAGS) $(LDFLAGS) -o $@
+am_external32_OBJECTS = external32.$(OBJEXT)
+external32_OBJECTS = $(am_external32_OBJECTS)
+external32_DEPENDENCIES = $(top_builddir)/ompi/libmpi.la \
+	$(top_builddir)/opal/lib@OPAL_LIB_PREFIX@open-pal.la
+external32_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
+	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
+	$(external32_LDFLAGS) $(LDFLAGS) -o $@
 am_opal_datatype_test_OBJECTS = opal_datatype_test.$(OBJEXT) \
 	opal_ddt_lib.$(OBJEXT)
 opal_datatype_test_OBJECTS = $(am_opal_datatype_test_OBJECTS)
@@ -438,14 +448,15 @@ opal_datatype_test_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC \
 	$(LDFLAGS) -o $@
 am_position_OBJECTS = position.$(OBJEXT)
 position_OBJECTS = $(am_position_OBJECTS)
-position_DEPENDENCIES = $(top_builddir)/ompi/libmpi.la \
+position_DEPENDENCIES = $(top_builddir)/ompi/lib@OMPI_LIBMPI_NAME@.la \
 	$(top_builddir)/opal/lib@OPAL_LIB_PREFIX@open-pal.la
 position_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
 	$(position_LDFLAGS) $(LDFLAGS) -o $@
 am_position_noncontig_OBJECTS = position_noncontig.$(OBJEXT)
 position_noncontig_OBJECTS = $(am_position_noncontig_OBJECTS)
-position_noncontig_DEPENDENCIES = $(top_builddir)/ompi/libmpi.la \
+position_noncontig_DEPENDENCIES =  \
+	$(top_builddir)/ompi/lib@OMPI_LIBMPI_NAME@.la \
 	$(top_builddir)/opal/lib@OPAL_LIB_PREFIX@open-pal.la
 position_noncontig_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC \
 	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CCLD) \
@@ -453,13 +464,14 @@ position_noncontig_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC \
 	$(LDFLAGS) -o $@
 am_to_self_OBJECTS = to_self.$(OBJEXT)
 to_self_OBJECTS = $(am_to_self_OBJECTS)
-to_self_DEPENDENCIES = $(top_builddir)/ompi/libmpi.la
+to_self_DEPENDENCIES = $(top_builddir)/ompi/lib@OMPI_LIBMPI_NAME@.la
 to_self_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
 	$(to_self_LDFLAGS) $(LDFLAGS) -o $@
 am_unpack_ooo_OBJECTS = unpack_ooo.$(OBJEXT) ddt_lib.$(OBJEXT)
 unpack_ooo_OBJECTS = $(am_unpack_ooo_OBJECTS)
-unpack_ooo_DEPENDENCIES = $(top_builddir)/ompi/libmpi.la \
+unpack_ooo_DEPENDENCIES =  \
+	$(top_builddir)/ompi/lib@OMPI_LIBMPI_NAME@.la \
 	$(top_builddir)/opal/lib@OPAL_LIB_PREFIX@open-pal.la
 unpack_ooo_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
 	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
@@ -499,11 +511,12 @@ am__v_CCLD_ = $(am__v_CCLD_@AM_DEFAULT_V@)
 am__v_CCLD_0 = @echo "  CCLD    " $@;
 am__v_CCLD_1 = 
 SOURCES = $(checksum_SOURCES) $(ddt_pack_SOURCES) $(ddt_raw_SOURCES) \
-	$(ddt_test_SOURCES) $(opal_datatype_test_SOURCES) \
-	$(position_SOURCES) $(position_noncontig_SOURCES) \
-	$(to_self_SOURCES) $(unpack_ooo_SOURCES)
+	$(ddt_test_SOURCES) $(external32_SOURCES) \
+	$(opal_datatype_test_SOURCES) $(position_SOURCES) \
+	$(position_noncontig_SOURCES) $(to_self_SOURCES) \
+	$(unpack_ooo_SOURCES)
 DIST_SOURCES = $(checksum_SOURCES) $(ddt_pack_SOURCES) \
-	$(ddt_raw_SOURCES) $(ddt_test_SOURCES) \
+	$(ddt_raw_SOURCES) $(ddt_test_SOURCES) $(external32_SOURCES) \
 	$(opal_datatype_test_SOURCES) $(position_SOURCES) \
 	$(position_noncontig_SOURCES) $(to_self_SOURCES) \
 	$(unpack_ooo_SOURCES)
@@ -1418,6 +1431,7 @@ OMPI_KIND_FORTRAN_REAL4 = @OMPI_KIND_FORTRAN_REAL4@
 OMPI_KIND_FORTRAN_REAL8 = @OMPI_KIND_FORTRAN_REAL8@
 OMPI_LIBMPI_EXTRA_LDFLAGS = @OMPI_LIBMPI_EXTRA_LDFLAGS@
 OMPI_LIBMPI_EXTRA_LIBS = @OMPI_LIBMPI_EXTRA_LIBS@
+OMPI_LIBMPI_NAME = @OMPI_LIBMPI_NAME@
 OMPI_MAJOR_VERSION = @OMPI_MAJOR_VERSION@
 OMPI_MINOR_VERSION = @OMPI_MINOR_VERSION@
 OMPI_MPIEXT_ALL_SUBDIRS = @OMPI_MPIEXT_ALL_SUBDIRS@
@@ -1479,6 +1493,7 @@ OMPI_WRAPPER_EXTRA_CXXFLAGS = @OMPI_WRAPPER_EXTRA_CXXFLAGS@
 OMPI_WRAPPER_EXTRA_CXXFLAGS_PREFIX = @OMPI_WRAPPER_EXTRA_CXXFLAGS_PREFIX@
 OMPI_WRAPPER_EXTRA_FCFLAGS = @OMPI_WRAPPER_EXTRA_FCFLAGS@
 OMPI_WRAPPER_EXTRA_FCFLAGS_PREFIX = @OMPI_WRAPPER_EXTRA_FCFLAGS_PREFIX@
+OMPI_WRAPPER_EXTRA_FC_LDFLAGS = @OMPI_WRAPPER_EXTRA_FC_LDFLAGS@
 OMPI_WRAPPER_EXTRA_LDFLAGS = @OMPI_WRAPPER_EXTRA_LDFLAGS@
 OMPI_WRAPPER_EXTRA_LIBS = @OMPI_WRAPPER_EXTRA_LIBS@
 OMPI_WRAPPER_FORTRAN_REQUIRED_FILE = @OMPI_WRAPPER_FORTRAN_REQUIRED_FILE@
@@ -1724,12 +1739,11 @@ liboshmem_so_version = @liboshmem_so_version@
 localedir = @localedir@
 localstatedir = @localstatedir@
 mandir = @mandir@
-memory_linux_LIBS = @memory_linux_LIBS@
 memory_malloc_solaris_LIBS = @memory_malloc_solaris_LIBS@
 mkdir_p = @mkdir_p@
-mpool_udreg_CPPFLAGS = @mpool_udreg_CPPFLAGS@
-mpool_udreg_LDFLAGS = @mpool_udreg_LDFLAGS@
-mpool_udreg_LIBS = @mpool_udreg_LIBS@
+mpool_memkind_CPPFLAGS = @mpool_memkind_CPPFLAGS@
+mpool_memkind_LDFLAGS = @mpool_memkind_LDFLAGS@
+mpool_memkind_LIBS = @mpool_memkind_LIBS@
 mtl_mxm_CFLAGS = @mtl_mxm_CFLAGS@
 mtl_mxm_CPPFLAGS = @mtl_mxm_CPPFLAGS@
 mtl_mxm_LDFLAGS = @mtl_mxm_LDFLAGS@
@@ -1781,9 +1795,9 @@ opal_pmi2_CPPFLAGS = @opal_pmi2_CPPFLAGS@
 opal_pmi2_LDFLAGS = @opal_pmi2_LDFLAGS@
 opal_pmi2_LIBS = @opal_pmi2_LIBS@
 opal_pmi2_rpath = @opal_pmi2_rpath@
-opal_pmix_ext_CPPFLAGS = @opal_pmix_ext_CPPFLAGS@
-opal_pmix_ext_LDFLAGS = @opal_pmix_ext_LDFLAGS@
-opal_pmix_ext_LIBS = @opal_pmix_ext_LIBS@
+opal_pmix_external_CPPFLAGS = @opal_pmix_external_CPPFLAGS@
+opal_pmix_external_LDFLAGS = @opal_pmix_external_LDFLAGS@
+opal_pmix_external_LIBS = @opal_pmix_external_LIBS@
 opal_pmix_pmix112_CPPFLAGS = @opal_pmix_pmix112_CPPFLAGS@
 opal_pmix_pmix112_LIBS = @opal_pmix_pmix112_LIBS@
 opaldatadir = @opaldatadir@
@@ -1844,6 +1858,9 @@ ras_slurm_LIBS = @ras_slurm_LIBS@
 ras_tm_CPPFLAGS = @ras_tm_CPPFLAGS@
 ras_tm_LDFLAGS = @ras_tm_LDFLAGS@
 ras_tm_LIBS = @ras_tm_LIBS@
+rcache_udreg_CPPFLAGS = @rcache_udreg_CPPFLAGS@
+rcache_udreg_LDFLAGS = @rcache_udreg_LDFLAGS@
+rcache_udreg_LIBS = @rcache_udreg_LIBS@
 sbindir = @sbindir@
 scoll_fca_CFLAGS = @scoll_fca_CFLAGS@
 scoll_fca_CPPFLAGS = @scoll_fca_CPPFLAGS@
@@ -1875,56 +1892,62 @@ target_vendor = @target_vendor@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-@PROJECT_OMPI_TRUE@MPI_TESTS = checksum position position_noncontig ddt_test ddt_raw unpack_ooo ddt_pack
+@PROJECT_OMPI_TRUE@MPI_TESTS = checksum position position_noncontig ddt_test ddt_raw unpack_ooo ddt_pack external32
 @PROJECT_OMPI_TRUE@MPI_CHECKS = to_self
 unpack_ooo_SOURCES = unpack_ooo.c ddt_lib.c ddt_lib.h
 unpack_ooo_LDFLAGS = $(WRAPPER_EXTRA_LDFLAGS)
 unpack_ooo_LDADD = \
-        $(top_builddir)/ompi/libmpi.la \
+        $(top_builddir)/ompi/lib@OMPI_LIBMPI_NAME@.la \
         $(top_builddir)/opal/lib@OPAL_LIB_PREFIX@open-pal.la
 
 ddt_test_SOURCES = ddt_test.c ddt_lib.c ddt_lib.h
 ddt_test_LDFLAGS = $(WRAPPER_EXTRA_LDFLAGS)
 ddt_test_LDADD = \
-        $(top_builddir)/ompi/libmpi.la \
+        $(top_builddir)/ompi/lib@OMPI_LIBMPI_NAME@.la \
         $(top_builddir)/opal/lib@OPAL_LIB_PREFIX@open-pal.la
 
 ddt_raw_SOURCES = ddt_raw.c ddt_lib.c ddt_lib.h
 ddt_raw_LDFLAGS = $(WRAPPER_EXTRA_LDFLAGS)
 ddt_raw_LDADD = \
-        $(top_builddir)/ompi/libmpi.la \
+        $(top_builddir)/ompi/lib@OMPI_LIBMPI_NAME@.la \
         $(top_builddir)/opal/lib@OPAL_LIB_PREFIX@open-pal.la
 
 ddt_pack_SOURCES = ddt_pack.c
 ddt_pack_LDFLAGS = $(WRAPPER_EXTRA_LDFLAGS)
 ddt_pack_LDADD = \
-        $(top_builddir)/ompi/libmpi.la \
+        $(top_builddir)/ompi/lib@OMPI_LIBMPI_NAME@.la \
         $(top_builddir)/opal/lib@OPAL_LIB_PREFIX@open-pal.la
 
 checksum_SOURCES = checksum.c
 checksum_LDFLAGS = $(WRAPPER_EXTRA_LDFLAGS)
 checksum_LDADD = \
-        $(top_builddir)/ompi/libmpi.la \
+        $(top_builddir)/ompi/lib@OMPI_LIBMPI_NAME@.la \
         $(top_builddir)/opal/lib@OPAL_LIB_PREFIX@open-pal.la
 
 position_SOURCES = position.c
 position_LDFLAGS = $(WRAPPER_EXTRA_LDFLAGS)
 position_LDADD = \
-        $(top_builddir)/ompi/libmpi.la \
+        $(top_builddir)/ompi/lib@OMPI_LIBMPI_NAME@.la \
         $(top_builddir)/opal/lib@OPAL_LIB_PREFIX@open-pal.la
 
 position_noncontig_SOURCES = position_noncontig.c
 position_noncontig_LDFLAGS = $(WRAPPER_EXTRA_LDFLAGS)
 position_noncontig_LDADD = \
-        $(top_builddir)/ompi/libmpi.la \
+        $(top_builddir)/ompi/lib@OMPI_LIBMPI_NAME@.la \
         $(top_builddir)/opal/lib@OPAL_LIB_PREFIX@open-pal.la
 
 to_self_SOURCES = to_self.c
 to_self_LDFLAGS = $(WRAPPER_EXTRA_LDFLAGS)
-to_self_LDADD = $(top_builddir)/ompi/libmpi.la
+to_self_LDADD = $(top_builddir)/ompi/lib@OMPI_LIBMPI_NAME@.la
 opal_datatype_test_SOURCES = opal_datatype_test.c opal_ddt_lib.c opal_ddt_lib.h
 opal_datatype_test_LDFLAGS = $(WRAPPER_EXTRA_LDFLAGS)
 opal_datatype_test_LDADD = \
+        $(top_builddir)/opal/lib@OPAL_LIB_PREFIX@open-pal.la
+
+external32_SOURCES = external32.c
+external32_LDFLAGS = $(OMPI_PKG_CONFIG_LDFLAGS)
+external32_LDADD = \
+        $(top_builddir)/ompi/libmpi.la \
         $(top_builddir)/opal/lib@OPAL_LIB_PREFIX@open-pal.la
 
 all: all-am
@@ -1986,6 +2009,10 @@ ddt_test$(EXEEXT): $(ddt_test_OBJECTS) $(ddt_test_DEPENDENCIES) $(EXTRA_ddt_test
 	@rm -f ddt_test$(EXEEXT)
 	$(AM_V_CCLD)$(ddt_test_LINK) $(ddt_test_OBJECTS) $(ddt_test_LDADD) $(LIBS)
 
+external32$(EXEEXT): $(external32_OBJECTS) $(external32_DEPENDENCIES) $(EXTRA_external32_DEPENDENCIES) 
+	@rm -f external32$(EXEEXT)
+	$(AM_V_CCLD)$(external32_LINK) $(external32_OBJECTS) $(external32_LDADD) $(LIBS)
+
 opal_datatype_test$(EXEEXT): $(opal_datatype_test_OBJECTS) $(opal_datatype_test_DEPENDENCIES) $(EXTRA_opal_datatype_test_DEPENDENCIES) 
 	@rm -f opal_datatype_test$(EXEEXT)
 	$(AM_V_CCLD)$(opal_datatype_test_LINK) $(opal_datatype_test_OBJECTS) $(opal_datatype_test_LDADD) $(LIBS)
@@ -2017,6 +2044,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ddt_pack.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ddt_raw.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ddt_test.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/external32.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/opal_datatype_test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/opal_ddt_lib.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/position.Po@am__quote@
@@ -2303,6 +2331,13 @@ ddt_pack.log: ddt_pack$(EXEEXT)
 	--log-file $$b.log --trs-file $$b.trs \
 	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
 	"$$tst" $(AM_TESTS_FD_REDIRECT)
+external32.log: external32$(EXEEXT)
+	@p='external32$(EXEEXT)'; \
+	b='external32'; \
+	$(am__check_pre) $(LOG_DRIVER) --test-name "$$f" \
+	--log-file $$b.log --trs-file $$b.trs \
+	$(am__common_driver_flags) $(AM_LOG_DRIVER_FLAGS) $(LOG_DRIVER_FLAGS) -- $(LOG_COMPILE) \
+	"$$tst" $(AM_TESTS_FD_REDIRECT)
 .test.log:
 	@p='$<'; \
 	$(am__set_b); \
@@ -2393,9 +2428,6 @@ clean: clean-am
 clean-am: clean-checkPROGRAMS clean-generic clean-libtool \
 	mostlyclean-am
 
-distclean: distclean-am
-	-rm -rf ./$(DEPDIR)
-	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-tags
 
@@ -2477,6 +2509,9 @@ uninstall-am:
 
 .PRECIOUS: Makefile
 
+
+distclean:
+	rm -rf *.dSYM .deps .libs *.log *.o *.trs $(check_PROGRAMS) Makefile
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

@@ -37,6 +37,7 @@
 #include "opal/runtime/opal_params.h"
 
 #define OPAL_PROGRESS_USE_TIMERS (OPAL_TIMER_CYCLE_SUPPORTED || OPAL_TIMER_USEC_SUPPORTED)
+#define OPAL_PROGRESS_ONLY_USEC_NATIVE (OPAL_TIMER_USEC_NATIVE && !OPAL_TIMER_CYCLE_NATIVE)
 
 #if OPAL_ENABLE_DEBUG
 bool opal_progress_debug = false;
@@ -171,6 +172,43 @@ opal_progress_finalize(void)
     return OPAL_SUCCESS;
 }
 
+static int opal_progress_events()
+{
+    int events = 0;
+
+    if( opal_progress_event_flag != 0 ) {
+#if OPAL_HAVE_WORKING_EVENTOPS
+#if OPAL_PROGRESS_USE_TIMERS
+#if OPAL_PROGRESS_ONLY_USEC_NATIVE
+        opal_timer_t now = opal_timer_base_get_usec();
+#else
+        opal_timer_t now = opal_timer_base_get_cycles();
+#endif  /* OPAL_PROGRESS_ONLY_USEC_NATIVE */
+    /* trip the event library if we've reached our tick rate and we are
+       enabled */
+        if (now - event_progress_last_time > event_progress_delta ) {
+                event_progress_last_time = (num_event_users > 0) ?
+                    now - event_progress_delta : now;
+
+                events += opal_event_loop(opal_sync_event_base, opal_progress_event_flag);
+        }
+
+#else /* OPAL_PROGRESS_USE_TIMERS */
+    /* trip the event library if we've reached our tick rate and we are
+       enabled */
+        if (OPAL_THREAD_ADD_FETCH32(&event_progress_counter, -1) <= 0 ) {
+                event_progress_counter =
+                    (num_event_users > 0) ? 0 : event_progress_delta;
+                events += opal_event_loop(opal_sync_event_base, opal_progress_event_flag);
+        }
+#endif /* OPAL_PROGRESS_USE_TIMERS */
+
+#endif /* OPAL_HAVE_WORKING_EVENTOPS */
+    }
+
+    return events;
+}
+
 
 /*
  * Progress the event library and any functions that have registered to
@@ -190,50 +228,32 @@ opal_progress(void)
     size_t i;
     int events = 0;
 
-    if( opal_progress_event_flag != 0 ) {
-#if OPAL_HAVE_WORKING_EVENTOPS
-#if OPAL_PROGRESS_USE_TIMERS
-#if OPAL_TIMER_USEC_NATIVE
-        opal_timer_t now = opal_timer_base_get_usec();
-#else
-        opal_timer_t now = opal_timer_base_get_cycles();
-#endif  /* OPAL_TIMER_USEC_NATIVE */
-    /* trip the event library if we've reached our tick rate and we are
-       enabled */
-        if (now - event_progress_last_time > event_progress_delta ) {
-                event_progress_last_time = (num_event_users > 0) ?
-                    now - event_progress_delta : now;
-
-                events += opal_event_loop(opal_sync_event_base, opal_progress_event_flag);
-        }
-
-#else /* OPAL_PROGRESS_USE_TIMERS */
-    /* trip the event library if we've reached our tick rate and we are
-       enabled */
-        if (OPAL_THREAD_ADD32(&event_progress_counter, -1) <= 0 ) {
-                event_progress_counter =
-                    (num_event_users > 0) ? 0 : event_progress_delta;
-                events += opal_event_loop(opal_sync_event_base, opal_progress_event_flag);
-        }
-#endif /* OPAL_PROGRESS_USE_TIMERS */
-
-#endif /* OPAL_HAVE_WORKING_EVENTOPS */
-    }
 
     /* progress all registered callbacks */
     for (i = 0 ; i < callbacks_len ; ++i) {
         events += (callbacks[i])();
     }
 
-    if (callbacks_lp_len > 0 && (OPAL_THREAD_ADD32((volatile int32_t *) &num_calls, 1) & callbacks_lp_mask) == 0) {
-        /* run low priority callbacks once every 8 calls to opal_progress() */
+    /* Run low priority callbacks and events once every 16 calls to opal_progress().
+     * Even though "num_calls" can be modified by multiple threads, we do not use
+     * atomic operations here, for performance reasons. In case of a race, the
+     * number of calls may be inaccurate, but since it will eventually be incremented,
+     * it's not a problem.
+     */
+    if (OPAL_UNLIKELY(((num_calls++) & 0xF) == 0)) {
         for (i = 0 ; i < callbacks_lp_len ; ++i) {
             events += (callbacks_lp[i])();
         }
+
+        opal_progress_events();
     }
 
+    /*else if (num_event_users > 0) {
+        opal_progress_events();
+    }
+    */
 #if OPAL_HAVE_SCHED_YIELD
-    if (opal_progress_yield_when_idle && events <= 0) {
+    if (OPAL_UNLIKELY(opal_progress_yield_when_idle && events <= 0)) {
         /* If there is nothing to do - yield the processor - otherwise
          * we could consume the processor for the entire time slice. If
          * the processor is oversubscribed - this will result in a best-case
@@ -320,7 +340,7 @@ opal_progress_set_event_poll_rate(int polltime)
 
 #if OPAL_PROGRESS_USE_TIMERS
     event_progress_delta = 0;
-#  if OPAL_TIMER_USEC_NATIVE
+#  if OPAL_PROGRESS_ONLY_USEC_NATIVE
     event_progress_last_time = opal_timer_base_get_usec();
 #  else
     event_progress_last_time = opal_timer_base_get_cycles();
@@ -347,7 +367,7 @@ opal_progress_set_event_poll_rate(int polltime)
 #endif
     }
 
-#if OPAL_PROGRESS_USE_TIMERS && !OPAL_TIMER_USEC_NATIVE
+#if OPAL_PROGRESS_USE_TIMERS && !OPAL_PROGRESS_ONLY_USEC_NATIVE
     /*  going to use cycles for counter.  Adjust specified usec into cycles */
     event_progress_delta = event_progress_delta * opal_timer_base_get_freq() / 1000000;
 #endif

@@ -260,10 +260,6 @@
    don't. */
 #undef HAVE_DECL_RLIMIT_STACK
 
-/* Define to 1 if you have the declaration of `sbrk', and to 0 if you don't.
-   */
-#undef HAVE_DECL_SBRK
-
 /* Define to 1 if you have the declaration of `strtoull', and to 0 if you
    don't. */
 #undef HAVE_DECL_STRTOULL
@@ -506,8 +502,8 @@
 /* Define to 1 if you have the <ltdl.h> header file. */
 #undef HAVE_LTDL_H
 
-/* Define to 1 if you have the <lustre/liblustreapi.h> header file. */
-#undef HAVE_LUSTRE_LIBLUSTREAPI_H
+/* Define to 1 if you have the <lustre/lustreapi.h> header file. */
+#undef HAVE_LUSTRE_LUSTREAPI_H
 
 /* Define to 1 if you have the <mach/mach_host.h> header file. */
 #undef HAVE_MACH_MACH_HOST_H
@@ -523,6 +519,9 @@
 
 /* Define to 1 if you have the `memalign' function. */
 #undef HAVE_MEMALIGN
+
+/* Define to 1 if you have the <memkind.h> header file. */
+#undef HAVE_MEMKIND_H
 
 /* Define to 1 if you have the <memory.h> header file. */
 #undef HAVE_MEMORY_H
@@ -595,9 +594,6 @@
 
 /* Define to 1 if you have the <plfs.h> header file. */
 #undef HAVE_PLFS_H
-
-/* Define to 1 if you have the <pmix.h> header file. */
-#undef HAVE_PMIX_H
 
 /* Define to 1 if you have the <poll.h> header file. */
 #undef HAVE_POLL_H
@@ -783,12 +779,12 @@
 /* Define to 1 if `transport_type' is a member of `struct ibv_device'. */
 #undef HAVE_STRUCT_IBV_DEVICE_TRANSPORT_TYPE
 
-/* Define to 1 if `exp_atomic_cap' is a member of `struct
-   ibv_exp_device_attr'. */
-#undef HAVE_STRUCT_IBV_EXP_DEVICE_ATTR_EXP_ATOMIC_CAP
-
 /* Define to 1 if `ext_atom' is a member of `struct ibv_exp_device_attr'. */
 #undef HAVE_STRUCT_IBV_EXP_DEVICE_ATTR_EXT_ATOM
+
+/* Define to 1 if `ext_atomic_cap' is a member of `struct
+   ibv_exp_device_attr'. */
+#undef HAVE_STRUCT_IBV_EXP_DEVICE_ATTR_EXT_ATOMIC_CAP
 
 /* Define to 1 if `ifr_hwaddr' is a member of `struct ifreq'. */
 #undef HAVE_STRUCT_IFREQ_IFR_HWADDR
@@ -1366,18 +1362,6 @@
 
 /* Header to include for timer implementation */
 #undef MCA_timer_IMPLEMENTATION_HEADER
-
-/* Whether the system has Memory Allocation Hooks */
-#undef MEMORY_LINUX_HAVE_MALLOC_HOOK_SUPPORT
-
-/* Whether the memory linux malloc alignment is enabled */
-#undef MEMORY_LINUX_MALLOC_ALIGN_ENABLED
-
-/* Whether ptmalloc2 is supported on this system or not */
-#undef MEMORY_LINUX_PTMALLOC2
-
-/* Whether ummunotify is supported on this system or not */
-#undef MEMORY_LINUX_UMMUNOTIFY
 
 /* Whether we can use M-PAGE supported since MOFED 1.8 */
 #undef MPAGE_ENABLE
@@ -2145,6 +2129,9 @@
 /* Whether C compiler supports GCC style inline assembly */
 #undef OPAL_C_GCC_INLINE_ASSEMBLY
 
+/* Whether C compiler support atomic convenience variables in stdatomic.h */
+#undef OPAL_C_HAVE_ATOMIC_CONV_VAR
+
 /* Whether C compiler supports __builtin_clz */
 #undef OPAL_C_HAVE_BUILTIN_CLZ
 
@@ -2156,6 +2143,21 @@
 
 /* Whether C compiler supports symbol visibility or not */
 #undef OPAL_C_HAVE_VISIBILITY
+
+/* Whether C compiler supports __Atomic keyword */
+#undef OPAL_C_HAVE__ATOMIC
+
+/* Whether C compiler supports __Generic keyword */
+#undef OPAL_C_HAVE__GENERIC
+
+/* Whether C compiler support _Static_assert keyword */
+#undef OPAL_C_HAVE__STATIC_ASSERT
+
+/* Whether C compiler supports __Thread_local */
+#undef OPAL_C_HAVE__THREAD_LOCAL
+
+/* Whether C compiler supports __thread */
+#undef OPAL_C_HAVE___THREAD
 
 /* Whether C compiler supports XLC style inline assembly */
 #undef OPAL_C_XLC_INLINE_ASSEMBLY
@@ -2316,6 +2318,10 @@
 
 /* whether fbtl_posix is found and available */
 #undef OPAL_HAVE_FBTL_POSIX
+
+/* Whether the __atomic builtin atomic compare and swap is lock-free on
+   128-bit values */
+#undef OPAL_HAVE_GCC_BUILTIN_CSWAP_INT128
 
 /* whether gethostbyname is found and available */
 #undef OPAL_HAVE_GETHOSTBYNAME
@@ -2594,6 +2600,18 @@
 
 /* Define to the version of this package. */
 #undef PACKAGE_VERSION
+
+/* The size of `atomic_int', as computed by sizeof. */
+#undef SIZEOF_ATOMIC_INT
+
+/* The size of `atomic_llong', as computed by sizeof. */
+#undef SIZEOF_ATOMIC_LLONG
+
+/* The size of `atomic_long', as computed by sizeof. */
+#undef SIZEOF_ATOMIC_LONG
+
+/* The size of `atomic_short', as computed by sizeof. */
+#undef SIZEOF_ATOMIC_SHORT
 
 /* The size of `bool', as computed by sizeof. */
 #undef SIZEOF_BOOL

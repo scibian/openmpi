@@ -199,14 +199,6 @@ ompio_io_ompio_file_open (ompi_communicator_t *comm,
 	ompio_fh->f_flags |= OMPIO_SHAREDFP_IS_SET;
     }
 
-     /*Determine topology information if set*/
-    if (ompio_fh->f_comm->c_flags & OMPI_COMM_CART){
-        ret = mca_io_ompio_cart_based_grouping(ompio_fh);
-	if(OMPI_SUCCESS != ret ){
-	    ret = MPI_ERR_FILE;
-	}
-    }
-
     ret = ompio_fh->f_fs->fs_file_open (comm,
 					filename,
 					amode,
@@ -426,7 +418,8 @@ int mca_io_ompio_file_delete (const char *filename,
         if ( ENOENT == errno ) {
             return MPI_ERR_NO_SUCH_FILE;
         } else {
-            opal_output (1, "errno = %d %s\n", errno, strerror(errno));
+            opal_output (0, "mca_io_ompio_file_delete: Could not remove file %s errno = %d %s\n", filename, 
+                         errno, strerror(errno));
             return MPI_ERR_ACCESS;
         }
     }

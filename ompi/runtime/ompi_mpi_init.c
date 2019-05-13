@@ -17,9 +17,10 @@
  * Copyright (c) 2008-2009 Sun Microsystems, Inc.  All rights reserved.
  * Copyright (c) 2011      Sandia National Laboratories. All rights reserved.
  * Copyright (c) 2012-2013 Inria.  All rights reserved.
- * Copyright (c) 2014-2015 Intel, Inc. All rights reserved.
+ * Copyright (c) 2014-2016 Intel, Inc. All rights reserved.
  * Copyright (c) 2014-2015 Research Organization for Information Science
  *                         and Technology (RIST). All rights reserved.
+ * Copyright (c) 2016      Mellanox Technologies Ltd. All rights reserved.
  *
  * $COPYRIGHT$
  *
@@ -620,13 +621,6 @@ int ompi_mpi_init(int argc, char **argv, int requested, int *provided)
     /* Select which MPI components to use */
 
     if (OMPI_SUCCESS !=
-        (ret = mca_mpool_base_init(OPAL_ENABLE_PROGRESS_THREADS,
-                                   ompi_mpi_thread_multiple))) {
-        error = "mca_mpool_base_init() failed";
-        goto error;
-    }
-
-    if (OMPI_SUCCESS !=
         (ret = mca_pml_base_select(OPAL_ENABLE_PROGRESS_THREADS,
                                    ompi_mpi_thread_multiple))) {
         error = "mca_pml_base_select() failed";
@@ -646,7 +640,7 @@ int ompi_mpi_init(int argc, char **argv, int requested, int *provided)
         if (NULL != opal_pmix.fence_nb) {
             opal_pmix.fence_nb(NULL, opal_pmix_collect_all_data,
                                fence_release, (void*)&active);
-            OMPI_WAIT_FOR_COMPLETION(active);
+            OMPI_LAZY_WAIT_FOR_COMPLETION(active);
         } else {
             opal_pmix.fence(NULL, opal_pmix_collect_all_data);
         }
@@ -814,11 +808,11 @@ int ompi_mpi_init(int argc, char **argv, int requested, int *provided)
     active = true;
     opal_pmix.commit();
     if (NULL != opal_pmix.fence_nb) {
-        opal_pmix.fence_nb(NULL, opal_pmix_collect_all_data,
+        opal_pmix.fence_nb(NULL, false,
                            fence_release, (void*)&active);
-        OMPI_WAIT_FOR_COMPLETION(active);
+        OMPI_LAZY_WAIT_FOR_COMPLETION(active);
     } else {
-        opal_pmix.fence(NULL, opal_pmix_collect_all_data);
+        opal_pmix.fence(NULL, false);
     }
 
     /* check for timing request - get stop time and report elapsed
