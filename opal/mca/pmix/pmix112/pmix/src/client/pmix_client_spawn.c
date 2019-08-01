@@ -7,7 +7,7 @@
  *                         All rights reserved.
  * Copyright (c) 2016      Mellanox Technologies, Inc.
  *                         All rights reserved.
- * Copyright (c) 2016      IBM Corporation.  All rights reserved.
+ * Copyright (c) 2016-2017 IBM Corporation.  All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -55,6 +55,7 @@
 #include "src/sec/pmix_sec.h"
 
 #include "pmix_client_ops.h"
+#include "src/include/pmix_jobdata.h"
 
 static void wait_cbfunc(struct pmix_peer_t *pr, pmix_usock_hdr_t *hdr,
                         pmix_buffer_t *buf, void *cbdata);
@@ -184,6 +185,8 @@ static void wait_cbfunc(struct pmix_peer_t *pr, pmix_usock_hdr_t *hdr,
     pmix_status_t rc, ret;
     int32_t cnt;
 
+    PMIX_ACQUIRE_OBJECT(cb);
+
     pmix_output_verbose(2, pmix_globals.debug_output,
                         "pmix:client recv callback activated with %d bytes",
                         (NULL == buf) ? -1 : (int)buf->bytes_used);
@@ -207,7 +210,9 @@ static void wait_cbfunc(struct pmix_peer_t *pr, pmix_usock_hdr_t *hdr,
         if (NULL != n2) {
             (void)strncpy(nspace, n2, PMIX_MAX_NSLEN);
             /* extract and process any proc-related info for this nspace */
-            pmix_client_process_nspace_blob(nspace, buf);
+#if !(defined(PMIX_ENABLE_DSTORE) && (PMIX_ENABLE_DSTORE == 1))
+            pmix_job_data_htable_store(nspace, buf);
+#endif
             free(n2);
         }
     }
@@ -221,10 +226,14 @@ static void spawn_cbfunc(pmix_status_t status, char nspace[], void *cbdata)
 {
     pmix_cb_t *cb = (pmix_cb_t*)cbdata;
 
+    PMIX_ACQUIRE_OBJECT(cb);
+
     cb->status = status;
     if (NULL != nspace) {
         (void)strncpy(cb->nspace, nspace, PMIX_MAX_NSLEN);
     }
+    /* post the data so the receiving thread can acquire it */
+    PMIX_POST_OBJECT(cb);
     cb->active = false;
 }
 

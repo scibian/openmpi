@@ -10,7 +10,7 @@
 #                         University of Stuttgart.  All rights reserved.
 # Copyright (c) 2004-2005 The Regents of the University of California.
 #                         All rights reserved.
-# Copyright (c) 2006-2015 Cisco Systems, Inc.  All rights reserved.
+# Copyright (c) 2006-2016 Cisco Systems, Inc.  All rights reserved.
 # Copyright (c) 2006-2008 Sun Microsystems, Inc.  All rights reserved.
 # Copyright (c) 2006-2011 Los Alamos National Security, LLC.  All rights
 #                         reserved.
@@ -82,6 +82,18 @@ AS_IF([test "$host" != "$target"],
       [AC_MSG_WARN([Cross-compile detected])
        AC_MSG_WARN([Cross-compiling is only partially supported])
        AC_MSG_WARN([Proceed at your own risk!])])
+# Check for architectures that we explicitly no longer support
+case "${host}" in
+    powerpc-*|powerpc64-*|ppc-*)
+        AC_MSG_ERROR([Big endian PPC is no longer supported.])
+        ;;
+esac
+case "${target}" in
+    powerpc-*|powerpc64-*|ppc-*)
+        AC_MSG_ERROR([Big endian PPC is no longer supported.])
+        ;;
+esac
+
 # AC_USE_SYSTEM_EXTENSIONS alters CFLAGS (e.g., adds -g -O2)
 OPAL_VAR_SCOPE_PUSH([CFLAGS_save])
 CFLAGS_save=$CFLAGS
@@ -253,6 +265,7 @@ m4_ifdef([project_oshmem],
 OPAL_CONFIGURE_OPTIONS
 OPAL_CHECK_OS_FLAVORS
 OPAL_CHECK_CUDA
+OPAL_CHECK_PMIX
 m4_ifdef([project_orte], [ORTE_CONFIGURE_OPTIONS])
 m4_ifdef([project_ompi], [OMPI_CONFIGURE_OPTIONS])
 m4_ifdef([project_oshmem], [OSHMEM_CONFIGURE_OPTIONS])
@@ -280,6 +293,8 @@ fi
 OPAL_SET_LIB_PREFIX([])
 m4_ifdef([project_orte],
           [ORTE_SET_LIB_PREFIX([])])
+m4_ifdef([project_ompi],
+          [OMPI_SET_LIB_NAME([])])
 
 ############################################################################
 # Libtool: part one
@@ -418,6 +433,11 @@ AC_CHECK_SIZEOF(wchar_t)
 
 AC_CHECK_SIZEOF(pid_t)
 
+# Check sizes of atomic types so we can define fixed-width types in OPAL
+AC_CHECK_SIZEOF(atomic_short, [],[[#include <stdatomic.h>]])
+AC_CHECK_SIZEOF(atomic_int,[],[[#include <stdatomic.h>]])
+AC_CHECK_SIZEOF(atomic_long,[],[[#include <stdatomic.h>]])
+AC_CHECK_SIZEOF(atomic_llong,[],[[#include <stdatomic.h>]])
 
 #
 # Check for type alignments
@@ -1406,3 +1426,5 @@ m4_ifdef([project_ompi], [OMPI_CONFIG_FILES])
 m4_ifdef([project_oshmem], [OSHMEM_CONFIG_FILES])
 
 AC_OUTPUT
+
+OPAL_SUMMARY_PRINT

@@ -181,7 +181,6 @@ am__aclocal_m4_deps = $(top_srcdir)/config/c_get_alignment.m4 \
 	$(top_srcdir)/config/opal_check_compiler_version.m4 \
 	$(top_srcdir)/config/opal_check_compiler_works.m4 \
 	$(top_srcdir)/config/opal_check_cray_pmi.m4 \
-	$(top_srcdir)/config/opal_check_cray_xpmem.m4 \
 	$(top_srcdir)/config/opal_check_cuda.m4 \
 	$(top_srcdir)/config/opal_check_icc.m4 \
 	$(top_srcdir)/config/opal_check_ident.m4 \
@@ -200,6 +199,7 @@ am__aclocal_m4_deps = $(top_srcdir)/config/c_get_alignment.m4 \
 	$(top_srcdir)/config/opal_check_verbs.m4 \
 	$(top_srcdir)/config/opal_check_visibility.m4 \
 	$(top_srcdir)/config/opal_check_withdir.m4 \
+	$(top_srcdir)/config/opal_check_xpmem.m4 \
 	$(top_srcdir)/config/opal_config_asm.m4 \
 	$(top_srcdir)/config/opal_config_files.m4 \
 	$(top_srcdir)/config/opal_config_pthreads.m4 \
@@ -222,6 +222,7 @@ am__aclocal_m4_deps = $(top_srcdir)/config/c_get_alignment.m4 \
 	$(top_srcdir)/config/opal_setup_java.m4 \
 	$(top_srcdir)/config/opal_setup_wrappers.m4 \
 	$(top_srcdir)/config/opal_strip_optflags.m4 \
+	$(top_srcdir)/config/opal_summary.m4 \
 	$(top_srcdir)/config/opal_try_assemble.m4 \
 	$(top_srcdir)/config/orte_check_alps.m4 \
 	$(top_srcdir)/config/orte_check_loadleveler.m4 \
@@ -247,26 +248,26 @@ am__aclocal_m4_deps = $(top_srcdir)/config/c_get_alignment.m4 \
 	$(top_srcdir)/opal/mca/memory/configure.m4 \
 	$(top_srcdir)/opal/mca/pstat/configure.m4 \
 	$(top_srcdir)/opal/mca/timer/configure.m4 \
-	$(top_srcdir)/opal/mca/common/sm/configure.m4 \
-	$(top_srcdir)/opal/mca/common/verbs/configure.m4 \
 	$(top_srcdir)/opal/mca/common/cuda/configure.m4 \
-	$(top_srcdir)/opal/mca/common/libfabric/configure.m4 \
 	$(top_srcdir)/opal/mca/common/ugni/configure.m4 \
+	$(top_srcdir)/opal/mca/common/libfabric/configure.m4 \
+	$(top_srcdir)/opal/mca/common/verbs/configure.m4 \
+	$(top_srcdir)/opal/mca/common/sm/configure.m4 \
 	$(top_srcdir)/opal/mca/common/verbs_usnic/configure.m4 \
 	$(top_srcdir)/opal/mca/backtrace/execinfo/configure.m4 \
 	$(top_srcdir)/opal/mca/backtrace/printstack/configure.m4 \
 	$(top_srcdir)/opal/mca/backtrace/none/configure.m4 \
-	$(top_srcdir)/opal/mca/btl/portals4/configure.m4 \
-	$(top_srcdir)/opal/mca/btl/sm/configure.m4 \
-	$(top_srcdir)/opal/mca/btl/tcp/configure.m4 \
-	$(top_srcdir)/opal/mca/btl/usnic/configure.m4 \
-	$(top_srcdir)/opal/mca/btl/openib/configure.m4 \
 	$(top_srcdir)/opal/mca/btl/vader/configure.m4 \
-	$(top_srcdir)/opal/mca/btl/scif/configure.m4 \
+	$(top_srcdir)/opal/mca/btl/portals4/configure.m4 \
 	$(top_srcdir)/opal/mca/btl/ugni/configure.m4 \
 	$(top_srcdir)/opal/mca/btl/smcuda/configure.m4 \
-	$(top_srcdir)/opal/mca/dl/libltdl/configure.m4 \
+	$(top_srcdir)/opal/mca/btl/scif/configure.m4 \
+	$(top_srcdir)/opal/mca/btl/usnic/configure.m4 \
+	$(top_srcdir)/opal/mca/btl/sm/configure.m4 \
+	$(top_srcdir)/opal/mca/btl/openib/configure.m4 \
+	$(top_srcdir)/opal/mca/btl/tcp/configure.m4 \
 	$(top_srcdir)/opal/mca/dl/dlopen/configure.m4 \
+	$(top_srcdir)/opal/mca/dl/libltdl/configure.m4 \
 	$(top_srcdir)/opal/mca/event/libevent2022/configure.m4 \
 	$(top_srcdir)/opal/mca/event/external/configure.m4 \
 	$(top_srcdir)/opal/mca/hwloc/hwloc1112/configure.m4 \
@@ -277,60 +278,60 @@ am__aclocal_m4_deps = $(top_srcdir)/config/c_get_alignment.m4 \
 	$(top_srcdir)/opal/mca/hwloc/hwloc1112/hwloc/config/hwloc_check_vendor.m4 \
 	$(top_srcdir)/opal/mca/hwloc/hwloc1112/hwloc/config/hwloc_components.m4 \
 	$(top_srcdir)/opal/mca/hwloc/external/configure.m4 \
-	$(top_srcdir)/opal/mca/if/solaris_ipv6/configure.m4 \
 	$(top_srcdir)/opal/mca/if/posix_ipv4/configure.m4 \
-	$(top_srcdir)/opal/mca/if/bsdx_ipv6/configure.m4 \
 	$(top_srcdir)/opal/mca/if/linux_ipv6/configure.m4 \
+	$(top_srcdir)/opal/mca/if/bsdx_ipv6/configure.m4 \
 	$(top_srcdir)/opal/mca/if/bsdx_ipv4/configure.m4 \
+	$(top_srcdir)/opal/mca/if/solaris_ipv6/configure.m4 \
 	$(top_srcdir)/opal/mca/installdirs/env/configure.m4 \
 	$(top_srcdir)/opal/mca/installdirs/config/configure.m4 \
 	$(top_srcdir)/opal/mca/memchecker/valgrind/configure.m4 \
 	$(top_srcdir)/opal/mca/memory/malloc_solaris/configure.m4 \
 	$(top_srcdir)/opal/mca/memory/patcher/configure.m4 \
-	$(top_srcdir)/opal/mca/memory/linux/configure.m4 \
-	$(top_srcdir)/opal/mca/mpool/rgpusm/configure.m4 \
-	$(top_srcdir)/opal/mca/mpool/udreg/configure.m4 \
-	$(top_srcdir)/opal/mca/mpool/gpusm/configure.m4 \
+	$(top_srcdir)/opal/mca/mpool/memkind/configure.m4 \
 	$(top_srcdir)/opal/mca/patcher/overwrite/configure.m4 \
 	$(top_srcdir)/opal/mca/pmix/s2/configure.m4 \
-	$(top_srcdir)/opal/mca/pmix/pmix112/configure.m4 \
-	$(top_srcdir)/opal/mca/pmix/external/configure.m4 \
 	$(top_srcdir)/opal/mca/pmix/s1/configure.m4 \
+	$(top_srcdir)/opal/mca/pmix/pmix112/configure.m4 \
 	$(top_srcdir)/opal/mca/pmix/cray/configure.m4 \
-	$(top_srcdir)/opal/mca/pstat/test/configure.m4 \
+	$(top_srcdir)/opal/mca/pmix/external/configure.m4 \
 	$(top_srcdir)/opal/mca/pstat/linux/configure.m4 \
+	$(top_srcdir)/opal/mca/pstat/test/configure.m4 \
+	$(top_srcdir)/opal/mca/rcache/rgpusm/configure.m4 \
+	$(top_srcdir)/opal/mca/rcache/udreg/configure.m4 \
+	$(top_srcdir)/opal/mca/rcache/gpusm/configure.m4 \
 	$(top_srcdir)/opal/mca/sec/keystone/configure.m4 \
 	$(top_srcdir)/opal/mca/sec/munge/configure.m4 \
-	$(top_srcdir)/opal/mca/shmem/mmap/configure.m4 \
 	$(top_srcdir)/opal/mca/shmem/posix/configure.m4 \
 	$(top_srcdir)/opal/mca/shmem/sysv/configure.m4 \
-	$(top_srcdir)/opal/mca/timer/altix/configure.m4 \
-	$(top_srcdir)/opal/mca/timer/darwin/configure.m4 \
+	$(top_srcdir)/opal/mca/shmem/mmap/configure.m4 \
 	$(top_srcdir)/opal/mca/timer/linux/configure.m4 \
+	$(top_srcdir)/opal/mca/timer/darwin/configure.m4 \
 	$(top_srcdir)/opal/mca/timer/solaris/configure.m4 \
+	$(top_srcdir)/opal/mca/timer/altix/configure.m4 \
 	$(top_srcdir)/orte/mca/common/alps/configure.m4 \
-	$(top_srcdir)/orte/mca/ess/alps/configure.m4 \
 	$(top_srcdir)/orte/mca/ess/tm/configure.m4 \
 	$(top_srcdir)/orte/mca/ess/lsf/configure.m4 \
 	$(top_srcdir)/orte/mca/ess/slurm/configure.m4 \
+	$(top_srcdir)/orte/mca/ess/alps/configure.m4 \
 	$(top_srcdir)/orte/mca/odls/alps/configure.m4 \
 	$(top_srcdir)/orte/mca/odls/default/configure.m4 \
-	$(top_srcdir)/orte/mca/oob/tcp/configure.m4 \
+	$(top_srcdir)/orte/mca/oob/usock/configure.m4 \
 	$(top_srcdir)/orte/mca/oob/alps/configure.m4 \
 	$(top_srcdir)/orte/mca/oob/ud/configure.m4 \
-	$(top_srcdir)/orte/mca/oob/usock/configure.m4 \
+	$(top_srcdir)/orte/mca/oob/tcp/configure.m4 \
 	$(top_srcdir)/orte/mca/plm/rsh/configure.m4 \
-	$(top_srcdir)/orte/mca/plm/alps/configure.m4 \
-	$(top_srcdir)/orte/mca/plm/tm/configure.m4 \
 	$(top_srcdir)/orte/mca/plm/isolated/configure.m4 \
+	$(top_srcdir)/orte/mca/plm/tm/configure.m4 \
 	$(top_srcdir)/orte/mca/plm/lsf/configure.m4 \
 	$(top_srcdir)/orte/mca/plm/slurm/configure.m4 \
-	$(top_srcdir)/orte/mca/ras/gridengine/configure.m4 \
-	$(top_srcdir)/orte/mca/ras/alps/configure.m4 \
+	$(top_srcdir)/orte/mca/plm/alps/configure.m4 \
 	$(top_srcdir)/orte/mca/ras/tm/configure.m4 \
-	$(top_srcdir)/orte/mca/ras/lsf/configure.m4 \
+	$(top_srcdir)/orte/mca/ras/gridengine/configure.m4 \
 	$(top_srcdir)/orte/mca/ras/loadleveler/configure.m4 \
+	$(top_srcdir)/orte/mca/ras/lsf/configure.m4 \
 	$(top_srcdir)/orte/mca/ras/slurm/configure.m4 \
+	$(top_srcdir)/orte/mca/ras/alps/configure.m4 \
 	$(top_srcdir)/orte/mca/rml/ftrm/configure.m4 \
 	$(top_srcdir)/orte/mca/rtc/freq/configure.m4 \
 	$(top_srcdir)/ompi/mca/fbtl/configure.m4 \
@@ -342,44 +343,44 @@ am__aclocal_m4_deps = $(top_srcdir)/config/c_get_alignment.m4 \
 	$(top_srcdir)/ompi/mca/rte/configure.m4 \
 	$(top_srcdir)/ompi/mca/sharedfp/configure.m4 \
 	$(top_srcdir)/ompi/mca/bml/r2/configure.m4 \
-	$(top_srcdir)/ompi/mca/coll/portals4/configure.m4 \
-	$(top_srcdir)/ompi/mca/coll/fca/configure.m4 \
-	$(top_srcdir)/ompi/mca/coll/cuda/configure.m4 \
 	$(top_srcdir)/ompi/mca/coll/hcoll/configure.m4 \
+	$(top_srcdir)/ompi/mca/coll/portals4/configure.m4 \
+	$(top_srcdir)/ompi/mca/coll/cuda/configure.m4 \
+	$(top_srcdir)/ompi/mca/coll/fca/configure.m4 \
+	$(top_srcdir)/ompi/mca/fbtl/posix/configure.m4 \
 	$(top_srcdir)/ompi/mca/fbtl/plfs/configure.m4 \
 	$(top_srcdir)/ompi/mca/fbtl/pvfs2/configure.m4 \
-	$(top_srcdir)/ompi/mca/fbtl/posix/configure.m4 \
-	$(top_srcdir)/ompi/mca/fs/plfs/configure.m4 \
 	$(top_srcdir)/ompi/mca/fs/lustre/configure.m4 \
+	$(top_srcdir)/ompi/mca/fs/plfs/configure.m4 \
 	$(top_srcdir)/ompi/mca/fs/pvfs2/configure.m4 \
 	$(top_srcdir)/ompi/mca/io/romio314/configure.m4 \
-	$(top_srcdir)/ompi/mca/mtl/portals4/configure.m4 \
-	$(top_srcdir)/ompi/mca/mtl/ofi/configure.m4 \
+	$(top_srcdir)/ompi/mca/io/ompio/configure.m4 \
 	$(top_srcdir)/ompi/mca/mtl/mxm/configure.m4 \
-	$(top_srcdir)/ompi/mca/mtl/psm2/configure.m4 \
+	$(top_srcdir)/ompi/mca/mtl/portals4/configure.m4 \
 	$(top_srcdir)/ompi/mca/mtl/psm/configure.m4 \
+	$(top_srcdir)/ompi/mca/mtl/ofi/configure.m4 \
+	$(top_srcdir)/ompi/mca/mtl/psm2/configure.m4 \
 	$(top_srcdir)/ompi/mca/osc/portals4/configure.m4 \
-	$(top_srcdir)/ompi/mca/osc/pt2pt/configure.m4 \
 	$(top_srcdir)/ompi/mca/osc/rdma/configure.m4 \
+	$(top_srcdir)/ompi/mca/osc/pt2pt/configure.m4 \
 	$(top_srcdir)/ompi/mca/pml/ucx/configure.m4 \
 	$(top_srcdir)/ompi/mca/pml/yalla/configure.m4 \
-	$(top_srcdir)/ompi/mca/pml/v/configure.m4 \
 	$(top_srcdir)/ompi/mca/pml/ob1/configure.m4 \
+	$(top_srcdir)/ompi/mca/pml/v/configure.m4 \
 	$(top_srcdir)/ompi/mca/rte/orte/configure.m4 \
 	$(top_srcdir)/ompi/mca/sharedfp/sm/configure.m4 \
 	$(top_srcdir)/oshmem/mca/memheap/configure.m4 \
 	$(top_srcdir)/oshmem/mca/spml/configure.m4 \
-	$(top_srcdir)/oshmem/mca/atomic/ucx/configure.m4 \
 	$(top_srcdir)/oshmem/mca/atomic/mxm/configure.m4 \
+	$(top_srcdir)/oshmem/mca/atomic/ucx/configure.m4 \
 	$(top_srcdir)/oshmem/mca/scoll/fca/configure.m4 \
 	$(top_srcdir)/oshmem/mca/spml/ucx/configure.m4 \
 	$(top_srcdir)/oshmem/mca/spml/ikrit/configure.m4 \
-	$(top_srcdir)/oshmem/mca/sshmem/verbs/configure.m4 \
-	$(top_srcdir)/oshmem/mca/sshmem/mmap/configure.m4 \
 	$(top_srcdir)/oshmem/mca/sshmem/sysv/configure.m4 \
-	$(top_srcdir)/ompi/mpiext/affinity/configure.m4 \
-	$(top_srcdir)/ompi/mpiext/cr/configure.m4 \
+	$(top_srcdir)/oshmem/mca/sshmem/mmap/configure.m4 \
+	$(top_srcdir)/oshmem/mca/sshmem/verbs/configure.m4 \
 	$(top_srcdir)/ompi/mpiext/cuda/configure.m4 \
+	$(top_srcdir)/ompi/mpiext/affinity/configure.m4 \
 	$(top_srcdir)/ompi/contrib/libompitrace/configure.m4 \
 	$(top_srcdir)/config/opal_get_version.m4 \
 	$(top_srcdir)/configure.ac
@@ -402,29 +403,34 @@ nodist_liboshmem_fortran_pshmem_la_OBJECTS = pshmem_init_f.lo \
 	pshmem_global_exit_f.lo pshmem_n_pes_f.lo pshmem_my_pe_f.lo \
 	pshmem_barrier_all_f.lo pshpalloc_f.lo pshpdeallc_f.lo \
 	pshpclmove_f.lo pshmem_ptr_f.lo pshmem_pe_accessible_f.lo \
-	pshmem_addr_accessible_f.lo pshmem_put_f.lo \
-	pshmem_character_put_f.lo pshmem_double_put_f.lo \
-	pshmem_complex_put_f.lo pshmem_logical_put_f.lo \
-	pshmem_integer_put_f.lo pshmem_real_put_f.lo pshmem_put4_f.lo \
-	pshmem_put8_f.lo pshmem_put32_f.lo pshmem_put64_f.lo \
-	pshmem_put128_f.lo pshmem_putmem_f.lo pshmem_complex_iput_f.lo \
+	pshmem_addr_accessible_f.lo pshmem_character_put_f.lo \
+	pshmem_double_put_f.lo pshmem_complex_put_f.lo \
+	pshmem_logical_put_f.lo pshmem_integer_put_f.lo \
+	pshmem_real_put_f.lo pshmem_put4_f.lo pshmem_put8_f.lo \
+	pshmem_put32_f.lo pshmem_put64_f.lo pshmem_put128_f.lo \
+	pshmem_putmem_f.lo pshmem_complex_iput_f.lo \
 	pshmem_double_iput_f.lo pshmem_integer_iput_f.lo \
 	pshmem_iput128_f.lo pshmem_iput32_f.lo pshmem_iput4_f.lo \
 	pshmem_iput64_f.lo pshmem_iput8_f.lo pshmem_logical_iput_f.lo \
-	pshmem_real_iput_f.lo pshmem_character_get_f.lo \
-	pshmem_complex_get_f.lo pshmem_double_get_f.lo \
-	pshmem_get128_f.lo pshmem_get32_f.lo pshmem_get4_f.lo \
-	pshmem_get64_f.lo pshmem_get8_f.lo pshmem_getmem_f.lo \
-	pshmem_integer_get_f.lo pshmem_logical_get_f.lo \
-	pshmem_real_get_f.lo pshmem_complex_iget_f.lo \
-	pshmem_double_iget_f.lo pshmem_iget128_f.lo pshmem_iget32_f.lo \
-	pshmem_iget4_f.lo pshmem_iget64_f.lo pshmem_iget8_f.lo \
-	pshmem_integer_iget_f.lo pshmem_logical_iget_f.lo \
-	pshmem_real_iget_f.lo pshmem_swap_f.lo pshmem_int4_swap_f.lo \
+	pshmem_real_iput_f.lo pshmem_put_nb_f.lo \
+	pshmem_character_get_f.lo pshmem_complex_get_f.lo \
+	pshmem_double_get_f.lo pshmem_get128_f.lo pshmem_get32_f.lo \
+	pshmem_get4_f.lo pshmem_get64_f.lo pshmem_get8_f.lo \
+	pshmem_getmem_f.lo pshmem_integer_get_f.lo \
+	pshmem_logical_get_f.lo pshmem_real_get_f.lo \
+	pshmem_complex_iget_f.lo pshmem_double_iget_f.lo \
+	pshmem_iget128_f.lo pshmem_iget32_f.lo pshmem_iget4_f.lo \
+	pshmem_iget64_f.lo pshmem_iget8_f.lo pshmem_integer_iget_f.lo \
+	pshmem_logical_iget_f.lo pshmem_real_iget_f.lo \
+	pshmem_get_nb_f.lo pshmem_swap_f.lo pshmem_int4_swap_f.lo \
 	pshmem_int8_swap_f.lo pshmem_real4_swap_f.lo \
-	pshmem_real8_swap_f.lo pshmem_int4_cswap_f.lo \
+	pshmem_real8_swap_f.lo pshmem_int4_set_f.lo \
+	pshmem_int8_set_f.lo pshmem_real4_set_f.lo \
+	pshmem_real8_set_f.lo pshmem_int4_cswap_f.lo \
 	pshmem_int8_cswap_f.lo pshmem_int4_fadd_f.lo \
-	pshmem_int8_fadd_f.lo pshmem_int4_finc_f.lo \
+	pshmem_int8_fadd_f.lo pshmem_int4_fetch_f.lo \
+	pshmem_int8_fetch_f.lo pshmem_real4_fetch_f.lo \
+	pshmem_real8_fetch_f.lo pshmem_int4_finc_f.lo \
 	pshmem_int8_finc_f.lo pshmem_int4_add_f.lo \
 	pshmem_int8_add_f.lo pshmem_int4_wait_f.lo \
 	pshmem_int8_wait_f.lo pshmem_wait_f.lo \
@@ -434,9 +440,9 @@ nodist_liboshmem_fortran_pshmem_la_OBJECTS = pshmem_init_f.lo \
 	pshmem_xor_to_all_f.lo pshmem_max_to_all_f.lo \
 	pshmem_min_to_all_f.lo pshmem_sum_to_all_f.lo \
 	pshmem_prod_to_all_f.lo pshmem_collect_f.lo \
-	pshmem_broadcast_f.lo pshmem_lock_f.lo pshmem_cache_f.lo \
-	pshmem_int4_inc_f.lo pshmem_int8_inc_f.lo pshmem_quiet_f.lo \
-	pshmem_fence_f.lo pshmem_info_f.lo
+	pshmem_broadcast_f.lo pshmem_alltoall_f.lo pshmem_lock_f.lo \
+	pshmem_cache_f.lo pshmem_int4_inc_f.lo pshmem_int8_inc_f.lo \
+	pshmem_quiet_f.lo pshmem_fence_f.lo pshmem_info_f.lo
 liboshmem_fortran_pshmem_la_OBJECTS =  \
 	$(nodist_liboshmem_fortran_pshmem_la_OBJECTS)
 AM_V_lt = $(am__v_lt_@AM_V@)
@@ -1217,6 +1223,7 @@ OMPI_KIND_FORTRAN_REAL4 = @OMPI_KIND_FORTRAN_REAL4@
 OMPI_KIND_FORTRAN_REAL8 = @OMPI_KIND_FORTRAN_REAL8@
 OMPI_LIBMPI_EXTRA_LDFLAGS = @OMPI_LIBMPI_EXTRA_LDFLAGS@
 OMPI_LIBMPI_EXTRA_LIBS = @OMPI_LIBMPI_EXTRA_LIBS@
+OMPI_LIBMPI_NAME = @OMPI_LIBMPI_NAME@
 OMPI_MAJOR_VERSION = @OMPI_MAJOR_VERSION@
 OMPI_MINOR_VERSION = @OMPI_MINOR_VERSION@
 OMPI_MPIEXT_ALL_SUBDIRS = @OMPI_MPIEXT_ALL_SUBDIRS@
@@ -1278,6 +1285,7 @@ OMPI_WRAPPER_EXTRA_CXXFLAGS = @OMPI_WRAPPER_EXTRA_CXXFLAGS@
 OMPI_WRAPPER_EXTRA_CXXFLAGS_PREFIX = @OMPI_WRAPPER_EXTRA_CXXFLAGS_PREFIX@
 OMPI_WRAPPER_EXTRA_FCFLAGS = @OMPI_WRAPPER_EXTRA_FCFLAGS@
 OMPI_WRAPPER_EXTRA_FCFLAGS_PREFIX = @OMPI_WRAPPER_EXTRA_FCFLAGS_PREFIX@
+OMPI_WRAPPER_EXTRA_FC_LDFLAGS = @OMPI_WRAPPER_EXTRA_FC_LDFLAGS@
 OMPI_WRAPPER_EXTRA_LDFLAGS = @OMPI_WRAPPER_EXTRA_LDFLAGS@
 OMPI_WRAPPER_EXTRA_LIBS = @OMPI_WRAPPER_EXTRA_LIBS@
 OMPI_WRAPPER_FORTRAN_REQUIRED_FILE = @OMPI_WRAPPER_FORTRAN_REQUIRED_FILE@
@@ -1523,12 +1531,11 @@ liboshmem_so_version = @liboshmem_so_version@
 localedir = @localedir@
 localstatedir = @localstatedir@
 mandir = @mandir@
-memory_linux_LIBS = @memory_linux_LIBS@
 memory_malloc_solaris_LIBS = @memory_malloc_solaris_LIBS@
 mkdir_p = @mkdir_p@
-mpool_udreg_CPPFLAGS = @mpool_udreg_CPPFLAGS@
-mpool_udreg_LDFLAGS = @mpool_udreg_LDFLAGS@
-mpool_udreg_LIBS = @mpool_udreg_LIBS@
+mpool_memkind_CPPFLAGS = @mpool_memkind_CPPFLAGS@
+mpool_memkind_LDFLAGS = @mpool_memkind_LDFLAGS@
+mpool_memkind_LIBS = @mpool_memkind_LIBS@
 mtl_mxm_CFLAGS = @mtl_mxm_CFLAGS@
 mtl_mxm_CPPFLAGS = @mtl_mxm_CPPFLAGS@
 mtl_mxm_LDFLAGS = @mtl_mxm_LDFLAGS@
@@ -1580,9 +1587,9 @@ opal_pmi2_CPPFLAGS = @opal_pmi2_CPPFLAGS@
 opal_pmi2_LDFLAGS = @opal_pmi2_LDFLAGS@
 opal_pmi2_LIBS = @opal_pmi2_LIBS@
 opal_pmi2_rpath = @opal_pmi2_rpath@
-opal_pmix_ext_CPPFLAGS = @opal_pmix_ext_CPPFLAGS@
-opal_pmix_ext_LDFLAGS = @opal_pmix_ext_LDFLAGS@
-opal_pmix_ext_LIBS = @opal_pmix_ext_LIBS@
+opal_pmix_external_CPPFLAGS = @opal_pmix_external_CPPFLAGS@
+opal_pmix_external_LDFLAGS = @opal_pmix_external_LDFLAGS@
+opal_pmix_external_LIBS = @opal_pmix_external_LIBS@
 opal_pmix_pmix112_CPPFLAGS = @opal_pmix_pmix112_CPPFLAGS@
 opal_pmix_pmix112_LIBS = @opal_pmix_pmix112_LIBS@
 opaldatadir = @opaldatadir@
@@ -1643,6 +1650,9 @@ ras_slurm_LIBS = @ras_slurm_LIBS@
 ras_tm_CPPFLAGS = @ras_tm_CPPFLAGS@
 ras_tm_LDFLAGS = @ras_tm_LDFLAGS@
 ras_tm_LIBS = @ras_tm_LIBS@
+rcache_udreg_CPPFLAGS = @rcache_udreg_CPPFLAGS@
+rcache_udreg_LDFLAGS = @rcache_udreg_LDFLAGS@
+rcache_udreg_LIBS = @rcache_udreg_LIBS@
 sbindir = @sbindir@
 scoll_fca_CFLAGS = @scoll_fca_CFLAGS@
 scoll_fca_CPPFLAGS = @scoll_fca_CPPFLAGS@
@@ -1710,7 +1720,6 @@ nodist_liboshmem_fortran_pshmem_la_SOURCES = \
 	pshmem_ptr_f.c \
 	pshmem_pe_accessible_f.c \
 	pshmem_addr_accessible_f.c \
-	pshmem_put_f.c \
 	pshmem_character_put_f.c \
 	pshmem_double_put_f.c \
 	pshmem_complex_put_f.c \
@@ -1733,6 +1742,7 @@ nodist_liboshmem_fortran_pshmem_la_SOURCES = \
 	pshmem_iput8_f.c \
 	pshmem_logical_iput_f.c \
 	pshmem_real_iput_f.c \
+	pshmem_put_nb_f.c \
 	pshmem_character_get_f.c \
 	pshmem_complex_get_f.c \
 	pshmem_double_get_f.c \
@@ -1755,15 +1765,24 @@ nodist_liboshmem_fortran_pshmem_la_SOURCES = \
 	pshmem_integer_iget_f.c \
 	pshmem_logical_iget_f.c \
 	pshmem_real_iget_f.c \
+	pshmem_get_nb_f.c \
 	pshmem_swap_f.c \
 	pshmem_int4_swap_f.c \
 	pshmem_int8_swap_f.c \
 	pshmem_real4_swap_f.c \
 	pshmem_real8_swap_f.c \
+	pshmem_int4_set_f.c \
+	pshmem_int8_set_f.c \
+	pshmem_real4_set_f.c \
+	pshmem_real8_set_f.c \
 	pshmem_int4_cswap_f.c \
 	pshmem_int8_cswap_f.c \
 	pshmem_int4_fadd_f.c \
 	pshmem_int8_fadd_f.c \
+	pshmem_int4_fetch_f.c \
+	pshmem_int8_fetch_f.c \
+	pshmem_real4_fetch_f.c \
+	pshmem_real8_fetch_f.c \
 	pshmem_int4_finc_f.c \
 	pshmem_int8_finc_f.c \
 	pshmem_int4_add_f.c \
@@ -1784,6 +1803,7 @@ nodist_liboshmem_fortran_pshmem_la_SOURCES = \
 	pshmem_prod_to_all_f.c \
 	pshmem_collect_f.c \
 	pshmem_broadcast_f.c \
+	pshmem_alltoall_f.c \
 	pshmem_lock_f.c \
 	pshmem_cache_f.c \
 	pshmem_int4_inc_f.c \
@@ -1853,6 +1873,7 @@ distclean-compile:
 	-rm -f *.tab.c
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pshmem_addr_accessible_f.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pshmem_alltoall_f.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pshmem_and_to_all_f.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pshmem_barrier_all_f.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pshmem_barrier_f.Plo@am__quote@
@@ -1875,6 +1896,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pshmem_get4_f.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pshmem_get64_f.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pshmem_get8_f.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pshmem_get_nb_f.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pshmem_getmem_f.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pshmem_global_exit_f.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pshmem_iget128_f.Plo@am__quote@
@@ -1887,16 +1909,20 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pshmem_int4_add_f.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pshmem_int4_cswap_f.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pshmem_int4_fadd_f.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pshmem_int4_fetch_f.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pshmem_int4_finc_f.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pshmem_int4_inc_f.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pshmem_int4_set_f.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pshmem_int4_swap_f.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pshmem_int4_wait_f.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pshmem_int4_wait_until_f.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pshmem_int8_add_f.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pshmem_int8_cswap_f.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pshmem_int8_fadd_f.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pshmem_int8_fetch_f.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pshmem_int8_finc_f.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pshmem_int8_inc_f.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pshmem_int8_set_f.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pshmem_int8_swap_f.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pshmem_int8_wait_f.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pshmem_int8_wait_until_f.Plo@am__quote@
@@ -1927,10 +1953,14 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pshmem_put4_f.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pshmem_put64_f.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pshmem_put8_f.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pshmem_put_f.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pshmem_put_nb_f.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pshmem_putmem_f.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pshmem_quiet_f.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pshmem_real4_fetch_f.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pshmem_real4_set_f.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pshmem_real4_swap_f.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pshmem_real8_fetch_f.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pshmem_real8_set_f.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pshmem_real8_swap_f.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pshmem_real_get_f.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/pshmem_real_iget_f.Plo@am__quote@

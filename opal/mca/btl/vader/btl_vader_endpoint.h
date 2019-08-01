@@ -74,7 +74,6 @@ typedef struct mca_btl_base_endpoint_t {
     union {
 #if OPAL_BTL_VADER_HAVE_XPMEM
         struct {
-            struct mca_rcache_base_module_t *rcache;
             xpmem_apid_t    apid;       /**< xpmem apid for remote peer */
         } xpmem;
 #endif

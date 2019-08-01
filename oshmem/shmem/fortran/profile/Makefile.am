@@ -38,7 +38,6 @@ nodist_liboshmem_fortran_pshmem_la_SOURCES = \
 	pshmem_ptr_f.c \
 	pshmem_pe_accessible_f.c \
 	pshmem_addr_accessible_f.c \
-	pshmem_put_f.c \
 	pshmem_character_put_f.c \
 	pshmem_double_put_f.c \
 	pshmem_complex_put_f.c \
@@ -61,6 +60,7 @@ nodist_liboshmem_fortran_pshmem_la_SOURCES = \
 	pshmem_iput8_f.c \
 	pshmem_logical_iput_f.c \
 	pshmem_real_iput_f.c \
+	pshmem_put_nb_f.c \
 	pshmem_character_get_f.c \
 	pshmem_complex_get_f.c \
 	pshmem_double_get_f.c \
@@ -83,15 +83,24 @@ nodist_liboshmem_fortran_pshmem_la_SOURCES = \
 	pshmem_integer_iget_f.c \
 	pshmem_logical_iget_f.c \
 	pshmem_real_iget_f.c \
+	pshmem_get_nb_f.c \
 	pshmem_swap_f.c \
 	pshmem_int4_swap_f.c \
 	pshmem_int8_swap_f.c \
 	pshmem_real4_swap_f.c \
 	pshmem_real8_swap_f.c \
+	pshmem_int4_set_f.c \
+	pshmem_int8_set_f.c \
+	pshmem_real4_set_f.c \
+	pshmem_real8_set_f.c \
 	pshmem_int4_cswap_f.c \
 	pshmem_int8_cswap_f.c \
 	pshmem_int4_fadd_f.c \
 	pshmem_int8_fadd_f.c \
+	pshmem_int4_fetch_f.c \
+	pshmem_int8_fetch_f.c \
+	pshmem_real4_fetch_f.c \
+	pshmem_real8_fetch_f.c \
 	pshmem_int4_finc_f.c \
 	pshmem_int8_finc_f.c \
 	pshmem_int4_add_f.c \
@@ -112,6 +121,7 @@ nodist_liboshmem_fortran_pshmem_la_SOURCES = \
 	pshmem_prod_to_all_f.c \
 	pshmem_collect_f.c \
 	pshmem_broadcast_f.c \
+	pshmem_alltoall_f.c \
 	pshmem_lock_f.c \
 	pshmem_cache_f.c \
 	pshmem_int4_inc_f.c \

@@ -116,6 +116,26 @@ esac
 AC_SUBST([AR])dnl
 ])
 
+# Figure out how to run the assembler.                      -*- Autoconf -*-
+
+# Copyright (C) 2001-2014 Free Software Foundation, Inc.
+#
+# This file is free software; the Free Software Foundation
+# gives unlimited permission to copy and/or distribute it,
+# with or without modifications, as long as this notice is preserved.
+
+# AM_PROG_AS
+# ----------
+AC_DEFUN([AM_PROG_AS],
+[# By default we simply use the C compiler to build assembly code.
+AC_REQUIRE([AC_PROG_CC])
+test "${CCAS+set}" = set || CCAS=$CC
+test "${CCASFLAGS+set}" = set || CCASFLAGS=$CFLAGS
+AC_ARG_VAR([CCAS],      [assembler compiler command (defaults to CC)])
+AC_ARG_VAR([CCASFLAGS], [assembler compiler flags (defaults to CFLAGS)])
+_AM_IF_OPTION([no-dependencies],, [_AM_DEPENDENCIES([CCAS])])dnl
+])
+
 # AM_AUX_DIR_EXPAND                                         -*- Autoconf -*-
 
 # Copyright (C) 2001-2014 Free Software Foundation, Inc.
@@ -1222,11 +1242,13 @@ m4_include([config/pmix_check_broken_qsort.m4])
 m4_include([config/pmix_check_compiler_version.m4])
 m4_include([config/pmix_check_icc.m4])
 m4_include([config/pmix_check_ident.m4])
+m4_include([config/pmix_check_lock.m4])
 m4_include([config/pmix_check_munge.m4])
 m4_include([config/pmix_check_package.m4])
 m4_include([config/pmix_check_sasl.m4])
 m4_include([config/pmix_check_vendor.m4])
 m4_include([config/pmix_check_visibility.m4])
+m4_include([config/pmix_config_asm.m4])
 m4_include([config/pmix_ensure_contains_optflags.m4])
 m4_include([config/pmix_functions.m4])
 m4_include([config/pmix_load_platform.m4])
@@ -1234,3 +1256,4 @@ m4_include([config/pmix_search_libs.m4])
 m4_include([config/pmix_setup_cc.m4])
 m4_include([config/pmix_setup_hwloc.m4])
 m4_include([config/pmix_setup_libevent.m4])
+m4_include([config/pmix_try_assemble.m4])

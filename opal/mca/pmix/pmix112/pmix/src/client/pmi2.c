@@ -36,7 +36,7 @@
 #include "src/util/output.h"
 #include "src/include/pmix_globals.h"
 
-
+#define ANL_MAPPING "PMI_process_mapping"
 
 #define PMI2_CHECK() \
     do {                     \
@@ -56,9 +56,10 @@ PMIX_EXPORT int PMI2_Init(int *spawned, int *size, int *rank, int *appnum)
 {
     pmix_status_t rc = PMIX_SUCCESS;
     pmix_value_t *val;
-    pmix_proc_t proc;
     pmix_info_t info[1];
     bool  val_optinal = 1;
+    pmix_proc_t proc = myproc;
+    proc.rank = PMIX_RANK_WILDCARD;
 
     if (PMIX_SUCCESS != PMIx_Init(&myproc)) {
         return PMI2_ERR_INIT;
@@ -66,10 +67,6 @@ PMIX_EXPORT int PMI2_Init(int *spawned, int *size, int *rank, int *appnum)
 
     /* get the rank */
     *rank = myproc.rank;
-
-    /* getting internal key requires special rank value */
-    memcpy(&proc, &myproc, sizeof(myproc));
-    proc.rank = PMIX_RANK_UNDEF;
 
     /* set controlling parameters
      * PMIX_OPTIONAL - expect that these keys should be available on startup
@@ -254,6 +251,9 @@ PMIX_EXPORT int PMI2_Info_GetSize(int *size)
     pmix_value_t *val;
     pmix_info_t info[1];
     bool  val_optinal = 1;
+    pmix_proc_t proc = myproc;
+    proc.rank = PMIX_RANK_WILDCARD;
+
 
     PMI2_CHECK();
 
@@ -267,7 +267,7 @@ PMIX_EXPORT int PMI2_Info_GetSize(int *size)
     PMIX_INFO_CONSTRUCT(&info[0]);
     PMIX_INFO_LOAD(&info[0], PMIX_OPTIONAL, &val_optinal, PMIX_BOOL);
 
-    if (PMIX_SUCCESS == PMIx_Get(&myproc, PMIX_LOCAL_SIZE, info, 1, &val)) {
+    if (PMIX_SUCCESS == PMIx_Get(&proc, PMIX_LOCAL_SIZE, info, 1, &val)) {
         rc = convert_int(size, val);
         PMIX_VALUE_RELEASE(val);
     }
@@ -421,6 +421,8 @@ PMIX_EXPORT int PMI2_Info_GetNodeAttr(const char name[],
     pmix_value_t *val;
     pmix_info_t info[1];
     bool  val_optinal = 1;
+    pmix_proc_t proc = myproc;
+    proc.rank = PMIX_RANK_UNDEF;
 
     PMI2_CHECK();
 
@@ -435,7 +437,8 @@ PMIX_EXPORT int PMI2_Info_GetNodeAttr(const char name[],
     PMIX_INFO_LOAD(&info[0], PMIX_OPTIONAL, &val_optinal, PMIX_BOOL);
 
     *found = 0;
-    rc = PMIx_Get(&myproc, name, info, 1, &val);
+    /* TODO: does PMI2's "name" makes sense to PMIx? */
+    rc = PMIx_Get(&proc, name, info, 1, &val);
     if (PMIX_SUCCESS == rc && NULL != val) {
         if (PMIX_STRING != val->type) {
             rc = PMIX_ERROR;
@@ -481,9 +484,10 @@ PMIX_EXPORT int PMI2_Info_GetJobAttr(const char name[], char value[], int valuel
 {
     pmix_status_t rc = PMIX_SUCCESS;
     pmix_value_t *val;
-    pmix_proc_t proc;
     pmix_info_t info[1];
     bool  val_optinal = 1;
+    pmix_proc_t proc = myproc;
+    proc.rank = PMIX_RANK_UNDEF;
 
     PMI2_CHECK();
 
@@ -491,15 +495,38 @@ PMIX_EXPORT int PMI2_Info_GetJobAttr(const char name[], char value[], int valuel
         return PMI2_ERR_INVALID_ARG;
     }
 
-    /* getting internal key requires special rank value */
-    memcpy(&proc, &myproc, sizeof(myproc));
-    proc.rank = PMIX_RANK_UNDEF;
-
     /* set controlling parameters
      * PMIX_OPTIONAL - expect that these keys should be available on startup
      */
     PMIX_INFO_CONSTRUCT(&info[0]);
     PMIX_INFO_LOAD(&info[0], PMIX_OPTIONAL, &val_optinal, PMIX_BOOL);
+
+    /* PMI-2 expects resource manager to set
+     * process mapping in ANL notation. */
+    if (!strcmp(name, ANL_MAPPING)) {
+        /* we are looking in the job-data. If there is nothing there
+         * we don't want to look in rank's data, thus set rank to widcard */
+        proc = myproc;
+        proc.rank = PMIX_RANK_WILDCARD;
+        if (PMIX_SUCCESS == PMIx_Get(&proc, PMIX_ANL_MAP, NULL, 0, &val) &&
+               (NULL != val) && (PMIX_STRING == val->type)) {
+            strncpy(value, val->data.string, valuelen);
+            PMIX_VALUE_FREE(val, 1);
+            *found = 1;
+            return PMI2_SUCCESS;
+        } else {
+            /* artpol:
+             * Some RM's (i.e. SLURM) already have ANL precomputed. The export it
+             * through PMIX_ANL_MAP variable.
+             * If we haven't found it we want to have our own packing functionality
+             * since it's common.
+             * Somebody else has to write it since I've already done that for
+             * GPL'ed SLURM :) */
+            *found = 1;
+            return PMI2_FAIL;
+        }
+    }
+
 
     *found = 0;
     rc = PMIx_Get(&proc, name, info, 1, &val);

@@ -10,6 +10,7 @@
  *                         University of Stuttgart.  All rights reserved.
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
+ * Copyright (c) 2016      Broadcom Limited. All rights reserved.
  * Copyright (c) 2016      Los Alamos National Security, LLC. All rights
  *                         reserved.
  * $COPYRIGHT$
@@ -83,10 +84,12 @@ BEGIN_C_DECLS
 
 #if defined(DOXYGEN)
 /* don't include system-level gorp when generating doxygen files */
-#elif OPAL_ASSEMBLY_ARCH == OPAL_AMD64
-#include "opal/sys/amd64/timer.h"
+#elif OPAL_ASSEMBLY_ARCH == OPAL_X86_64
+#include "opal/sys/x86_64/timer.h"
 #elif OPAL_ASSEMBLY_ARCH == OPAL_ARM
 #include "opal/sys/arm/timer.h"
+#elif OPAL_ASSEMBLY_ARCH == OPAL_ARM64
+#include "opal/sys/arm64/timer.h"
 #elif OPAL_ASSEMBLY_ARCH == OPAL_IA32
 #include "opal/sys/ia32/timer.h"
 #elif OPAL_ASSEMBLY_ARCH == OPAL_IA64

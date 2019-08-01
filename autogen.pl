@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 #
-# Copyright (c) 2009-2016 Cisco Systems, Inc.  All rights reserved.
+# Copyright (c) 2009-2017 Cisco Systems, Inc.  All rights reserved
 # Copyright (c) 2010      Oracle and/or its affiliates.  All rights reserved.
 # Copyright (c) 2013      Mellanox Technologies, Inc.
 #                         All rights reserved.
@@ -432,11 +432,28 @@ sub mca_process_project {
             next
                 if (! -d "$dir/$d" || $d eq "base" || substr($d, 0, 1) eq ".");
 
-            # If this directory has a $dir.h file and a base/
+            my $framework_header = "$dir/$d/$d.h";
+
+            # If there's a $dir/$d/autogen.options file, read it
+            my $ao_file = "$dir/$d/autogen.options";
+            if (-r $ao_file) {
+                verbose "\n>>> Found $dir/$d/autogen.options file\n";
+                open(IN, $ao_file) ||
+                    die "$ao_file present, but cannot open it";
+                while (<IN>) {
+                    if (m/\s*framework_header\s*=\s*(.+?)\s*$/) {
+                        verbose "    Framework header entry: $1\n";
+                        $framework_header = "$dir/$d/$1";
+                    }
+                }
+                close(IN);
+            }
+
+            # If this directory has a framework header and a base/
             # subdirectory, or its name is "common", then it's a
             # framework.
             if ("common" eq $d || !$project->{need_base} ||
-                (-f "$dir/$d/$d.h" && -d "$dir/$d/base")) {
+                (-f $framework_header && -d "$dir/$d/base")) {
                 verbose "\n=== Found $pname / $d framework\n";
                 mca_process_framework($topdir, $project, $d);
             }
@@ -901,9 +918,14 @@ sub patch_autotools_output {
     # enough Libtool that dosn't need this patch.  But don't alarm the
     # user and make them think that autogen failed if this patch fails --
     # make the errors be silent.
+    # Also patch ltmain.sh for NAG compiler
     if (-f "config/ltmain.sh") {
         verbose "$indent_str"."Patching PGI compiler version numbers in ltmain.sh\n";
         system("$patch_prog -N -p0 < $topdir/config/ltmain_pgi_tp.diff >/dev/null 2>&1");
+        unlink("config/ltmain.sh.rej");
+
+        verbose "$indent_str"."Patching \"-pthread\" option for NAG compiler in ltmain.sh\n";
+        system("$patch_prog -N -p0 < $topdir/config/ltmain_nag_pthread.diff >/dev/null 2>&1");
         unlink("config/ltmain.sh.rej");
     }
 
@@ -974,6 +996,25 @@ sub patch_autotools_output {
 ";
 
         push(@verbose_out, $indent_str . "Patching configure for Sun Studio Fortran version strings ($tag)\n");
+        $c =~ s/$search_string/$replace_string/;
+    }
+
+    foreach my $tag (("", "_FC")) {
+
+        # We have to change the search pattern and substitution on each
+        # iteration to take into account the tag changing
+        my $search_string = 'lf95\052.*# Lahey Fortran 8.1\n\s+' .
+            "whole_archive_flag_spec${tag}=" . '\n\s+' .
+            "tmp_sharedflag='--shared' ;;" . '\n\s+' .
+            'xl';
+        my $replace_string = "lf95*)				# Lahey Fortran 8.1
+	  whole_archive_flag_spec${tag}=
+	  tmp_sharedflag='--shared' ;;
+	nagfor*)			# NAGFOR 5.3
+	  tmp_sharedflag='-Wl,-shared';;
+	xl";
+
+        push(@verbose_out, $indent_str . "Patching configure for NAG compiler ($tag)\n");
         $c =~ s/$search_string/$replace_string/;
     }
 
