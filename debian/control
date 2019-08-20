@@ -25,8 +25,7 @@ Build-Depends: debhelper (>= 10),
 
 Package: openmpi-gcc-hfi
 Architecture: amd64
-Depends: mpi-selector,
-         ${misc:Depends},
+Depends: ${misc:Depends},
          ${shlibs:Depends}
 Description: Powerful implementation of MPI/SHMEM with PSM2
  Open MPI is an open source implementation of the Message Passing
@@ -39,8 +38,7 @@ Description: Powerful implementation of MPI/SHMEM with PSM2
 
 Package: openmpi-gcc-cuda-hfi
 Architecture: amd64
-Depends: mpi-selector,
-         ${misc:Depends},
+Depends: ${misc:Depends},
          ${shlibs:Depends}
 Description: Powerful implementation of MPI/SHMEM with CUDA PSM2
  Open MPI is an open source implementation of the Message Passing
