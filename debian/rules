@@ -5,14 +5,16 @@
 
 VARIANTS :=
 VARIANTS += gcc-hfi
+ifdef ENABLE_CUDA
 VARIANTS += gcc-cuda-hfi
 CUDA_HOME ?= /usr
+endif
 ifdef ENABLE_VERBS
 VARIANTS += gcc
 endif
 
-PACKAGE_VERSION =2.1.2
-PACKAGE_NAME=openmpi-2.1.2
+PACKAGE_VERSION = $(shell parsechangelog | grep Version | sed 's/.*:\s*//;s/-.*//')
+PACKAGE_NAME=openmpi-$(*)
 PACKAGE_gcc_DESC=
 PACKAGE_gcc-hfi_DESC=with PSM2
 PACKAGE_gcc-cuda-hfi_DESC=with CUDA PSM2
