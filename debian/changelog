@@ -1,9 +1,3 @@
-openmpi (2.1.2-40-1ifs+deb9sci9+opa10.9u3) scibian9+opa10.9; urgency=medium
-
-  * New Release version for scibian9-opa10.9 
-
- -- MHamed Bouaziz <mhamed-externe.bouaziz@edf.fr>  Tue, 20 Aug 2019 14:35:08 +0200
-
 openmpi (2.1.2-40-1ifs+deb9sci9+opa10.9u2) scibian9+opa10.9; urgency=medium
 
   * New Release version for scibian9-opa10.9
