@@ -11,7 +11,6 @@
 # Copyright (c) 2004-2005 The Regents of the University of California.
 #                         All rights reserved.
 # Copyright (c) 2011      Sandia National Laboratories. All rights reserved.
-# Copyright (c) 2016      IBM Corporation.  All rights reserved.
 # $COPYRIGHT$
 #
 # Additional copyrights may follow
@@ -24,5 +23,5 @@
 headers += \
 	message/message.h
 
-lib@OMPI_LIBMPI_NAME@_la_SOURCES += \
+libmpi_la_SOURCES += \
 	message/message.c

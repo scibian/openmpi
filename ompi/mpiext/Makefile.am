@@ -2,7 +2,6 @@
 # Copyright (c) 2004-2009 The Trustees of Indiana University and Indiana
 #                         University Research and Technology
 #                         Corporation.  All rights reserved.
-# Copyright (c) 2016      IBM Corporation.  All rights reserved.
 # $COPYRIGHT$
 #
 # Additional copyrights may follow
@@ -16,5 +15,5 @@
 headers += \
 	mpiext/mpiext.h
 
-lib@OMPI_LIBMPI_NAME@_la_SOURCES += \
+libmpi_la_SOURCES += \
 	mpiext/mpiext.c

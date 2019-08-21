@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2016 Mellanox Technologies, Inc.
+ * Copyright (c) 2014      Mellanox Technologies, Inc.
  *                         All rights reserved.
  * $COPYRIGHT$
  *
@@ -11,6 +11,8 @@
 #include <stdio.h>
 #include <shmem.h>
 
+#warning This application uses deprecated API see http://www.open-mpi.org/
+
 #define SIZE 16
 
 int main(int argc, char* argv[])
@@ -20,10 +22,10 @@ int main(int argc, char* argv[])
     int i;
     int num_pe, my_pe;
 
-    shmem_init();
+    start_pes(0);
 
-    num_pe = shmem_n_pes();
-    my_pe = shmem_my_pe();
+    num_pe = _num_pes();
+    my_pe = _my_pe();
 
     if (my_pe == 0) {
         /* initialize array */
@@ -50,7 +52,6 @@ int main(int argc, char* argv[])
     }
 
     shmem_barrier_all(); /* sync before exiting */
-    shmem_finalize();
 
     return 0;
 }

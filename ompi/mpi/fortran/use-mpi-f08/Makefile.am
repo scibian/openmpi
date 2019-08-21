@@ -9,7 +9,6 @@
 #                         reserved.
 # Copyright (c) 2015-2016 Research Organization for Information Science
 #                         and Technology (RIST). All rights reserved.
-# Copyright (c) 2016      IBM Corporation.  All rights reserved.
 #
 # $COPYRIGHT$
 #
@@ -34,7 +33,7 @@ MOSTLYCLEANFILES = *.mod
 
 CLEANFILES += *.i90
 
-lib_LTLIBRARIES = lib@OMPI_LIBMPI_NAME@_usempif08.la
+lib_LTLIBRARIES = libmpi_usempif08.la
 
 module_sentinel_file = \
         libforce_usempif08_internal_modules_to_be_built.la
@@ -794,7 +793,7 @@ pmpi_api_files += \
         profile/pregister_datarep_f08.F90
 endif
 
-lib@OMPI_LIBMPI_NAME@_usempif08_la_SOURCES = \
+libmpi_usempif08_la_SOURCES = \
         $(mpi_api_files) \
         $(pmpi_api_files) \
         mpi-f-interfaces-bind.h \
@@ -805,11 +804,11 @@ lib@OMPI_LIBMPI_NAME@_usempif08_la_SOURCES = \
         constants.c
 
 # These are generated; do not ship them
-nodist_lib@OMPI_LIBMPI_NAME@_usempif08_la_SOURCES =
+nodist_libmpi_usempif08_la_SOURCES =
 
 if BUILD_FORTRAN_SIZEOF
 SIZEOF_H = sizeof_f08.h
-nodist_lib@OMPI_LIBMPI_NAME@_usempif08_la_SOURCES += \
+nodist_libmpi_usempif08_la_SOURCES += \
         sizeof_f08.h \
         sizeof_f08.f90 \
         profile/psizeof_f08.f90
@@ -819,13 +818,13 @@ endif
 # Include the mpi_f08-based MPI extensions in libmpi_usempif08, too.
 #
 
-lib@OMPI_LIBMPI_NAME@_usempif08_la_LIBADD = \
+libmpi_usempif08_la_LIBADD = \
         $(module_sentinel_file) \
         $(OMPI_MPIEXT_USEMPIF08_LIBS) \
-        $(top_builddir)/ompi/mpi/fortran/mpif-h/lib@OMPI_LIBMPI_NAME@_mpifh.la \
-        $(top_builddir)/ompi/lib@OMPI_LIBMPI_NAME@.la
-lib@OMPI_LIBMPI_NAME@_usempif08_la_DEPENDENCIES = $(module_sentinel_file)
-lib@OMPI_LIBMPI_NAME@_usempif08_la_LDFLAGS = -version-info $(libmpi_usempif08_so_version)
+        $(top_builddir)/ompi/mpi/fortran/mpif-h/libmpi_mpifh.la \
+        $(top_builddir)/ompi/libmpi.la
+libmpi_usempif08_la_DEPENDENCIES = $(module_sentinel_file)
+libmpi_usempif08_la_LDFLAGS = -version-info $(libmpi_usempif08_so_version)
 
 #
 # Automake doesn't do Fortran dependency analysis, so must list them

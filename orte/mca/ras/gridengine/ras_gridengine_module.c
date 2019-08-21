@@ -10,7 +10,6 @@
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
  * Copyright (c) 2006-2010 Oracle and/or its affiliates.  All rights reserved
- * Copyright (c) 2016      IBM Corporation.  All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -29,7 +28,6 @@
 #include <string.h>
 
 #include "opal/util/output.h"
-#include "opal/util/net.h"
 #include "orte/util/show_help.h"
 #include "orte/mca/errmgr/errmgr.h"
 #include "orte/runtime/orte_globals.h"
@@ -64,7 +62,7 @@ static int orte_ras_gridengine_allocate(orte_job_t *jdata, opal_list_t *nodelist
 {
     char *pe_hostfile = getenv("PE_HOSTFILE");
     char *job_id = getenv("JOB_ID");
-    char buf[1024], *tok, *num, *queue, *arch, *ptr, *tmp;
+    char buf[1024], *tok, *num, *queue, *arch, *ptr;
     int rc;
     FILE *fp;
     orte_node_t *node;
@@ -97,12 +95,6 @@ static int orte_ras_gridengine_allocate(orte_job_t *jdata, opal_list_t *nodelist
         num = strtok_r(NULL, " \n", &tok);
         queue = strtok_r(NULL, " \n", &tok);
         arch = strtok_r(NULL, " \n", &tok);
-
-        if( !orte_keep_fqdn_hostnames && !opal_net_isaddr(ptr) ) {
-            if (NULL != (tmp = strchr(ptr, '.'))) {
-                *tmp = '\0';
-            }
-        }
 
         /* see if we already have this node */
         found = false;

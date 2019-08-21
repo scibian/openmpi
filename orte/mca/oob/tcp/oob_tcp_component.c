@@ -16,7 +16,6 @@
  * Copyright (c) 2011      Oak Ridge National Labs.  All rights reserved.
  * Copyright (c) 2013-2014 Intel, Inc.  All rights reserved.
  * Copyright (c) 2014      NVIDIA Corporation.  All rights reserved.
- * Copyright (c) 2017      IBM Corporation.  All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -221,17 +220,17 @@ static int tcp_component_register(void)
                                           MCA_BASE_VAR_SCOPE_LOCAL,
                                           &mca_oob_tcp_component.max_retries);
 
-    mca_oob_tcp_component.tcp_sndbuf = 0;
+    mca_oob_tcp_component.tcp_sndbuf = 128 * 1024;
     (void)mca_base_component_var_register(component, "sndbuf",
-                                          "TCP socket send buffering size (in bytes, 0 => leave system default)",
+                                          "TCP socket send buffering size (in bytes)",
                                           MCA_BASE_VAR_TYPE_INT, NULL, 0, 0,
                                           OPAL_INFO_LVL_4,
                                           MCA_BASE_VAR_SCOPE_LOCAL,
                                           &mca_oob_tcp_component.tcp_sndbuf);
 
-    mca_oob_tcp_component.tcp_rcvbuf = 0;
+    mca_oob_tcp_component.tcp_rcvbuf = 128 * 1024;
     (void)mca_base_component_var_register(component, "rcvbuf",
-                                          "TCP socket receive buffering size (in bytes, 0 => leave system default)",
+                                          "TCP socket receive buffering size (in bytes)",
                                           MCA_BASE_VAR_TYPE_INT, NULL, 0, 0,
                                           OPAL_INFO_LVL_4,
                                           MCA_BASE_VAR_SCOPE_LOCAL,
@@ -401,8 +400,8 @@ static int tcp_component_register(void)
                                           &mca_oob_tcp_component.disable_ipv6_family);
 #endif // OPAL_ENABLE_IPV6
 
-    // Wait for this amount of time before sending the first keepalive probe
-    mca_oob_tcp_component.keepalive_time = 300;
+    // Default to keepalives every 60 seconds
+    mca_oob_tcp_component.keepalive_time = 60;
     (void)mca_base_component_var_register(component, "keepalive_time",
                                           "Idle time in seconds before starting to send keepalives (keepalive_time <= 0 disables keepalive functionality)",
                                           MCA_BASE_VAR_TYPE_INT, NULL, 0, 0,
@@ -410,8 +409,8 @@ static int tcp_component_register(void)
                                           MCA_BASE_VAR_SCOPE_READONLY,
                                           &mca_oob_tcp_component.keepalive_time);
 
-    // Resend keepalive probe every INT seconds
-    mca_oob_tcp_component.keepalive_intvl = 20;
+    // Default to keepalive retry interval time of 5 seconds
+    mca_oob_tcp_component.keepalive_intvl = 5;
     (void)mca_base_component_var_register(component, "keepalive_intvl",
                                           "Time between successive keepalive pings when peer has not responded, in seconds (ignored if keepalive_time <= 0)",
                                           MCA_BASE_VAR_TYPE_INT, NULL, 0, 0,
@@ -419,8 +418,9 @@ static int tcp_component_register(void)
                                           MCA_BASE_VAR_SCOPE_READONLY,
                                           &mca_oob_tcp_component.keepalive_intvl);
 
-    // After sending PR probes every INT seconds consider the connection dead
-    mca_oob_tcp_component.keepalive_probes = 9;
+    // Default to retrying a keepalive 3 times before declaring the
+    // peer kaput
+    mca_oob_tcp_component.keepalive_probes = 3;
     (void)mca_base_component_var_register(component, "keepalive_probes",
                                           "Number of keepalives that can be missed before declaring error (ignored if keepalive_time <= 0)",
                                           MCA_BASE_VAR_TYPE_INT, NULL, 0, 0,

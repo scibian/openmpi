@@ -3,7 +3,6 @@
 # Copyright (c) 2006-2015 Cisco Systems, Inc.  All rights reserved.
 # Copyright (c) 2015      Research Organization for Information Science
 #                         and Technology (RIST). All rights reserved.
-# Copyright (c) 2016      IBM Corporation.  All rights reserved.
 #
 # $COPYRIGHT$
 #
@@ -23,7 +22,7 @@ AM_CPPFLAGS = -DOMPI_PROFILE_LAYER=0 -DOMPI_COMPILING_FORTRAN_WRAPPERS=1
 AM_FCFLAGS = -I$(top_builddir)/ompi/include -I$(top_srcdir)/ompi/include \
              -I$(top_builddir) -I$(top_srcdir) $(FCFLAGS_f90)
 
-lib_LTLIBRARIES = lib@OMPI_LIBMPI_NAME@_usempi_ignore_tkr.la
+lib_LTLIBRARIES = libmpi_usempi_ignore_tkr.la
 
 mpi-ignore-tkr-interfaces.h: mpi-ignore-tkr-interfaces.h.in
 mpi-ignore-tkr-file-interfaces.h: mpi-ignore-tkr-file-interfaces.h.in
@@ -36,15 +35,15 @@ mpi-ignore-tkr.lo: mpi-ignore-tkr-sizeof.h
 mpi-ignore-tkr.lo: mpi-ignore-tkr-sizeof.f90
 mpi-ignore-tkr.lo: mpi-ignore-tkr.F90
 
-lib@OMPI_LIBMPI_NAME@_usempi_ignore_tkr_la_SOURCES = \
+libmpi_usempi_ignore_tkr_la_SOURCES = \
         mpi-ignore-tkr.F90
-nodist_lib@OMPI_LIBMPI_NAME@_usempi_ignore_tkr_la_SOURCES = \
+nodist_libmpi_usempi_ignore_tkr_la_SOURCES = \
         mpi-ignore-tkr-interfaces.h \
         mpi-ignore-tkr-file-interfaces.h
 
 if BUILD_FORTRAN_SIZEOF
 # These files are generated; do not distribute them
-nodist_lib@OMPI_LIBMPI_NAME@_usempi_ignore_tkr_la_SOURCES += \
+nodist_libmpi_usempi_ignore_tkr_la_SOURCES += \
         mpi-ignore-tkr-sizeof.h \
         mpi-ignore-tkr-sizeof.f90
 endif
@@ -53,10 +52,10 @@ endif
 # libmpi_usempi_ignore_tkr.la, so we need to link in the OPAL library
 # directly (pulling it in indirectly via libmpi.la does not work on
 # all platforms).
-lib@OMPI_LIBMPI_NAME@_usempi_ignore_tkr_la_LIBADD = \
+libmpi_usempi_ignore_tkr_la_LIBADD = \
         $(OMPI_MPIEXT_USEMPI_LIBS) \
         $(OMPI_TOP_BUILDDIR)/opal/lib@OPAL_LIB_PREFIX@open-pal.la
-lib@OMPI_LIBMPI_NAME@_usempi_ignore_tkr_la_LDFLAGS = \
+libmpi_usempi_ignore_tkr_la_LDFLAGS = \
         -version-info $(libmpi_usempi_ignore_tkr_so_version) \
         $(OMPI_FORTRAN_EXTRA_SHARED_LIBRARY_FLAGS)
 

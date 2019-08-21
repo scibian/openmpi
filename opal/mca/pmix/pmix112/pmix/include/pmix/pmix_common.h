@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2017 Intel, Inc. All rights reserved.
+ * Copyright (c) 2013-2015 Intel, Inc. All rights reserved
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -46,23 +46,18 @@
 #ifndef PMIx_COMMON_H
 #define PMIx_COMMON_H
 
+#include <pmix/autogen/config.h>
+#include <pmix/rename.h>
+
 #include <stdbool.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
+#ifdef HAVE_SYS_TIME_H
 #include <sys/time.h> /* for struct timeval */
-
-#ifdef PMIX_HAVE_VISIBILITY
-#define PMIX_EXPORT __attribute__((__visibility__("default")))
-#else
-#define PMIX_EXPORT
 #endif
 
-#include <pmix_version.h>
-
-#if defined(c_plusplus) || defined(__cplusplus)
-extern "C" {
-#endif
+BEGIN_C_DECLS
 
 /****  PMIX CONSTANTS    ****/
 
@@ -97,7 +92,6 @@ extern "C" {
 /* identification attributes */
 #define PMIX_USERID                "pmix.euid"              // (uint32_t) effective user id
 #define PMIX_GRPID                 "pmix.egid"              // (uint32_t) effective group id
-#define PMIX_DSTPATH               "pmix.dstpath"           // (char*) path to dstore files
 
 /* attributes for the rendezvous socket  */
 #define PMIX_SOCKET_MODE           "pmix.sockmode"          // (uint32_t) POSIX mode_t (9 bits valid)
@@ -124,7 +118,7 @@ extern "C" {
 #define PMIX_NPROC_OFFSET          "pmix.offset"            // (uint32_t) starting global rank of this job
 #define PMIX_LOCAL_RANK            "pmix.lrank"             // (uint16_t) rank on this node within this job
 #define PMIX_NODE_RANK             "pmix.nrank"             // (uint16_t) rank on this node spanning all jobs
-#define PMIX_LOCALLDR              "pmix.lldr"              // (uint32_t) opal_identifier of lowest rank on this node within this job
+#define PMIX_LOCALLDR              "pmix.lldr"              // (uint64_t) opal_identifier of lowest rank on this node within this job
 #define PMIX_APPLDR                "pmix.aldr"              // (uint32_t) lowest rank in this app within this job
 
 /* proc location-related info */
@@ -860,17 +854,17 @@ typedef void (*pmix_value_cbfunc_t)(pmix_status_t status,
  * using a new set of info values.
  *
  * See pmix_common.h for a description of the notification function */
-PMIX_EXPORT void PMIx_Register_errhandler(pmix_info_t info[], size_t ninfo,
-                                          pmix_notification_fn_t errhandler,
-                                          pmix_errhandler_reg_cbfunc_t cbfunc,
-                                          void *cbdata);
+void PMIx_Register_errhandler(pmix_info_t info[], size_t ninfo,
+                              pmix_notification_fn_t errhandler,
+                              pmix_errhandler_reg_cbfunc_t cbfunc,
+                              void *cbdata);
 
 /* deregister the errhandler
  * errhandler_ref is the reference returned by PMIx for the errhandler
  * to pmix_errhandler_reg_cbfunc_t */
-PMIX_EXPORT void PMIx_Deregister_errhandler(int errhandler_ref,
-                                            pmix_op_cbfunc_t cbfunc,
-                                            void *cbdata);
+void PMIx_Deregister_errhandler(int errhandler_ref,
+                                pmix_op_cbfunc_t cbfunc,
+                                void *cbdata);
 /* Report an error to a process for notification via any
  * registered errhandler. The errhandler registration can be
  * called by both the server and the client application. On the
@@ -907,26 +901,26 @@ PMIX_EXPORT void PMIx_Deregister_errhandler(int errhandler_ref,
  * time. Note that the caller is required to maintain the input
  * data until the callback function has been executed!
 */
-PMIX_EXPORT pmix_status_t PMIx_Notify_error(pmix_status_t status,
-                                            pmix_proc_t procs[], size_t nprocs,
-                                            pmix_proc_t error_procs[], size_t error_nprocs,
-                                            pmix_info_t info[], size_t ninfo,
-                                            pmix_op_cbfunc_t cbfunc, void *cbdata);
+pmix_status_t PMIx_Notify_error(pmix_status_t status,
+                                pmix_proc_t procs[], size_t nprocs,
+                                pmix_proc_t error_procs[], size_t error_nprocs,
+                                pmix_info_t info[], size_t ninfo,
+                                pmix_op_cbfunc_t cbfunc, void *cbdata);
 
 /* Provide a string representation of a pmix_status_t value. Note
  * that the provided string is statically defined and must NOT be
  * free'd */
-PMIX_EXPORT const char* PMIx_Error_string(pmix_status_t status);
+const char* PMIx_Error_string(pmix_status_t status);
 
 /* Get the PMIx version string. Note that the provided string is
  * statically defined and must NOT be free'd  */
-PMIX_EXPORT const char* PMIx_Get_version(void);
+const char* PMIx_Get_version(void);
 
 /* Store some data locally for retrieval by other areas of the
  * proc. This is data that has only internal scope - it will
  * never be "pushed" externally */
-PMIX_EXPORT pmix_status_t PMIx_Store_internal(const pmix_proc_t *proc,
-                                              const char *key, pmix_value_t *val);
+pmix_status_t PMIx_Store_internal(const pmix_proc_t *proc,
+                                  const char *key, pmix_value_t *val);
 
 
 /* Key-Value pair management macros */
@@ -989,8 +983,5 @@ PMIX_EXPORT pmix_status_t PMIx_Store_internal(const pmix_proc_t *proc,
 #define PMIX_VAL_FREE(_v) \
      PMIx_free_value_data(_v)
 
-#if defined(c_plusplus) || defined(__cplusplus)
-}
-#endif
-
+END_C_DECLS
 #endif

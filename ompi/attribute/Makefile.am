@@ -9,7 +9,6 @@
 #                         University of Stuttgart.  All rights reserved.
 # Copyright (c) 2004-2005 The Regents of the University of California.
 #                         All rights reserved.
-# Copyright (c) 2016      IBM Corporation.  All rights reserved.
 # $COPYRIGHT$
 #
 # Additional copyrights may follow
@@ -22,6 +21,6 @@
 headers += \
         attribute/attribute.h
 
-lib@OMPI_LIBMPI_NAME@_la_SOURCES += \
+libmpi_la_SOURCES += \
         attribute/attribute.c \
         attribute/attribute_predefined.c

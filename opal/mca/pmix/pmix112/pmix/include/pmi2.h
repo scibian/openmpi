@@ -12,13 +12,6 @@
 #define PMI2_MAX_ATTRVALUE 1024
 #define PMI2_ID_NULL -1
 
-#ifdef PMIX_HAVE_VISIBILITY
-#define PMIX_EXPORT __attribute__((__visibility__("default")))
-#else
-#define PMIX_EXPORT
-#endif
-
-
 #if defined(__cplusplus)
 extern "C" {
 #endif
@@ -124,7 +117,7 @@ typedef struct PMI2_Connect_comm {
   iff this process group has a parent.
 
 @*/
-PMIX_EXPORT int PMI2_Init(int *spawned, int *size, int *rank, int *appnum);
+int PMI2_Init(int *spawned, int *size, int *rank, int *appnum);
 
 /*@
   PMI2_Finalize - finalize the Process Manager Interface
@@ -136,7 +129,7 @@ PMIX_EXPORT int PMI2_Init(int *spawned, int *size, int *rank, int *appnum);
   Finalize PMI for this job.
 
 @*/
-PMIX_EXPORT int PMI2_Finalize(void);
+int PMI2_Finalize(void);
 
 /*@
   PMI2_Initialized - check if PMI has been initialized
@@ -145,7 +138,7 @@ PMIX_EXPORT int PMI2_Finalize(void);
   Non-zero if PMI2_Initialize has been called successfully, zero otherwise.
 
 @*/
-PMIX_EXPORT int PMI2_Initialized(void);
+int PMI2_Initialized(void);
 
 /*@
   PMI2_Abort - abort the process group associated with this process
@@ -159,7 +152,7 @@ PMIX_EXPORT int PMI2_Initialized(void);
   error code otherwise.
 
 @*/
-PMIX_EXPORT int PMI2_Abort(int flag, const char msg[]);
+int PMI2_Abort(int flag, const char msg[]);
 
 /*@
   PMI2_Spawn - spawn a new set of processes
@@ -198,15 +191,15 @@ PMIX_EXPORT int PMI2_Abort(int flag, const char msg[]);
   mpiexec in the MPI-2 standard.  Environment variables may be passed to the
   spawned processes through PMI implementation specific 'info_keyval' parameters.
 @*/
-PMIX_EXPORT int PMI2_Job_Spawn(int count, const char * cmds[],
-                               int argcs[], const char ** argvs[],
-                               const int maxprocs[],
-                               const int info_keyval_sizes[],
-                               const PMI_keyval_t *info_keyval_vectors[],
-                               int preput_keyval_size,
-                               const PMI_keyval_t *preput_keyval_vector[],
-                               char jobId[], int jobIdSize,
-                               int errors[]);
+int PMI2_Job_Spawn(int count, const char * cmds[],
+                   int argcs[], const char ** argvs[],
+                   const int maxprocs[],
+                   const int info_keyval_sizes[],
+                   const PMI_keyval_t *info_keyval_vectors[],
+                   int preput_keyval_size,
+                   const PMI_keyval_t *preput_keyval_vector[],
+                   char jobId[], int jobIdSize,
+                   int errors[]);
 
 /*@
   PMI2_Job_GetId - get job id of this job
@@ -221,7 +214,7 @@ PMIX_EXPORT int PMI2_Job_Spawn(int count, const char * cmds[],
   Returns 'PMI2_SUCCESS' on success and an PMI error code on failure.
 
 @*/
-PMIX_EXPORT int PMI2_Job_GetId(char jobid[], int jobid_size);
+int PMI2_Job_GetId(char jobid[], int jobid_size);
 
 /*@
   PMI2_Job_GetRank - get rank of this job
@@ -230,7 +223,7 @@ PMIX_EXPORT int PMI2_Job_GetId(char jobid[], int jobid_size);
   Return values:
   Returns 'PMI2_SUCCESS' on success and an PMI error code on failure.
 @*/
-PMIX_EXPORT int PMI2_Job_GetRank(int* rank);
+int PMI2_Job_GetRank(int* rank);
 
 /*@
   PMI2_Info_GetSize - get the number of processes on the node
@@ -239,7 +232,7 @@ PMIX_EXPORT int PMI2_Job_GetRank(int* rank);
   Return values:
   Returns 'PMI2_SUCCESS' on success and an PMI error code on failure.
 @*/
-PMIX_EXPORT int PMI2_Info_GetSize(int* size);
+int PMI2_Info_GetSize(int* size);
 
 /*@
   PMI2_Job_Connect - connect to the parallel job with ID jobid
@@ -263,7 +256,7 @@ PMIX_EXPORT int PMI2_Info_GetSize(int* size);
   side. Processes that are already connected may call this routine.
 
 @*/
-PMIX_EXPORT int PMI2_Job_Connect(const char jobid[], PMI2_Connect_comm_t *conn);
+int PMI2_Job_Connect(const char jobid[], PMI2_Connect_comm_t *conn);
 
 /*@
   PMI2_Job_Disconnect - disconnects from the job with ID jobid
@@ -275,7 +268,7 @@ PMIX_EXPORT int PMI2_Job_Connect(const char jobid[], PMI2_Connect_comm_t *conn);
   Returns 'PMI2_SUCCESS' on success and an PMI error code on failure.
 
 @*/
-PMIX_EXPORT int PMI2_Job_Disconnect(const char jobid[]);
+int PMI2_Job_Disconnect(const char jobid[]);
 
 /*@
   PMI2_KVS_Put - put a key/value pair in the keyval space for this job
@@ -294,7 +287,7 @@ PMIX_EXPORT int PMI2_Job_Disconnect(const char jobid[]);
   is not defined.
 
 @*/
-PMIX_EXPORT int PMI2_KVS_Put(const char key[], const char value[]);
+int PMI2_KVS_Put(const char key[], const char value[]);
 /*@
   PMI2_KVS_Fence - commit all PMI2_KVS_Put calls made before this fence
 
@@ -314,7 +307,7 @@ PMIX_EXPORT int PMI2_KVS_Put(const char key[], const char value[]);
   implementations.
 
 @*/
-PMIX_EXPORT int PMI2_KVS_Fence(void);
+int PMI2_KVS_Fence(void);
 
 /*@
   PMI2_KVS_Get - returns the value associated with key in the key-value
@@ -338,7 +331,7 @@ PMIX_EXPORT int PMI2_KVS_Fence(void);
   Returns 'PMI2_SUCCESS' on success and an PMI error code on failure.
 
 @*/
-PMIX_EXPORT int PMI2_KVS_Get(const char *jobid, int src_pmi_id, const char key[], char value [], int maxvalue, int *vallen);
+int PMI2_KVS_Get(const char *jobid, int src_pmi_id, const char key[], char value [], int maxvalue, int *vallen);
 
 /*@
   PMI2_Info_GetNodeAttr - returns the value of the attribute associated
@@ -378,7 +371,7 @@ PMIX_EXPORT int PMI2_KVS_Get(const char *jobid, int src_pmi_id, const char key[]
     file.  Returned as a string.
 
 @*/
-PMIX_EXPORT int PMI2_Info_GetNodeAttr(const char name[], char value[], int valuelen, int *found, int waitfor);
+int PMI2_Info_GetNodeAttr(const char name[], char value[], int valuelen, int *found, int waitfor);
 
 /*@
   PMI2_Info_GetNodeAttrIntArray - returns the value of the attribute associated
@@ -412,7 +405,7 @@ PMIX_EXPORT int PMI2_Info_GetNodeAttr(const char name[], char value[], int value
     cartesian.
 
 @*/
-PMIX_EXPORT int PMI2_Info_GetNodeAttrIntArray(const char name[], int array[], int arraylen, int *outlen, int *found);
+int PMI2_Info_GetNodeAttrIntArray(const char name[], int array[], int arraylen, int *outlen, int *found);
 
 /*@
   PMI2_Info_PutNodeAttr - stores the value of the named attribute
@@ -430,7 +423,7 @@ PMIX_EXPORT int PMI2_Info_GetNodeAttrIntArray(const char name[], int array[], in
   processes on the same SMP node.
 
 @*/
-PMIX_EXPORT int PMI2_Info_PutNodeAttr(const char name[], const char value[]);
+int PMI2_Info_PutNodeAttr(const char name[], const char value[]);
 
 /*@
   PMI2_Info_GetJobAttr - returns the value of the attribute associated
@@ -448,7 +441,7 @@ PMIX_EXPORT int PMI2_Info_PutNodeAttr(const char name[], const char value[]);
   Returns 'PMI2_SUCCESS' on success and an PMI error code on failure.
 
 @*/
-PMIX_EXPORT int PMI2_Info_GetJobAttr(const char name[], char value[], int valuelen, int *found);
+int PMI2_Info_GetJobAttr(const char name[], char value[], int valuelen, int *found);
 
 /*@
   PMI2_Info_GetJobAttrIntArray - returns the value of the attribute associated
@@ -513,7 +506,7 @@ PMIX_EXPORT int PMI2_Info_GetJobAttr(const char name[], char value[], int valuel
     underlying data models.
 
 @*/
-PMIX_EXPORT int PMI2_Info_GetJobAttrIntArray(const char name[], int array[], int arraylen, int *outlen, int *found);
+int PMI2_Info_GetJobAttrIntArray(const char name[], int array[], int arraylen, int *outlen, int *found);
 
 /*@
   PMI2_Nameserv_publish - publish a name
@@ -527,7 +520,7 @@ PMIX_EXPORT int PMI2_Info_GetJobAttrIntArray(const char name[], int array[], int
   Returns 'PMI2_SUCCESS' on success and an PMI error code on failure.
 
 @*/
-PMIX_EXPORT int PMI2_Nameserv_publish(const char service_name[], const PMI_keyval_t *info_ptr, const char port[]);
+int PMI2_Nameserv_publish(const char service_name[], const PMI_keyval_t *info_ptr, const char port[]);
 
 /*@
   PMI2_Nameserv_lookup - lookup a service by name
@@ -544,8 +537,8 @@ PMIX_EXPORT int PMI2_Nameserv_publish(const char service_name[], const PMI_keyva
   Returns 'PMI2_SUCCESS' on success and an PMI error code on failure.
 
 @*/
-PMIX_EXPORT int PMI2_Nameserv_lookup(const char service_name[], const PMI_keyval_t *info_ptr,
-                                     char port[], int portLen);
+int PMI2_Nameserv_lookup(const char service_name[], const PMI_keyval_t *info_ptr,
+                        char port[], int portLen);
 /*@
   PMI2_Nameserv_unpublish - unpublish a name
 
@@ -557,8 +550,8 @@ PMIX_EXPORT int PMI2_Nameserv_lookup(const char service_name[], const PMI_keyval
   Returns 'PMI2_SUCCESS' on success and an PMI error code on failure.
 
 @*/
-PMIX_EXPORT int PMI2_Nameserv_unpublish(const char service_name[],
-                                        const PMI_keyval_t *info_ptr);
+int PMI2_Nameserv_unpublish(const char service_name[],
+                           const PMI_keyval_t *info_ptr);
 
 
 

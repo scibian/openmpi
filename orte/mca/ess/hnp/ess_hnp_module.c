@@ -17,7 +17,6 @@
  * Copyright (c) 2013-2017 Intel, Inc.  All rights reserved.
  * Copyright (c) 2017      Research Organization for Information Science
  *                         and Technology (RIST). All rights reserved.
- * Copyright (c) 2017      IBM Corporation. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -143,7 +142,7 @@ static int rte_init(void)
     uint32_t h;
     int idx;
     orte_topology_t *t;
-    orte_ess_base_signal_t *sig;
+    ess_hnp_signal_t *sig;
 
     /* run the prolog */
     if (ORTE_SUCCESS != (ret = orte_ess_base_std_prolog())) {
@@ -187,7 +186,7 @@ static int rte_init(void)
     signal(SIGHUP, abort_signal_callback);
 
     /** setup callbacks for signals we should forward */
-    if (0 < (idx = opal_list_get_size(&orte_ess_base_signals))) {
+    if (0 < (idx = opal_list_get_size(&mca_ess_hnp_component.signals))) {
         forward_signals_events = (opal_event_t*)malloc(sizeof(opal_event_t) * idx);
         if (NULL == forward_signals_events) {
             ret = ORTE_ERR_OUT_OF_RESOURCE;
@@ -195,7 +194,7 @@ static int rte_init(void)
             goto error;
         }
         idx = 0;
-        OPAL_LIST_FOREACH(sig, &orte_ess_base_signals, orte_ess_base_signal_t) {
+        OPAL_LIST_FOREACH(sig, &mca_ess_hnp_component.signals, ess_hnp_signal_t) {
             setup_sighandler(sig->signal, forward_signals_events + idx, signal_forward_callback);
             ++idx;
         }
@@ -756,18 +755,6 @@ static int rte_init(void)
                        true, error, ORTE_ERROR_NAME(ret), ret);
     }
 
-    /* remove my contact info file, if we have session directories */
-    if (NULL != orte_process_info.job_session_dir) {
-        jobfam_dir = opal_dirname(orte_process_info.job_session_dir);
-        contact_path = opal_os_path(false, jobfam_dir, "contact.txt", NULL);
-        free(jobfam_dir);
-        unlink(contact_path);
-        free(contact_path);
-    }
-    /* remove our use of the session directory tree */
-    orte_session_dir_finalize(ORTE_PROC_MY_NAME);
-    /* ensure we scrub the session directory tree */
-    orte_session_dir_cleanup(ORTE_JOBID_WILDCARD);
     return ORTE_ERR_SILENT;
 }
 
@@ -775,7 +762,7 @@ static int rte_finalize(void)
 {
     char *contact_path;
     char *jobfam_dir;
-    orte_ess_base_signal_t *sig;
+    ess_hnp_signal_t *sig;
     unsigned int i;
 
     if (signals_set) {
@@ -785,7 +772,7 @@ static int rte_finalize(void)
         opal_event_del(&term_handler);
         /** Remove the USR signal handlers */
         i = 0;
-        OPAL_LIST_FOREACH(sig, &orte_ess_base_signals, orte_ess_base_signal_t) {
+        OPAL_LIST_FOREACH(sig, &mca_ess_hnp_component.signals, ess_hnp_signal_t) {
             opal_event_signal_del(forward_signals_events + i);
             ++i;
         }
@@ -833,8 +820,6 @@ static int rte_finalize(void)
     (void) mca_base_framework_close(&orte_rml_base_framework);
     (void) mca_base_framework_close(&orte_oob_base_framework);
 
-    /* remove our use of the session directory tree */
-    orte_session_dir_finalize(ORTE_PROC_MY_NAME);
     /* ensure we scrub the session directory tree */
     orte_session_dir_cleanup(ORTE_JOBID_WILDCARD);
 

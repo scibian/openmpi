@@ -11,7 +11,7 @@
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
  * Copyright (c) 2008-2015 Cisco Systems, Inc.  All rights reserved.
- * Copyright (c) 2012-2017 Los Alamos National Security, LLC. All rights
+ * Copyright (c) 2012-2015 Los Alamos National Security, LLC. All rights
  *                         reserved.
  * Copyright (c) 2014      Intel, Inc. All rights reserved.
  * Copyright (c) 2015      Research Organization for Information Science
@@ -724,7 +724,7 @@ static int var_set_from_string (mca_base_var_t *var, char *src)
     case MCA_BASE_VAR_TYPE_BOOL:
     case MCA_BASE_VAR_TYPE_SIZE_T:
         ret = int_from_string(src, var->mbv_enumerator, &int_value);
-        if (OPAL_SUCCESS != ret ||
+        if (OPAL_ERR_VALUE_OUT_OF_BOUNDS == ret ||
             (MCA_BASE_VAR_TYPE_INT == var->mbv_type && ((int) int_value != (int64_t) int_value)) ||
             (MCA_BASE_VAR_TYPE_UNSIGNED_INT == var->mbv_type && ((unsigned int) int_value != int_value))) {
             if (var->mbv_enumerator) {
@@ -1526,7 +1526,7 @@ int mca_base_var_register (const char *project_name, const char *framework_name,
                            mca_base_var_scope_t scope, void *storage)
 {
     /* Only integer variables can have enumerator */
-    assert (NULL == enumerator || (MCA_BASE_VAR_TYPE_INT == type || MCA_BASE_VAR_TYPE_UNSIGNED_INT == type));
+    assert (NULL == enumerator || MCA_BASE_VAR_TYPE_INT == type);
 
     return register_variable (project_name, framework_name, component_name,
                               variable_name, description, type, enumerator,
@@ -1676,7 +1676,7 @@ static int var_set_from_env (mca_base_var_t *var, mca_base_var_t *original)
         const char *new_variable = "None (going away)";
 
         if (is_synonym) {
-            new_variable = original->mbv_full_name;
+            new_variable = var->mbv_full_name;
         }
 
         switch (var->mbv_source) {
@@ -1927,18 +1927,10 @@ static char *source_name(mca_base_var_t *var)
 static int var_value_string (mca_base_var_t *var, char **value_string)
 {
     const mca_base_var_storage_t *value;
+    const char *tmp;
     int ret;
 
     assert (MCA_BASE_VAR_TYPE_MAX > var->mbv_type);
-
-    /** Parameters with MCA_BASE_VAR_FLAG_DEF_UNSET flag should be shown
-     * as "unset" by default. */
-    if ((var->mbv_flags & MCA_BASE_VAR_FLAG_DEF_UNSET) &&
-        (MCA_BASE_VAR_SOURCE_DEFAULT == var->mbv_source)){
-        asprintf (value_string, "%s", "unset");
-        return OPAL_SUCCESS;
-    }
-
 
     ret = mca_base_var_get_value(var->mbv_index, &value, NULL, NULL);
     if (OPAL_SUCCESS !=ret) {
@@ -1982,13 +1974,18 @@ static int var_value_string (mca_base_var_t *var, char **value_string)
     } else {
         /* we use an enumerator to handle string->bool and bool->string conversion */
         if (MCA_BASE_VAR_TYPE_BOOL == var->mbv_type) {
-            ret = var->mbv_enumerator->string_from_value(var->mbv_enumerator, value->boolval, value_string);
+            ret = var->mbv_enumerator->string_from_value(var->mbv_enumerator, value->boolval, &tmp);
         } else {
-            ret = var->mbv_enumerator->string_from_value(var->mbv_enumerator, value->intval, value_string);
+            ret = var->mbv_enumerator->string_from_value(var->mbv_enumerator, value->intval, &tmp);
         }
 
         if (OPAL_SUCCESS != ret) {
             return ret;
+        }
+
+        *value_string = strdup (tmp);
+        if (NULL == *value_string) {
+            ret = OPAL_ERR_OUT_OF_RESOURCE;
         }
     }
 

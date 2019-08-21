@@ -13,7 +13,6 @@
 # Copyright (c) 2008      Sun Microsystems, Inc.  All rights reserved.
 # Copyright (c) 2012      Los Alamos National Security, LLC.
 #                         All rights reserved.
-# Copyright (c) 2016      IBM Corporation.  All rights reserved.
 # $COPYRIGHT$
 #
 # Additional copyrights may follow
@@ -62,7 +61,7 @@ ompi_info_SOURCES = \
         ompi_info.c \
         param.c
 
-ompi_info_LDADD = $(top_builddir)/ompi/lib@OMPI_LIBMPI_NAME@.la
+ompi_info_LDADD = $(top_builddir)/ompi/libmpi.la
 if OMPI_RTE_ORTE
 ompi_info_LDADD +=  $(top_builddir)/orte/lib@ORTE_LIB_PREFIX@open-rte.la
 endif

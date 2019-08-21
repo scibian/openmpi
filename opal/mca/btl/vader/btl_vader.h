@@ -47,8 +47,8 @@
 #include "opal/class/opal_free_list.h"
 #include "opal/sys/atomic.h"
 #include "opal/mca/btl/btl.h"
-#include "opal/mca/rcache/rcache.h"
-#include "opal/mca/rcache/base/rcache_base_vma.h"
+#include "opal/mca/mpool/mpool.h"
+#include "opal/mca/mpool/base/base.h"
 #include "opal/mca/btl/base/base.h"
 #include "opal/mca/rcache/rcache.h"
 #include "opal/mca/rcache/base/base.h"
@@ -104,7 +104,6 @@ struct mca_btl_vader_component_t {
     int vader_free_list_inc;                /**< number of elements to alloc when growing free lists */
 #if OPAL_BTL_VADER_HAVE_XPMEM
     xpmem_segid_t my_seg_id;                /**< this rank's xpmem segment id */
-    mca_rcache_base_vma_module_t *vma_module; /**< registration cache for xpmem segments */
 #endif
     opal_shmem_ds_t seg_ds;                 /**< this rank's shared memory segment (when not using xpmem) */
 
@@ -153,9 +152,6 @@ struct mca_btl_vader_t {
     mca_btl_base_module_error_cb_fn_t error_cb;
 #if OPAL_BTL_VADER_HAVE_KNEM
     int knem_fd;
-
-    /* registration cache */
-    mca_rcache_base_module_t *knem_rcache;
 #endif
 };
 typedef struct mca_btl_vader_t mca_btl_vader_t;

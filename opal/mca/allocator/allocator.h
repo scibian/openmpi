@@ -27,6 +27,7 @@
 
 #include "opal_config.h"
 #include "opal/mca/mca.h"
+#include "opal/mca/mpool/mpool.h"
 
 BEGIN_C_DECLS
 
@@ -39,14 +40,16 @@ struct mca_allocator_base_module_t;
 typedef void* (*mca_allocator_base_module_alloc_fn_t)(
     struct mca_allocator_base_module_t*,
     size_t size,
-    size_t align);
+    size_t align,
+    mca_mpool_base_registration_t** registration);
 
 /**
   * The realloc function typedef
   */
 typedef void* (*mca_allocator_base_module_realloc_fn_t)(
     struct mca_allocator_base_module_t*,
-    void*, size_t);
+    void*, size_t,
+    mca_mpool_base_registration_t** registration);
 
 /**
   * Free function typedef
@@ -87,7 +90,7 @@ struct mca_allocator_base_module_t {
     mca_allocator_base_module_finalize_fn_t alc_finalize;
     /**< Finalize and free everything */
     /* memory pool and resources */
-    void *alc_context;
+    struct mca_mpool_base_module_t* alc_mpool;
 };
 /**
  * Convenience typedef.
@@ -100,16 +103,19 @@ typedef struct mca_allocator_base_module_t mca_allocator_base_module_t;
   * provided by the module to the allocator framework.
   */
 
-typedef void* (*mca_allocator_base_component_segment_alloc_fn_t)(void *ctx,
-                                                                 size_t *size);
+typedef void* (*mca_allocator_base_component_segment_alloc_fn_t)(
+    struct mca_mpool_base_module_t* module,
+    size_t* size,
+    mca_mpool_base_registration_t** registration);
 
 /**
   * A function to free memory from the control of the allocator framework
   * back to the system. This function is to be provided by the module to the
   * allocator framework.
   */
-typedef void (*mca_allocator_base_component_segment_free_fn_t)(void *ctx,
-                                                               void *segment);
+typedef void (*mca_allocator_base_component_segment_free_fn_t)(
+    struct mca_mpool_base_module_t* module,
+    void* segment);
 
 
 /**
@@ -120,7 +126,7 @@ typedef struct mca_allocator_base_module_t*
     bool enable_mpi_threads,
     mca_allocator_base_component_segment_alloc_fn_t segment_alloc,
     mca_allocator_base_component_segment_free_fn_t segment_free,
-    void *context
+    struct mca_mpool_base_module_t* mpool
 );
 
 /**

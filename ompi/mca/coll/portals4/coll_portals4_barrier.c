@@ -311,7 +311,9 @@ ompi_coll_portals4_ibarrier_intra_fini(ompi_coll_portals4_request_t *request)
         return OMPI_ERROR;
     }
 
+    OPAL_THREAD_LOCK(&ompi_request_lock);
     ompi_request_complete(&request->super, true);
+    OPAL_THREAD_UNLOCK(&ompi_request_lock);
 
     return OMPI_SUCCESS;
 }

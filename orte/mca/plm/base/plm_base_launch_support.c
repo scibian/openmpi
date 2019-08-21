@@ -13,8 +13,8 @@
  * Copyright (c) 2009      Institut National de Recherche en Informatique
  *                         et Automatique. All rights reserved.
  * Copyright (c) 2011-2012 Los Alamos National Security, LLC.
- * Copyright (c) 2013-2017 Intel, Inc.  All rights reserved.
- * Copyright (c) 2014-2017 Research Organization for Information Science
+ * Copyright (c) 2013-2016 Intel, Inc.  All rights reserved.
+ * Copyright (c) 2014-2015 Research Organization for Information Science
  *                         and Technology (RIST). All rights reserved.
  * Copyright (c) 2016      IBM Corporation.  All rights reserved.
  * $COPYRIGHT$
@@ -40,7 +40,7 @@
 #include "opal/util/argv.h"
 #include "opal/class/opal_pointer_array.h"
 #include "opal/dss/dss.h"
-#include "opal/mca/hwloc/hwloc-internal.h"
+#include "opal/mca/hwloc/hwloc.h"
 
 #include "orte/util/dash_host/dash_host.h"
 #include "orte/util/session_dir.h"
@@ -627,7 +627,7 @@ void orte_plm_base_post_launch(int fd, short args, void *cbdata)
      * to register */
     if (!orte_get_attribute(&jdata->attributes, ORTE_JOB_NON_ORTE_JOB, NULL, OPAL_BOOL)) {
         OPAL_OUTPUT_VERBOSE((5, orte_plm_base_framework.framework_output,
-                             "%s plm:base:launch job %s is MPI",
+                             "%s plm:base:launch job %s is not MPI",
                              ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
                              ORTE_JOBID_PRINT(jdata->jobid)));
         goto cleanup;
@@ -757,9 +757,10 @@ void orte_plm_base_registered(int fd, short args, void *cbdata)
     }
 
  cleanup:
-    /* need to init_after_spawn for debuggers */
-    ORTE_ACTIVATE_JOB_STATE(jdata, ORTE_JOB_STATE_READY_FOR_DEBUGGERS);
-
+    /* if this wasn't a debugger job, then need to init_after_spawn for debuggers */
+    if (!ORTE_FLAG_TEST(jdata, ORTE_JOB_FLAG_DEBUGGER_DAEMON)) {
+        ORTE_ACTIVATE_JOB_STATE(jdata, ORTE_JOB_STATE_READY_FOR_DEBUGGERS);
+    }
     OBJ_RELEASE(caddy);
 }
 
@@ -1252,11 +1253,6 @@ int orte_plm_base_orted_append_basic_args(int *argc, char ***argv,
     if (orte_map_stddiag_to_stderr) {
         opal_argv_append(argc, argv, "-"OPAL_MCA_CMD_LINE_ID);
         opal_argv_append(argc, argv, "orte_map_stddiag_to_stderr");
-        opal_argv_append(argc, argv, "1");
-    }
-    else if (orte_map_stddiag_to_stdout) {
-        opal_argv_append(argc, argv, "-"OPAL_MCA_CMD_LINE_ID);
-        opal_argv_append(argc, argv, "orte_map_stddiag_to_stdout");
         opal_argv_append(argc, argv, "1");
     }
 

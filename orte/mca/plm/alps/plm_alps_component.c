@@ -12,7 +12,6 @@
  *                         All rights reserved.
  * Copyright (c) 2015      Los Alamos National Security, LLC. All rights
  *                         reserved.
- * Copyright (c) 2017      Intel, Inc. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -44,6 +43,7 @@
  */
 const char *mca_plm_alps_component_version_string =
   "Open MPI alps plm MCA component version " ORTE_VERSION;
+bool mca_plm_alps_using_aprun = {true};
 
 
 /*
@@ -158,11 +158,7 @@ static int orte_plm_alps_component_query(mca_base_module_t **module, int *priori
     }
 
     if((NULL != wlm_detected) && !strcmp(slurm, wlm_detected)) {
-        /* we are in a Cray SLURM environment, so we don't want
-         * this plm component */
-        *priority = 0;
-        *module = NULL;
-        return ORTE_ERROR;
+        mca_plm_alps_using_aprun = false;
     }
 #endif
 

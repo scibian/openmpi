@@ -10,11 +10,10 @@
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
  * Copyright (c) 2007-2010 Oracle and/or its affiliates.  All rights reserved.
- * Copyright (c) 2007-2017 Cisco Systems, Inc.  All rights reserved
+ * Copyright (c) 2007-2012 Cisco Systems, Inc.  All rights reserved.
  * Copyright (c) 2011-2013 Los Alamos National Security, LLC.
  *                         All rights reserved.
  * Copyright (c) 2013-2015 Intel, Inc. All rights reserved
- * Copyright (c) 2017      IBM Corporation.  All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -44,7 +43,7 @@
 #include "opal/class/opal_ring_buffer.h"
 #include "opal/threads/threads.h"
 #include "opal/mca/event/event.h"
-#include "opal/mca/hwloc/hwloc-internal.h"
+#include "opal/mca/hwloc/hwloc.h"
 #include "opal/mca/hwloc/base/base.h"
 
 #include "orte/mca/plm/plm_types.h"
@@ -573,7 +572,6 @@ ORTE_DECLSPEC extern bool orte_staged_execution;
 
 /* map stddiag output to stderr so it isn't forwarded to mpirun */
 ORTE_DECLSPEC extern bool orte_map_stddiag_to_stderr;
-ORTE_DECLSPEC extern bool orte_map_stddiag_to_stdout;
 
 /* maximum size of virtual machine - used to subdivide allocation */
 ORTE_DECLSPEC extern int orte_max_vm_size;
@@ -588,9 +586,6 @@ ORTE_DECLSPEC extern char *orte_daemon_cores;
 
 /* cutoff for collective modex */
 ORTE_DECLSPEC extern uint32_t orte_direct_modex_cutoff;
-
-/* Max time to wait for stack straces to return */
-ORTE_DECLSPEC extern int orte_stack_trace_wait_timeout;
 
 END_C_DECLS
 

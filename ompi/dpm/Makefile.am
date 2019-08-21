@@ -1,7 +1,6 @@
 # -*- makefile -*-
 #
 # Copyright (c) 2015      Intel, Inc. All rights reserved.
-# Copyright (c) 2016      IBM Corporation.  All rights reserved.
 # $COPYRIGHT$
 #
 # Additional copyrights may follow
@@ -14,6 +13,6 @@
 headers += \
         dpm/dpm.h
 
-lib@OMPI_LIBMPI_NAME@_la_SOURCES += \
+libmpi_la_SOURCES += \
         dpm/dpm.c
 

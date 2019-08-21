@@ -13,7 +13,7 @@
  * Copyright (c) 2008      UT-Battelle, LLC. All rights reserved.
  * Copyright (c) 2011      Sandia National Laboratories. All rights reserved.
  * Copyright (c) 2012-2015 NVIDIA Corporation.  All rights reserved.
- * Copyright (c) 2011-2017 Los Alamos National Security, LLC. All rights
+ * Copyright (c) 2011-2015 Los Alamos National Security, LLC. All rights
  *                         reserved.
  * Copyright (c) 2012      FUJITSU LIMITED.  All rights reserved.
  * Copyright (c) 2014-2015 Research Organization for Information Science
@@ -634,7 +634,6 @@ void mca_pml_ob1_recv_request_progress_rget( mca_pml_ob1_recv_request_t* recvreq
     bytes_remaining = hdr->hdr_rndv.hdr_msg_length;
     recvreq->req_recv.req_bytes_packed = hdr->hdr_rndv.hdr_msg_length;
     recvreq->req_send_offset = 0;
-    recvreq->req_rdma_offset = 0;
 
     MCA_PML_OB1_RECV_REQUEST_MATCHED(recvreq, &hdr->hdr_rndv.hdr_match);
 
@@ -755,14 +754,13 @@ void mca_pml_ob1_recv_request_progress_rget( mca_pml_ob1_recv_request_t* recvreq
             frag->rdma_length = bytes_remaining;
         }
 
-        prev_sent = frag->rdma_length;
-
         /* NTH: TODO -- handle error conditions gracefully */
         rc = mca_pml_ob1_recv_request_get_frag(frag);
         if (OMPI_SUCCESS != rc) {
             break;
         }
 
+        prev_sent = frag->rdma_length;
         bytes_remaining -= prev_sent;
         offset += prev_sent;
     }

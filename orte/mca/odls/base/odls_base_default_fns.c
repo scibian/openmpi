@@ -13,8 +13,8 @@
  * Copyright (c) 2011      Oak Ridge National Labs.  All rights reserved.
  * Copyright (c) 2011-2015 Los Alamos National Security, LLC.
  *                         All rights reserved.
- * Copyright (c) 2011-2017 Cisco Systems, Inc.  All rights reserved
- * Copyright (c) 2013-2017 Intel, Inc.  All rights reserved.
+ * Copyright (c) 2011-2013 Cisco Systems, Inc.  All rights reserved.
+ * Copyright (c) 2013-2016 Intel, Inc.  All rights reserved.
  * Copyright (c) 2014      Research Organization for Information Science
  *                         and Technology (RIST). All rights reserved.
  * Copyright (c) 2017      Mellanox Technologies Ltd. All rights reserved.
@@ -52,7 +52,7 @@
 #include "opal/util/path.h"
 #include "opal/util/sys_limits.h"
 #include "opal/dss/dss.h"
-#include "opal/mca/hwloc/hwloc-internal.h"
+#include "opal/mca/hwloc/hwloc.h"
 #include "opal/mca/shmem/base/base.h"
 #include "opal/mca/pstat/pstat.h"
 #include "opal/mca/pmix/pmix.h"
@@ -167,8 +167,7 @@ int orte_odls_base_default_get_add_procs_data(opal_buffer_t *data,
      * copy of all active jobs so the grpcomm collectives can
      * properly work should a proc from one of the other jobs
      * interact with this one */
-    if (orte_get_attribute(&jdata->attributes, ORTE_JOB_LAUNCHED_DAEMONS, NULL, OPAL_BOOL) ||
-        ORTE_JOBID_INVALID != jdata->originator.jobid) {
+    if (orte_get_attribute(&jdata->attributes, ORTE_JOB_LAUNCHED_DAEMONS, NULL, OPAL_BOOL)) {
         OBJ_CONSTRUCT(&jobdata, opal_buffer_t);
         numjobs = 0;
         for (i=0; i < orte_job_data->size; i++) {
@@ -711,7 +710,7 @@ void orte_odls_base_default_launch_local(int fd, short sd, void *cbdata)
         /* setup the environment for this app */
         if (ORTE_SUCCESS != (rc = orte_schizo.setup_fork(jobdat, app))) {
 
-            OPAL_OUTPUT_VERBOSE((5, orte_odls_base_framework.framework_output,
+            OPAL_OUTPUT_VERBOSE((10, orte_odls_base_framework.framework_output,
                                  "%s odls:launch:setup_fork failed with error %s",
                                  ORTE_NAME_PRINT(ORTE_PROC_MY_NAME),
                                  ORTE_ERROR_NAME(rc)));

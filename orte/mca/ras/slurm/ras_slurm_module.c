@@ -15,7 +15,6 @@
  * Copyright (c) 2013-2014 Intel, Inc. All rights reserved.
  * Copyright (c) 2015      Research Organization for Information Science
  *                         and Technology (RIST). All rights reserved.
- * Copyright (c) 2016      IBM Corporation.  All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -406,7 +405,6 @@ static int orte_ras_slurm_discover(char *regexp, char *tasks_per_node,
     int *slots;
     bool found_range = false;
     bool more_to_come = false;
-    char *ptr;
 
     orig = base = strdup(regexp);
     if (NULL == base) {
@@ -569,12 +567,6 @@ static int orte_ras_slurm_discover(char *regexp, char *tasks_per_node,
 
     for (i = 0; NULL != names && NULL != names[i]; ++i) {
         orte_node_t *node;
-
-        if( !orte_keep_fqdn_hostnames && !opal_net_isaddr(names[i]) ) {
-            if (NULL != (ptr = strchr(names[i], '.'))) {
-                *ptr = '\0';
-            }
-        }
 
         OPAL_OUTPUT_VERBOSE((1, orte_ras_base_framework.framework_output,
                              "%s ras:slurm:allocate:discover: adding node %s (%d slot%s)",

@@ -15,7 +15,6 @@
  * Copyright (c) 2010-2011 Oak Ridge National Labs.  All rights reserved.
  * Copyright (c) 2012      Los Alamos National Security, LLC.
  *                         All rights reserved.
- * Copyright (c) 2016      Intel, Inc.  All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -178,89 +177,43 @@ static void backend_fatal_aggregate(char *type,
                                     char *name, int *error_code,
                                     va_list arglist)
 {
-    char *arg = NULL, *prefix = NULL, *err_msg = NULL;
-    const char* const unknown_error_code = "Error code: %d (no associated error message)";
-    const char* const unknown_error = "Unknown error";
-    const char* const unknown_prefix = "[?:?]";
-    bool generated = false;
-
-    // these do not own what they point to; they're
-    // here to avoid repeating expressions such as
-    // (NULL == foo) ? unknown_foo : foo
-    const char* usable_prefix = unknown_prefix;
-    const char* usable_err_msg = unknown_error;
+    char *arg, *prefix, *err_msg = "Unknown error";
+    bool err_msg_need_free = false;
 
     assert(ompi_mpi_initialized && !ompi_mpi_finalized);
 
     arg = va_arg(arglist, char*);
     va_end(arglist);
 
-    if (asprintf(&prefix, "[%s:%d]",
-                 ompi_process_info.nodename,
-                 (int) ompi_process_info.pid) == -1) {
-        prefix = NULL;
-        // non-fatal, we could still go on to give useful information here...
-        opal_output(0, "%s", "Could not write node and PID to prefix");
-        opal_output(0, "Node: %s", ompi_process_info.nodename);
-        opal_output(0, "PID: %d", (int) ompi_process_info.pid);
-    }
+    asprintf(&prefix, "[%s:%d]", ompi_process_info.nodename,
+             (int) ompi_process_info.pid);
 
     if (NULL != error_code) {
         err_msg = ompi_mpi_errnum_get_string(*error_code);
         if (NULL == err_msg) {
-            if (asprintf(&err_msg, unknown_error_code,
-                         *error_code) == -1) {
-                err_msg = NULL;
-                opal_output(0, "%s", "Could not write to err_msg");
-                opal_output(0, unknown_error_code, *error_code);
-            } else {
-                generated = true;
-            }
+            err_msg_need_free = true;
+            asprintf(&err_msg, "Error code: %d (no associated error message)",
+                     *error_code);
         }
     }
 
-    usable_prefix  = (NULL == prefix)  ? unknown_prefix : prefix;
-    usable_err_msg = (NULL == err_msg) ? unknown_error  : err_msg;
-
     if (NULL != name) {
         opal_show_help("help-mpi-errors.txt",
-                       "mpi_errors_are_fatal",
-                       false,
-                       usable_prefix,
-                       (NULL == arg) ? "" : "in",
+                       "mpi_errors_are_fatal", false,
+                       prefix, (NULL == arg) ? "" : "in",
                        (NULL == arg) ? "" : arg,
-                       usable_prefix,
-                       OMPI_PROC_MY_NAME->jobid,
-                       OMPI_PROC_MY_NAME->vpid,
-                       usable_prefix,
-                       type,
-                       name,
-                       usable_prefix,
-                       usable_err_msg,
-                       usable_prefix,
-                       type,
-                       usable_prefix);
+                       prefix, OMPI_PROC_MY_NAME->jobid, OMPI_PROC_MY_NAME->vpid,
+                       prefix, type, name, prefix, err_msg, prefix, type, prefix);
     } else {
         opal_show_help("help-mpi-errors.txt",
-                       "mpi_errors_are_fatal unknown handle",
-                       false,
-                       usable_prefix,
-                       (NULL == arg) ? "" : "in",
+                       "mpi_errors_are_fatal unknown handle", false,
+                       prefix, (NULL == arg) ? "" : "in",
                        (NULL == arg) ? "" : arg,
-                       usable_prefix,
-                       OMPI_PROC_MY_NAME->jobid,
-                       OMPI_PROC_MY_NAME->vpid,
-                       usable_prefix,
-                       type,
-                       usable_prefix,
-                       usable_err_msg,
-                       usable_prefix,
-                       type,
-                       usable_prefix);
+                       prefix, OMPI_PROC_MY_NAME->jobid, OMPI_PROC_MY_NAME->vpid,
+                       prefix, type, prefix, err_msg, prefix, type, prefix);
     }
 
-    free(prefix);
-    if (generated) {
+    if (err_msg_need_free) {
         free(err_msg);
     }
 }

@@ -11,7 +11,7 @@
 #                         All rights reserved.
 # Copyright (c) 2006-2015 Cisco Systems, Inc.  All rights reserved.
 # Copyright (c) 2012-2013 Los Alamos National Security, Inc.  All rights reserved.
-# Copyright (c) 2013-2017 Intel, Inc. All rights reserved.
+# Copyright (c) 2013-2015 Intel, Inc. All rights reserved
 # $COPYRIGHT$
 #
 # Additional copyrights may follow
@@ -33,7 +33,6 @@ EXTRA_DIST =
 dist_pmixdata_DATA =
 if ! PMIX_EMBEDDED_MODE
 dist_pmixdata_DATA += contrib/pmix-valgrind.supp
-
 
 man_MANS = \
         man/man3/pmix_init.3 \
@@ -59,13 +58,6 @@ include src/client/Makefile.am
 include src/server/Makefile.am
 include src/sec/Makefile.am
 include src/common/Makefile.am
-
-include src/atomics/sys/Makefile.include
-
-if WANT_DSTORE
-include src/sm/Makefile.am
-include src/dstore/Makefile.am
-endif
 
 if PMIX_EMBEDDED_MODE
 noinst_LTLIBRARIES = libpmix.la
@@ -104,8 +96,6 @@ EXTRA_DIST += README INSTALL VERSION LICENSE autogen.sh \
              test/test_spawn.h test/utils.h test/test_cd.h
 
 
-#
-# Copy over all the generated files
-#
 dist-hook:
 	env LS_COLORS= sh "$(top_srcdir)/config/distscript.sh" "$(top_srcdir)" "$(distdir)" "$(PMIX_VERSION)" "$(PMIX_REPO_REV)"
+

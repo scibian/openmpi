@@ -77,7 +77,7 @@ mca_allocator_base_module_t* mca_allocator_basic_component_init(
     bool enable_mpi_threads,
     mca_allocator_base_component_segment_alloc_fn_t segment_alloc,
     mca_allocator_base_component_segment_free_fn_t segment_free,
-    void *ctx
+    struct mca_mpool_base_module_t* module
 );
 
 /**
@@ -94,7 +94,8 @@ mca_allocator_base_module_t* mca_allocator_basic_component_init(
     void * mca_allocator_basic_alloc(
         mca_allocator_base_module_t * mem,
         size_t size,
-        size_t align);
+        size_t align,
+        mca_mpool_base_registration_t** registration);
 
 /**
    * Attempts to resize the passed region of memory into a larger or a smaller
@@ -113,7 +114,8 @@ mca_allocator_base_module_t* mca_allocator_basic_component_init(
     void * mca_allocator_basic_realloc(
         mca_allocator_base_module_t * mem,
         void * ptr,
-        size_t size);
+        size_t size,
+        mca_mpool_base_registration_t** registration);
 
 /**
    * Frees the passed region of memory

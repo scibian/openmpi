@@ -13,7 +13,6 @@
 # Copyright (c) 2014      Intel, Inc. All rights reserved.
 # Copyright (c) 2015      Los Alamos National Security, LLC.
 #                         All rights reserved.
-# Copyright (c) 2016      IBM Corporation.  All rights reserved.
 # $COPYRIGHT$
 #
 # Additional copyrights may follow
@@ -30,7 +29,7 @@ headers += \
         runtime/params.h \
 	runtime/ompi_info_support.h
 
-lib@OMPI_LIBMPI_NAME@_la_SOURCES += \
+libmpi_la_SOURCES += \
         runtime/ompi_mpi_abort.c \
         runtime/ompi_mpi_init.c \
         runtime/ompi_mpi_finalize.c \

@@ -13,7 +13,6 @@
  * Copyright (c) 2012-2015 Los Alamos National Security, LLC.
  *                         All rights reserved
  * Copyright (c) 2014      Intel, Inc. All rights reserved.
- * Copyright (c) 2016      IBM Corporation.  All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -61,9 +60,6 @@ struct orterun_globals_t {
     bool run_as_root;
     char *personality;
     bool dvm;
-    int timeout;
-    bool report_state_on_timeout;
-    bool get_stack_traces;
 };
 
 /**

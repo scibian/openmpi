@@ -3,7 +3,6 @@
  *                         All rights reserved.
  * Copyright (c) 2016      Research Organization for Information Science
  *                         and Technology (RIST). All rights reserved.
- * Copyright (c) 2017      Cisco Systems, Inc.  All rights reserved
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -22,7 +21,7 @@
 #include "opal/class/opal_list.h"
 #include "opal/util/proc.h"
 #include "opal/dss/dss_types.h"
-#include "opal/mca/hwloc/hwloc-internal.h"
+#include "opal/mca/hwloc/hwloc.h"
 
 #include "orte/types.h"
 #include "orte/runtime/orte_globals.h"

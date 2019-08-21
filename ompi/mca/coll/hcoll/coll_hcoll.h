@@ -17,7 +17,6 @@
 #include "mpi.h"
 #include "ompi/mca/mca.h"
 #include "opal/memoryhooks/memory.h"
-#include "opal/mca/memory/base/base.h"
 #include "ompi/mca/coll/coll.h"
 #include "ompi/request/request.h"
 #include "ompi/mca/pml/pml.h"

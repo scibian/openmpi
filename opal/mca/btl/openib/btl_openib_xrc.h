@@ -1,4 +1,3 @@
-/* -*- Mode: C; c-basic-offset:4 ; indent-tabs-mode:nil -*- */
 /*
  * Copyright (c) 2007-2008 Mellanox Technologies. All rights reserved.
  * Copyright (c) 2014      Research Organization for Information Science
@@ -6,8 +5,6 @@
  * Copyright (c) 2014      Bull SAS.  All rights reserved.
  * Copyright (c) 2015      Research Organization for Information Science
  *                         and Technology (RIST). All rights reserved.
- * Copyright (c) 2016      Los Alamos National Security, LLC. All rights
- *                         reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -46,7 +43,6 @@ struct ib_address_t {
     uint32_t remote_xrc_rcv_qp_num;        /* remote xrc qp number */
     opal_mutex_t addr_lock;                /* protection */
     mca_btl_openib_ib_addr_state_t status; /* ib port status */
-    int32_t max_wqe;
 };
 typedef struct ib_address_t ib_address_t;
 

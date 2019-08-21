@@ -12,7 +12,7 @@
  * Copyright (c) 2006-2014 Cisco Systems, Inc.  All rights reserved.
  * Copyright (c) 2007-2015 Los Alamos National Security, LLC.  All rights
  *                         reserved.
- * Copyright (c) 2014-2017 Intel, Inc. All rights reserved.
+ * Copyright (c) 2014      Intel Corporation.  All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -65,7 +65,7 @@
 #include "orte/runtime/orte_wait.h"
 #include "orte/runtime/orte_quit.h"
 #include "orte/mca/errmgr/errmgr.h"
-#include "orte/mca/rmaps/base/base.h"
+#include "orte/mca/rmaps/rmaps.h"
 #include "orte/mca/state/state.h"
 
 #include "orte/orted/orted.h"

@@ -12,7 +12,7 @@
  *                         All rights reserved.
  * Copyright (c) 2007-2010 Cisco Systems, Inc.  All rights reserved.
  * Copyright (c) 2010      Oracle and/or its affiliates.  All rights reserved
- * Copyright (c) 2013-2017 Los Alamos National Security, LLC. All rights
+ * Copyright (c) 2013-2015 Los Alamos National Security, LLC. All rights
  *                         reserved.
  * $COPYRIGHT$
  *
@@ -80,9 +80,12 @@ mca_pml_base_component_2_0_0_t mca_pml_ob1_component = {
     .pmlm_finalize = mca_pml_ob1_component_fini,
 };
 
-void *mca_pml_ob1_seg_alloc (void *ctx, size_t* size);
+void *mca_pml_ob1_seg_alloc( struct mca_mpool_base_module_t* mpool,
+                             size_t* size,
+                             mca_mpool_base_registration_t** registration);
 
-void mca_pml_ob1_seg_free (void *ctx, void *segment);
+void mca_pml_ob1_seg_free( struct mca_mpool_base_module_t* mpool,
+                           void* segment );
 
 static inline int mca_pml_ob1_param_register_int(
     const char* param_name,
@@ -295,6 +298,12 @@ mca_pml_ob1_component_init( int* priority,
 
     }
 
+    /* Set this here (vs in component_open()) because
+       opal_leave_pinned* may have been set after MCA params were
+       read (e.g., by the openib btl) */
+    mca_pml_ob1.leave_pinned = (1 == opal_leave_pinned);
+    mca_pml_ob1.leave_pinned_pipeline = (int) opal_leave_pinned_pipeline;
+
     return &mca_pml_ob1.super;
 }
 
@@ -357,12 +366,13 @@ int mca_pml_ob1_component_fini(void)
     return OMPI_SUCCESS;
 }
 
-void *mca_pml_ob1_seg_alloc (void *ctx, size_t *size)
-{
+void *mca_pml_ob1_seg_alloc( struct mca_mpool_base_module_t* mpool,
+                             size_t* size,
+                             mca_mpool_base_registration_t** registration) {
     return malloc(*size);
 }
 
-void mca_pml_ob1_seg_free (void *ctx, void *segment)
-{
+void mca_pml_ob1_seg_free( struct mca_mpool_base_module_t* mpool,
+                           void* segment ) {
     free(segment);
 }

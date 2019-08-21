@@ -1,8 +1,0 @@
-# openmpi-gcc-hfi path must be consistent across platforms
-openmpi-gcc-hfi: file-in-unusual-dir
-# openmpi-gcc-hfi path must be consistent across platforms
-openmpi-gcc-hfi: non-standard-dir-in-usr usr/mpi/
-# openmpi-gcc-hfi: upstream ships .la files with dependency_libs
-openmpi-gcc-hfi: non-empty-dependency_libs-in-la-file
-# openmpi-gcc-hfi path must be consistent across platforms
-openmpi-gcc-hfi: jar-not-in-usr-share

@@ -5,7 +5,7 @@
  *                         Corporation.  All rights reserved.
  * Copyright (c) 2006      The Technical University of Chemnitz. All
  *                         rights reserved.
- * Copyright (c) 2014-2017 Research Organization for Information Science
+ * Copyright (c) 2014-2016 Research Organization for Information Science
  *                         and Technology (RIST). All rights reserved.
  * Copyright (c) 2015      Los Alamos National Security, LLC. All rights
  *                         reserved.
@@ -45,13 +45,18 @@ int ompi_coll_libnbc_ialltoallw(const void* sendbuf, const int *sendcounts, cons
   NBC_Schedule *schedule;
   char *rbuf, *sbuf, inplace;
   ptrdiff_t span=0;
-  void *tmpbuf = NULL;
+  NBC_Handle *handle;
   ompi_coll_libnbc_module_t *libnbc_module = (ompi_coll_libnbc_module_t*) module;
 
   NBC_IN_PLACE(sendbuf, recvbuf, inplace);
 
   rank = ompi_comm_rank (comm);
   p = ompi_comm_size (comm);
+
+  res = NBC_Init_handle (comm, &handle, libnbc_module);
+  if (OPAL_UNLIKELY(OMPI_SUCCESS != res)) {
+    return res;
+  }
 
   /* copy data to receivbuffer */
   if (inplace) {
@@ -62,12 +67,9 @@ int ompi_coll_libnbc_ialltoallw(const void* sendbuf, const int *sendcounts, cons
         span = lspan;
       }
     }
-    if (OPAL_UNLIKELY(0 == span)) {
-      *request = &ompi_request_empty;
-      return OMPI_SUCCESS;
-    }
-    tmpbuf = malloc(span);
-    if (OPAL_UNLIKELY(NULL == tmpbuf)) {
+    handle->tmpbuf = malloc(span);
+    if (OPAL_UNLIKELY(NULL == handle->tmpbuf)) {
+      NBC_Return_handle (handle);
       return OMPI_ERR_OUT_OF_RESOURCE;
     }
     sendcounts = recvcounts;
@@ -84,7 +86,7 @@ int ompi_coll_libnbc_ialltoallw(const void* sendbuf, const int *sendcounts, cons
 
   schedule = OBJ_NEW(NBC_Schedule);
   if (OPAL_UNLIKELY(NULL == schedule)) {
-    free(tmpbuf);
+    NBC_Return_handle (handle);
     return OMPI_ERR_OUT_OF_RESOURCE;
   }
 
@@ -97,24 +99,25 @@ int ompi_coll_libnbc_ialltoallw(const void* sendbuf, const int *sendcounts, cons
                             recvbuf, recvcounts, rdispls, recvtypes);
   }
   if (OPAL_UNLIKELY(OMPI_SUCCESS != res)) {
+    NBC_Return_handle (handle);
     OBJ_RELEASE(schedule);
-    free(tmpbuf);
     return res;
   }
 
   res = NBC_Sched_commit (schedule);
   if (OPAL_UNLIKELY(OMPI_SUCCESS != res)) {
+    NBC_Return_handle (handle);
     OBJ_RELEASE(schedule);
-    free(tmpbuf);
     return res;
   }
 
-  res = NBC_Schedule_request(schedule, comm, libnbc_module, request, tmpbuf);
+  res = NBC_Start (handle, schedule);
   if (OPAL_UNLIKELY(OMPI_SUCCESS != res)) {
-    OBJ_RELEASE(schedule);
-    free(tmpbuf);
+    NBC_Return_handle (handle);
     return res;
   }
+
+  *request = (ompi_request_t *) handle;
 
   return OMPI_SUCCESS;
 } 
@@ -128,6 +131,7 @@ int ompi_coll_libnbc_ialltoallw_inter (const void* sendbuf, const int *sendcount
   int res, rsize;
   NBC_Schedule *schedule;
   char *rbuf, *sbuf;
+  NBC_Handle *handle;
   ompi_coll_libnbc_module_t *libnbc_module = (ompi_coll_libnbc_module_t*) module;
 
   rsize = ompi_comm_remote_size (comm);
@@ -164,11 +168,19 @@ int ompi_coll_libnbc_ialltoallw_inter (const void* sendbuf, const int *sendcount
     return res;
   }
 
-  res = NBC_Schedule_request(schedule, comm, libnbc_module, request, NULL);
+  res = NBC_Init_handle (comm, &handle, libnbc_module);
   if (OPAL_UNLIKELY(OMPI_SUCCESS != res)) {
     OBJ_RELEASE(schedule);
     return res;
   }
+
+  res = NBC_Start (handle, schedule);
+  if (OPAL_UNLIKELY(OMPI_SUCCESS != res)) {
+    NBC_Return_handle (handle);
+    return res;
+  }
+
+  *request = (ompi_request_t *) handle;
 
   return OMPI_SUCCESS;
 }
@@ -181,14 +193,12 @@ static inline int a2aw_sched_linear(int rank, int p, NBC_Schedule *schedule,
   int res;
 
   for (int i = 0; i < p; i++) {
-    ptrdiff_t gap, span;
     if (i == rank) {
       continue;
     }
 
     /* post send */
-    span = opal_datatype_span(&sendtypes[i]->super, sendcounts[i], &gap);
-    if (OPAL_LIKELY(0 < span)) {
+    if (sendcounts[i] != 0) {
       char *sbuf = (char *) sendbuf + sdispls[i];
       res = NBC_Sched_send (sbuf, false, sendcounts[i], sendtypes[i], i, schedule, false);
       if (OPAL_UNLIKELY(OMPI_SUCCESS != res)) {
@@ -196,8 +206,7 @@ static inline int a2aw_sched_linear(int rank, int p, NBC_Schedule *schedule,
       }
     }
     /* post receive */
-    span = opal_datatype_span(&recvtypes[i]->super, recvcounts[i], &gap);
-    if (OPAL_LIKELY(0 < span)) {
+    if (recvcounts[i] != 0) {
       char *rbuf = (char *) recvbuf + rdispls[i];
       res = NBC_Sched_recv (rbuf, false, recvcounts[i], recvtypes[i], i, schedule, false);
       if (OPAL_UNLIKELY(OMPI_SUCCESS != res)) {

@@ -35,9 +35,6 @@
 
 #include "server_callbacks.h"
 #include "utils.h"
-#include "src/include/pmix_globals.h"
-
-bool spawn_wait = false;
 
 int main(int argc, char **argv)
 {
@@ -175,10 +172,6 @@ int main(int argc, char **argv)
         TEST_ERROR(("Test was aborted!"));
         cli_kill_all();
         test_fail = 1;
-    }
-
-    if (0 != params.test_spawn) {
-        PMIX_WAIT_FOR_COMPLETION(spawn_wait);
     }
 
     pmix_argv_free(client_argv);

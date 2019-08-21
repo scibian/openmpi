@@ -1,6 +1,6 @@
 /* -*- Mode: C; c-basic-offset:4 ; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2015-2017 Intel, Inc. All rights reserved.
+ * Copyright (c) 2015-2016 Intel, Inc.  All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -13,7 +13,6 @@
 #include "orte/constants.h"
 
 #include "opal/class/opal_list.h"
-#include "orte/mca/errmgr/errmgr.h"
 #include "orte/mca/schizo/base/base.h"
 
 int orte_schizo_base_parse_cli(char *personality,
@@ -23,7 +22,6 @@ int orte_schizo_base_parse_cli(char *personality,
     orte_schizo_base_active_module_t *mod;
 
     if (NULL == personality) {
-        ORTE_ERROR_LOG(ORTE_ERR_NOT_SUPPORTED);
         return ORTE_ERR_NOT_SUPPORTED;
     }
 
@@ -47,11 +45,6 @@ int orte_schizo_base_parse_env(char *personality,
     int rc;
     orte_schizo_base_active_module_t *mod;
 
-    if (NULL == personality) {
-        ORTE_ERROR_LOG(ORTE_ERR_NOT_SUPPORTED);
-        return ORTE_ERR_NOT_SUPPORTED;
-    }
-
     OPAL_LIST_FOREACH(mod, &orte_schizo_base.active_modules, orte_schizo_base_active_module_t) {
         if (0 == strcmp(personality, mod->component->mca_component_name)) {
             if (NULL != mod->module->parse_env) {
@@ -69,9 +62,9 @@ int orte_schizo_base_setup_fork(orte_job_t *jdata,
     int rc;
     orte_schizo_base_active_module_t *mod;
 
+    /* if no personality was specified, then nothing to do */
     if (NULL == jdata->personality) {
-        ORTE_ERROR_LOG(ORTE_ERR_NOT_SUPPORTED);
-        return ORTE_ERR_NOT_SUPPORTED;
+        return ORTE_SUCCESS;
     }
 
     OPAL_LIST_FOREACH(mod, &orte_schizo_base.active_modules, orte_schizo_base_active_module_t) {
@@ -92,9 +85,9 @@ int orte_schizo_base_setup_child(orte_job_t *jdata,
     int rc;
     orte_schizo_base_active_module_t *mod;
 
+    /* if no personality was specified, then nothing to do */
     if (NULL == jdata->personality) {
-        ORTE_ERROR_LOG(ORTE_ERR_NOT_SUPPORTED);
-        return ORTE_ERR_NOT_SUPPORTED;
+        return ORTE_SUCCESS;
     }
 
     OPAL_LIST_FOREACH(mod, &orte_schizo_base.active_modules, orte_schizo_base_active_module_t) {

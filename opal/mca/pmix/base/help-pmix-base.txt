@@ -1,8 +1,6 @@
  -*- text -*-
 #
 # Copyright (c) 2010      Cisco Systems, Inc.  All rights reserved.
-# Copyright (c) 2016      Los Alamos National Security, LLC. All rights
-#                         reserved.
 #
 # $COPYRIGHT$
 #
@@ -10,11 +8,12 @@
 #
 # $HEADER$
 #
-# This is the US/English general help file for OPAL PMIx base.
+# This is the US/English general help file for OPAL Errmgr HNP module.
 #
-[pmix2-init-failed]
-PMI2_Init failed to intialize.  Return code: %d
+[errmgr-hnp:unknown-job-error]
+An error has occurred in an unknown job. This generally should not happen
+except due to an internal OPAL error.
 
-[pmix2-init-returned-bad-values]
-PMI2_Init was intialized but negative values for job size and/or
-rank was returned.
+Job state: %s
+
+This information should probably be reported to the OMPI developers.

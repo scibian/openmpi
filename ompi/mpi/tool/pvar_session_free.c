@@ -23,19 +23,14 @@
 
 int MPI_T_pvar_session_free(MPI_T_pvar_session *session)
 {
-    int ret = MPI_SUCCESS;
-
     if (!mpit_is_initialized ()) {
         return MPI_T_ERR_NOT_INITIALIZED;
     }
 
-    /* Check that this is a valid session */
-    if (MPI_T_PVAR_SESSION_NULL == *session) {
-        ret = MPI_T_ERR_INVALID_SESSION;
-    } else {
+    if (NULL != *session) {
         OBJ_RELEASE(*session);
-        *session = MPI_T_PVAR_SESSION_NULL;
+        *session = NULL;
     }
 
-    return ret;
+    return MPI_SUCCESS;
 }

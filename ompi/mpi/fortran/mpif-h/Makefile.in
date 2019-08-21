@@ -32,7 +32,6 @@
 #                         reserved.
 # Copyright (c) 2015      Research Organization for Information Science
 #                         and Technology (RIST). All rights reserved.
-# Copyright (c) 2016      IBM Corporation.  All rights reserved.
 # $COPYRIGHT$
 #
 # Additional copyrights may follow
@@ -130,7 +129,7 @@ target_triplet = @target@
 # Are we building the mpif.h bindings at all?
 # If yes, then we need to build the installable library and the glue
 # convenience library that will be sucked up into the main libmpi.
-@OMPI_BUILD_FORTRAN_MPIFH_BINDINGS_TRUE@am__append_1 = lib@OMPI_LIBMPI_NAME@_mpifh.la
+@OMPI_BUILD_FORTRAN_MPIFH_BINDINGS_TRUE@am__append_1 = libmpi_mpifh.la
 # Do we need to suck in the convenience library from the lower
 # directory?
 @BUILD_PMPI_FORTRAN_MPIFH_BINDINGS_LAYER_TRUE@@OMPI_BUILD_FORTRAN_MPIFH_BINDINGS_TRUE@am__append_2 = profile/libmpi_mpifh_pmpi.la
@@ -575,6 +574,7 @@ am__aclocal_m4_deps = $(top_srcdir)/config/c_get_alignment.m4 \
 	$(top_srcdir)/config/opal_check_compiler_version.m4 \
 	$(top_srcdir)/config/opal_check_compiler_works.m4 \
 	$(top_srcdir)/config/opal_check_cray_pmi.m4 \
+	$(top_srcdir)/config/opal_check_cray_xpmem.m4 \
 	$(top_srcdir)/config/opal_check_cuda.m4 \
 	$(top_srcdir)/config/opal_check_icc.m4 \
 	$(top_srcdir)/config/opal_check_ident.m4 \
@@ -593,7 +593,6 @@ am__aclocal_m4_deps = $(top_srcdir)/config/c_get_alignment.m4 \
 	$(top_srcdir)/config/opal_check_verbs.m4 \
 	$(top_srcdir)/config/opal_check_visibility.m4 \
 	$(top_srcdir)/config/opal_check_withdir.m4 \
-	$(top_srcdir)/config/opal_check_xpmem.m4 \
 	$(top_srcdir)/config/opal_config_asm.m4 \
 	$(top_srcdir)/config/opal_config_files.m4 \
 	$(top_srcdir)/config/opal_config_pthreads.m4 \
@@ -616,7 +615,6 @@ am__aclocal_m4_deps = $(top_srcdir)/config/c_get_alignment.m4 \
 	$(top_srcdir)/config/opal_setup_java.m4 \
 	$(top_srcdir)/config/opal_setup_wrappers.m4 \
 	$(top_srcdir)/config/opal_strip_optflags.m4 \
-	$(top_srcdir)/config/opal_summary.m4 \
 	$(top_srcdir)/config/opal_try_assemble.m4 \
 	$(top_srcdir)/config/orte_check_alps.m4 \
 	$(top_srcdir)/config/orte_check_loadleveler.m4 \
@@ -642,26 +640,26 @@ am__aclocal_m4_deps = $(top_srcdir)/config/c_get_alignment.m4 \
 	$(top_srcdir)/opal/mca/memory/configure.m4 \
 	$(top_srcdir)/opal/mca/pstat/configure.m4 \
 	$(top_srcdir)/opal/mca/timer/configure.m4 \
-	$(top_srcdir)/opal/mca/common/cuda/configure.m4 \
-	$(top_srcdir)/opal/mca/common/ugni/configure.m4 \
-	$(top_srcdir)/opal/mca/common/libfabric/configure.m4 \
-	$(top_srcdir)/opal/mca/common/verbs/configure.m4 \
 	$(top_srcdir)/opal/mca/common/sm/configure.m4 \
+	$(top_srcdir)/opal/mca/common/verbs/configure.m4 \
+	$(top_srcdir)/opal/mca/common/cuda/configure.m4 \
+	$(top_srcdir)/opal/mca/common/libfabric/configure.m4 \
+	$(top_srcdir)/opal/mca/common/ugni/configure.m4 \
 	$(top_srcdir)/opal/mca/common/verbs_usnic/configure.m4 \
 	$(top_srcdir)/opal/mca/backtrace/execinfo/configure.m4 \
 	$(top_srcdir)/opal/mca/backtrace/printstack/configure.m4 \
 	$(top_srcdir)/opal/mca/backtrace/none/configure.m4 \
-	$(top_srcdir)/opal/mca/btl/vader/configure.m4 \
 	$(top_srcdir)/opal/mca/btl/portals4/configure.m4 \
+	$(top_srcdir)/opal/mca/btl/sm/configure.m4 \
+	$(top_srcdir)/opal/mca/btl/tcp/configure.m4 \
+	$(top_srcdir)/opal/mca/btl/usnic/configure.m4 \
+	$(top_srcdir)/opal/mca/btl/openib/configure.m4 \
+	$(top_srcdir)/opal/mca/btl/vader/configure.m4 \
+	$(top_srcdir)/opal/mca/btl/scif/configure.m4 \
 	$(top_srcdir)/opal/mca/btl/ugni/configure.m4 \
 	$(top_srcdir)/opal/mca/btl/smcuda/configure.m4 \
-	$(top_srcdir)/opal/mca/btl/scif/configure.m4 \
-	$(top_srcdir)/opal/mca/btl/usnic/configure.m4 \
-	$(top_srcdir)/opal/mca/btl/sm/configure.m4 \
-	$(top_srcdir)/opal/mca/btl/openib/configure.m4 \
-	$(top_srcdir)/opal/mca/btl/tcp/configure.m4 \
-	$(top_srcdir)/opal/mca/dl/dlopen/configure.m4 \
 	$(top_srcdir)/opal/mca/dl/libltdl/configure.m4 \
+	$(top_srcdir)/opal/mca/dl/dlopen/configure.m4 \
 	$(top_srcdir)/opal/mca/event/libevent2022/configure.m4 \
 	$(top_srcdir)/opal/mca/event/external/configure.m4 \
 	$(top_srcdir)/opal/mca/hwloc/hwloc1112/configure.m4 \
@@ -672,60 +670,60 @@ am__aclocal_m4_deps = $(top_srcdir)/config/c_get_alignment.m4 \
 	$(top_srcdir)/opal/mca/hwloc/hwloc1112/hwloc/config/hwloc_check_vendor.m4 \
 	$(top_srcdir)/opal/mca/hwloc/hwloc1112/hwloc/config/hwloc_components.m4 \
 	$(top_srcdir)/opal/mca/hwloc/external/configure.m4 \
-	$(top_srcdir)/opal/mca/if/posix_ipv4/configure.m4 \
-	$(top_srcdir)/opal/mca/if/linux_ipv6/configure.m4 \
-	$(top_srcdir)/opal/mca/if/bsdx_ipv6/configure.m4 \
-	$(top_srcdir)/opal/mca/if/bsdx_ipv4/configure.m4 \
 	$(top_srcdir)/opal/mca/if/solaris_ipv6/configure.m4 \
+	$(top_srcdir)/opal/mca/if/posix_ipv4/configure.m4 \
+	$(top_srcdir)/opal/mca/if/bsdx_ipv6/configure.m4 \
+	$(top_srcdir)/opal/mca/if/linux_ipv6/configure.m4 \
+	$(top_srcdir)/opal/mca/if/bsdx_ipv4/configure.m4 \
 	$(top_srcdir)/opal/mca/installdirs/env/configure.m4 \
 	$(top_srcdir)/opal/mca/installdirs/config/configure.m4 \
 	$(top_srcdir)/opal/mca/memchecker/valgrind/configure.m4 \
 	$(top_srcdir)/opal/mca/memory/malloc_solaris/configure.m4 \
 	$(top_srcdir)/opal/mca/memory/patcher/configure.m4 \
-	$(top_srcdir)/opal/mca/mpool/memkind/configure.m4 \
+	$(top_srcdir)/opal/mca/memory/linux/configure.m4 \
+	$(top_srcdir)/opal/mca/mpool/rgpusm/configure.m4 \
+	$(top_srcdir)/opal/mca/mpool/udreg/configure.m4 \
+	$(top_srcdir)/opal/mca/mpool/gpusm/configure.m4 \
 	$(top_srcdir)/opal/mca/patcher/overwrite/configure.m4 \
 	$(top_srcdir)/opal/mca/pmix/s2/configure.m4 \
-	$(top_srcdir)/opal/mca/pmix/s1/configure.m4 \
 	$(top_srcdir)/opal/mca/pmix/pmix112/configure.m4 \
-	$(top_srcdir)/opal/mca/pmix/cray/configure.m4 \
 	$(top_srcdir)/opal/mca/pmix/external/configure.m4 \
-	$(top_srcdir)/opal/mca/pstat/linux/configure.m4 \
+	$(top_srcdir)/opal/mca/pmix/s1/configure.m4 \
+	$(top_srcdir)/opal/mca/pmix/cray/configure.m4 \
 	$(top_srcdir)/opal/mca/pstat/test/configure.m4 \
-	$(top_srcdir)/opal/mca/rcache/rgpusm/configure.m4 \
-	$(top_srcdir)/opal/mca/rcache/udreg/configure.m4 \
-	$(top_srcdir)/opal/mca/rcache/gpusm/configure.m4 \
+	$(top_srcdir)/opal/mca/pstat/linux/configure.m4 \
 	$(top_srcdir)/opal/mca/sec/keystone/configure.m4 \
 	$(top_srcdir)/opal/mca/sec/munge/configure.m4 \
+	$(top_srcdir)/opal/mca/shmem/mmap/configure.m4 \
 	$(top_srcdir)/opal/mca/shmem/posix/configure.m4 \
 	$(top_srcdir)/opal/mca/shmem/sysv/configure.m4 \
-	$(top_srcdir)/opal/mca/shmem/mmap/configure.m4 \
-	$(top_srcdir)/opal/mca/timer/linux/configure.m4 \
-	$(top_srcdir)/opal/mca/timer/darwin/configure.m4 \
-	$(top_srcdir)/opal/mca/timer/solaris/configure.m4 \
 	$(top_srcdir)/opal/mca/timer/altix/configure.m4 \
+	$(top_srcdir)/opal/mca/timer/darwin/configure.m4 \
+	$(top_srcdir)/opal/mca/timer/linux/configure.m4 \
+	$(top_srcdir)/opal/mca/timer/solaris/configure.m4 \
 	$(top_srcdir)/orte/mca/common/alps/configure.m4 \
+	$(top_srcdir)/orte/mca/ess/alps/configure.m4 \
 	$(top_srcdir)/orte/mca/ess/tm/configure.m4 \
 	$(top_srcdir)/orte/mca/ess/lsf/configure.m4 \
 	$(top_srcdir)/orte/mca/ess/slurm/configure.m4 \
-	$(top_srcdir)/orte/mca/ess/alps/configure.m4 \
 	$(top_srcdir)/orte/mca/odls/alps/configure.m4 \
 	$(top_srcdir)/orte/mca/odls/default/configure.m4 \
-	$(top_srcdir)/orte/mca/oob/usock/configure.m4 \
+	$(top_srcdir)/orte/mca/oob/tcp/configure.m4 \
 	$(top_srcdir)/orte/mca/oob/alps/configure.m4 \
 	$(top_srcdir)/orte/mca/oob/ud/configure.m4 \
-	$(top_srcdir)/orte/mca/oob/tcp/configure.m4 \
+	$(top_srcdir)/orte/mca/oob/usock/configure.m4 \
 	$(top_srcdir)/orte/mca/plm/rsh/configure.m4 \
-	$(top_srcdir)/orte/mca/plm/isolated/configure.m4 \
+	$(top_srcdir)/orte/mca/plm/alps/configure.m4 \
 	$(top_srcdir)/orte/mca/plm/tm/configure.m4 \
+	$(top_srcdir)/orte/mca/plm/isolated/configure.m4 \
 	$(top_srcdir)/orte/mca/plm/lsf/configure.m4 \
 	$(top_srcdir)/orte/mca/plm/slurm/configure.m4 \
-	$(top_srcdir)/orte/mca/plm/alps/configure.m4 \
-	$(top_srcdir)/orte/mca/ras/tm/configure.m4 \
 	$(top_srcdir)/orte/mca/ras/gridengine/configure.m4 \
-	$(top_srcdir)/orte/mca/ras/loadleveler/configure.m4 \
-	$(top_srcdir)/orte/mca/ras/lsf/configure.m4 \
-	$(top_srcdir)/orte/mca/ras/slurm/configure.m4 \
 	$(top_srcdir)/orte/mca/ras/alps/configure.m4 \
+	$(top_srcdir)/orte/mca/ras/tm/configure.m4 \
+	$(top_srcdir)/orte/mca/ras/lsf/configure.m4 \
+	$(top_srcdir)/orte/mca/ras/loadleveler/configure.m4 \
+	$(top_srcdir)/orte/mca/ras/slurm/configure.m4 \
 	$(top_srcdir)/orte/mca/rml/ftrm/configure.m4 \
 	$(top_srcdir)/orte/mca/rtc/freq/configure.m4 \
 	$(top_srcdir)/ompi/mca/fbtl/configure.m4 \
@@ -737,44 +735,44 @@ am__aclocal_m4_deps = $(top_srcdir)/config/c_get_alignment.m4 \
 	$(top_srcdir)/ompi/mca/rte/configure.m4 \
 	$(top_srcdir)/ompi/mca/sharedfp/configure.m4 \
 	$(top_srcdir)/ompi/mca/bml/r2/configure.m4 \
-	$(top_srcdir)/ompi/mca/coll/hcoll/configure.m4 \
 	$(top_srcdir)/ompi/mca/coll/portals4/configure.m4 \
-	$(top_srcdir)/ompi/mca/coll/cuda/configure.m4 \
 	$(top_srcdir)/ompi/mca/coll/fca/configure.m4 \
-	$(top_srcdir)/ompi/mca/fbtl/posix/configure.m4 \
+	$(top_srcdir)/ompi/mca/coll/cuda/configure.m4 \
+	$(top_srcdir)/ompi/mca/coll/hcoll/configure.m4 \
 	$(top_srcdir)/ompi/mca/fbtl/plfs/configure.m4 \
 	$(top_srcdir)/ompi/mca/fbtl/pvfs2/configure.m4 \
-	$(top_srcdir)/ompi/mca/fs/lustre/configure.m4 \
+	$(top_srcdir)/ompi/mca/fbtl/posix/configure.m4 \
 	$(top_srcdir)/ompi/mca/fs/plfs/configure.m4 \
+	$(top_srcdir)/ompi/mca/fs/lustre/configure.m4 \
 	$(top_srcdir)/ompi/mca/fs/pvfs2/configure.m4 \
 	$(top_srcdir)/ompi/mca/io/romio314/configure.m4 \
-	$(top_srcdir)/ompi/mca/io/ompio/configure.m4 \
-	$(top_srcdir)/ompi/mca/mtl/mxm/configure.m4 \
 	$(top_srcdir)/ompi/mca/mtl/portals4/configure.m4 \
-	$(top_srcdir)/ompi/mca/mtl/psm/configure.m4 \
 	$(top_srcdir)/ompi/mca/mtl/ofi/configure.m4 \
+	$(top_srcdir)/ompi/mca/mtl/mxm/configure.m4 \
 	$(top_srcdir)/ompi/mca/mtl/psm2/configure.m4 \
+	$(top_srcdir)/ompi/mca/mtl/psm/configure.m4 \
 	$(top_srcdir)/ompi/mca/osc/portals4/configure.m4 \
-	$(top_srcdir)/ompi/mca/osc/rdma/configure.m4 \
 	$(top_srcdir)/ompi/mca/osc/pt2pt/configure.m4 \
+	$(top_srcdir)/ompi/mca/osc/rdma/configure.m4 \
 	$(top_srcdir)/ompi/mca/pml/ucx/configure.m4 \
 	$(top_srcdir)/ompi/mca/pml/yalla/configure.m4 \
-	$(top_srcdir)/ompi/mca/pml/ob1/configure.m4 \
 	$(top_srcdir)/ompi/mca/pml/v/configure.m4 \
+	$(top_srcdir)/ompi/mca/pml/ob1/configure.m4 \
 	$(top_srcdir)/ompi/mca/rte/orte/configure.m4 \
 	$(top_srcdir)/ompi/mca/sharedfp/sm/configure.m4 \
 	$(top_srcdir)/oshmem/mca/memheap/configure.m4 \
 	$(top_srcdir)/oshmem/mca/spml/configure.m4 \
-	$(top_srcdir)/oshmem/mca/atomic/mxm/configure.m4 \
 	$(top_srcdir)/oshmem/mca/atomic/ucx/configure.m4 \
+	$(top_srcdir)/oshmem/mca/atomic/mxm/configure.m4 \
 	$(top_srcdir)/oshmem/mca/scoll/fca/configure.m4 \
 	$(top_srcdir)/oshmem/mca/spml/ucx/configure.m4 \
 	$(top_srcdir)/oshmem/mca/spml/ikrit/configure.m4 \
-	$(top_srcdir)/oshmem/mca/sshmem/sysv/configure.m4 \
-	$(top_srcdir)/oshmem/mca/sshmem/mmap/configure.m4 \
 	$(top_srcdir)/oshmem/mca/sshmem/verbs/configure.m4 \
-	$(top_srcdir)/ompi/mpiext/cuda/configure.m4 \
+	$(top_srcdir)/oshmem/mca/sshmem/mmap/configure.m4 \
+	$(top_srcdir)/oshmem/mca/sshmem/sysv/configure.m4 \
 	$(top_srcdir)/ompi/mpiext/affinity/configure.m4 \
+	$(top_srcdir)/ompi/mpiext/cr/configure.m4 \
+	$(top_srcdir)/ompi/mpiext/cuda/configure.m4 \
 	$(top_srcdir)/ompi/contrib/libompitrace/configure.m4 \
 	$(top_srcdir)/config/opal_get_version.m4 \
 	$(top_srcdir)/configure.ac
@@ -821,17 +819,16 @@ am__uninstall_files_from_dir = { \
 am__installdirs = "$(DESTDIR)$(libdir)" "$(DESTDIR)$(ompidir)"
 LTLIBRARIES = $(lib_LTLIBRARIES) $(noinst_LTLIBRARIES)
 am__DEPENDENCIES_1 =
-lib@OMPI_LIBMPI_NAME@_mpifh_la_DEPENDENCIES =  \
-	$(top_builddir)/ompi/lib@OMPI_LIBMPI_NAME@.la \
+libmpi_mpifh_la_DEPENDENCIES = $(top_builddir)/ompi/libmpi.la \
 	$(am__DEPENDENCIES_1) \
 	$(OMPI_TOP_BUILDDIR)/opal/lib@OPAL_LIB_PREFIX@open-pal.la \
 	$(am__append_2) $(am__append_4)
-am__lib@OMPI_LIBMPI_NAME@_mpifh_la_SOURCES_DIST = abort_f.c \
-	add_error_class_f.c add_error_code_f.c add_error_string_f.c \
-	address_f.c aint_add_f.c aint_diff_f.c allgather_f.c \
-	allgatherv_f.c alloc_mem_f.c allreduce_f.c alltoall_f.c \
-	alltoallv_f.c alltoallw_f.c attr_delete_f.c attr_get_f.c \
-	attr_put_f.c barrier_f.c bcast_f.c bsend_f.c bsend_init_f.c \
+am__libmpi_mpifh_la_SOURCES_DIST = abort_f.c add_error_class_f.c \
+	add_error_code_f.c add_error_string_f.c address_f.c \
+	aint_add_f.c aint_diff_f.c allgather_f.c allgatherv_f.c \
+	alloc_mem_f.c allreduce_f.c alltoall_f.c alltoallv_f.c \
+	alltoallw_f.c attr_delete_f.c attr_get_f.c attr_put_f.c \
+	barrier_f.c bcast_f.c bsend_f.c bsend_init_f.c \
 	buffer_attach_f.c buffer_detach_f.c cancel_f.c cart_coords_f.c \
 	cart_create_f.c cartdim_get_f.c cart_get_f.c cart_map_f.c \
 	cart_rank_f.c cart_shift_f.c cart_sub_f.c close_port_f.c \
@@ -1312,19 +1309,17 @@ am__lib@OMPI_LIBMPI_NAME@_mpifh_la_SOURCES_DIST = abort_f.c \
 @BUILD_MPI_FORTRAN_MPIFH_BINDINGS_LAYER_TRUE@@OMPI_PROVIDE_MPI_FILE_INTERFACE_TRUE@	file_write_ordered_f.lo \
 @BUILD_MPI_FORTRAN_MPIFH_BINDINGS_LAYER_TRUE@@OMPI_PROVIDE_MPI_FILE_INTERFACE_TRUE@	file_write_shared_f.lo \
 @BUILD_MPI_FORTRAN_MPIFH_BINDINGS_LAYER_TRUE@@OMPI_PROVIDE_MPI_FILE_INTERFACE_TRUE@	register_datarep_f.lo
-am_lib@OMPI_LIBMPI_NAME@_mpifh_la_OBJECTS = $(am__objects_1) \
-	$(am__objects_2)
-lib@OMPI_LIBMPI_NAME@_mpifh_la_OBJECTS =  \
-	$(am_lib@OMPI_LIBMPI_NAME@_mpifh_la_OBJECTS)
+am_libmpi_mpifh_la_OBJECTS = $(am__objects_1) $(am__objects_2)
+libmpi_mpifh_la_OBJECTS = $(am_libmpi_mpifh_la_OBJECTS)
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
 am__v_lt_0 = --silent
 am__v_lt_1 = 
-lib@OMPI_LIBMPI_NAME@_mpifh_la_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC \
+libmpi_mpifh_la_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC \
 	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CCLD) \
-	$(AM_CFLAGS) $(CFLAGS) \
-	$(lib@OMPI_LIBMPI_NAME@_mpifh_la_LDFLAGS) $(LDFLAGS) -o $@
-@OMPI_BUILD_FORTRAN_MPIFH_BINDINGS_TRUE@am_lib@OMPI_LIBMPI_NAME@_mpifh_la_rpath =  \
+	$(AM_CFLAGS) $(CFLAGS) $(libmpi_mpifh_la_LDFLAGS) $(LDFLAGS) \
+	-o $@
+@OMPI_BUILD_FORTRAN_MPIFH_BINDINGS_TRUE@am_libmpi_mpifh_la_rpath =  \
 @OMPI_BUILD_FORTRAN_MPIFH_BINDINGS_TRUE@	-rpath $(libdir)
 libmpi_mpifh_sizeof_la_LIBADD =
 @BUILD_FORTRAN_SIZEOF_TRUE@nodist_libmpi_mpifh_sizeof_la_OBJECTS =  \
@@ -1381,9 +1376,9 @@ AM_V_FCLD = $(am__v_FCLD_@AM_V@)
 am__v_FCLD_ = $(am__v_FCLD_@AM_DEFAULT_V@)
 am__v_FCLD_0 = @echo "  FCLD    " $@;
 am__v_FCLD_1 = 
-SOURCES = $(lib@OMPI_LIBMPI_NAME@_mpifh_la_SOURCES) \
+SOURCES = $(libmpi_mpifh_la_SOURCES) \
 	$(nodist_libmpi_mpifh_sizeof_la_SOURCES)
-DIST_SOURCES = $(am__lib@OMPI_LIBMPI_NAME@_mpifh_la_SOURCES_DIST)
+DIST_SOURCES = $(am__libmpi_mpifh_la_SOURCES_DIST)
 RECURSIVE_TARGETS = all-recursive check-recursive cscopelist-recursive \
 	ctags-recursive dvi-recursive html-recursive info-recursive \
 	install-data-recursive install-dvi-recursive \
@@ -2138,7 +2133,6 @@ OMPI_KIND_FORTRAN_REAL4 = @OMPI_KIND_FORTRAN_REAL4@
 OMPI_KIND_FORTRAN_REAL8 = @OMPI_KIND_FORTRAN_REAL8@
 OMPI_LIBMPI_EXTRA_LDFLAGS = @OMPI_LIBMPI_EXTRA_LDFLAGS@
 OMPI_LIBMPI_EXTRA_LIBS = @OMPI_LIBMPI_EXTRA_LIBS@
-OMPI_LIBMPI_NAME = @OMPI_LIBMPI_NAME@
 OMPI_MAJOR_VERSION = @OMPI_MAJOR_VERSION@
 OMPI_MINOR_VERSION = @OMPI_MINOR_VERSION@
 OMPI_MPIEXT_ALL_SUBDIRS = @OMPI_MPIEXT_ALL_SUBDIRS@
@@ -2200,7 +2194,6 @@ OMPI_WRAPPER_EXTRA_CXXFLAGS = @OMPI_WRAPPER_EXTRA_CXXFLAGS@
 OMPI_WRAPPER_EXTRA_CXXFLAGS_PREFIX = @OMPI_WRAPPER_EXTRA_CXXFLAGS_PREFIX@
 OMPI_WRAPPER_EXTRA_FCFLAGS = @OMPI_WRAPPER_EXTRA_FCFLAGS@
 OMPI_WRAPPER_EXTRA_FCFLAGS_PREFIX = @OMPI_WRAPPER_EXTRA_FCFLAGS_PREFIX@
-OMPI_WRAPPER_EXTRA_FC_LDFLAGS = @OMPI_WRAPPER_EXTRA_FC_LDFLAGS@
 OMPI_WRAPPER_EXTRA_LDFLAGS = @OMPI_WRAPPER_EXTRA_LDFLAGS@
 OMPI_WRAPPER_EXTRA_LIBS = @OMPI_WRAPPER_EXTRA_LIBS@
 OMPI_WRAPPER_FORTRAN_REQUIRED_FILE = @OMPI_WRAPPER_FORTRAN_REQUIRED_FILE@
@@ -2446,11 +2439,12 @@ liboshmem_so_version = @liboshmem_so_version@
 localedir = @localedir@
 localstatedir = @localstatedir@
 mandir = @mandir@
+memory_linux_LIBS = @memory_linux_LIBS@
 memory_malloc_solaris_LIBS = @memory_malloc_solaris_LIBS@
 mkdir_p = @mkdir_p@
-mpool_memkind_CPPFLAGS = @mpool_memkind_CPPFLAGS@
-mpool_memkind_LDFLAGS = @mpool_memkind_LDFLAGS@
-mpool_memkind_LIBS = @mpool_memkind_LIBS@
+mpool_udreg_CPPFLAGS = @mpool_udreg_CPPFLAGS@
+mpool_udreg_LDFLAGS = @mpool_udreg_LDFLAGS@
+mpool_udreg_LIBS = @mpool_udreg_LIBS@
 mtl_mxm_CFLAGS = @mtl_mxm_CFLAGS@
 mtl_mxm_CPPFLAGS = @mtl_mxm_CPPFLAGS@
 mtl_mxm_LDFLAGS = @mtl_mxm_LDFLAGS@
@@ -2502,9 +2496,9 @@ opal_pmi2_CPPFLAGS = @opal_pmi2_CPPFLAGS@
 opal_pmi2_LDFLAGS = @opal_pmi2_LDFLAGS@
 opal_pmi2_LIBS = @opal_pmi2_LIBS@
 opal_pmi2_rpath = @opal_pmi2_rpath@
-opal_pmix_external_CPPFLAGS = @opal_pmix_external_CPPFLAGS@
-opal_pmix_external_LDFLAGS = @opal_pmix_external_LDFLAGS@
-opal_pmix_external_LIBS = @opal_pmix_external_LIBS@
+opal_pmix_ext_CPPFLAGS = @opal_pmix_ext_CPPFLAGS@
+opal_pmix_ext_LDFLAGS = @opal_pmix_ext_LDFLAGS@
+opal_pmix_ext_LIBS = @opal_pmix_ext_LIBS@
 opal_pmix_pmix112_CPPFLAGS = @opal_pmix_pmix112_CPPFLAGS@
 opal_pmix_pmix112_LIBS = @opal_pmix_pmix112_LIBS@
 opaldatadir = @opaldatadir@
@@ -2565,9 +2559,6 @@ ras_slurm_LIBS = @ras_slurm_LIBS@
 ras_tm_CPPFLAGS = @ras_tm_CPPFLAGS@
 ras_tm_LDFLAGS = @ras_tm_LDFLAGS@
 ras_tm_LIBS = @ras_tm_LIBS@
-rcache_udreg_CPPFLAGS = @rcache_udreg_CPPFLAGS@
-rcache_udreg_LDFLAGS = @rcache_udreg_LDFLAGS@
-rcache_udreg_LIBS = @rcache_udreg_LIBS@
 sbindir = @sbindir@
 scoll_fca_CFLAGS = @scoll_fca_CFLAGS@
 scoll_fca_CPPFLAGS = @scoll_fca_CPPFLAGS@
@@ -2635,12 +2626,11 @@ lib_LTLIBRARIES = $(am__append_1)
 # Note that we invoke some OPAL functions directly in libmpi_mpifh.la,
 # so we need to link in the OPAL library directly (pulling it in
 # indirectly via libmpi.la does not work on all platforms).
-lib@OMPI_LIBMPI_NAME@_mpifh_la_LIBADD =  \
-	$(top_builddir)/ompi/lib@OMPI_LIBMPI_NAME@.la \
+libmpi_mpifh_la_LIBADD = $(top_builddir)/ompi/libmpi.la \
 	$(OMPI_MPIEXT_MPIFH_LIBS) \
 	$(OMPI_TOP_BUILDDIR)/opal/lib@OPAL_LIB_PREFIX@open-pal.la \
 	$(am__append_2) $(am__append_4)
-lib@OMPI_LIBMPI_NAME@_mpifh_la_LDFLAGS = -version-info $(libmpi_mpifh_so_version)
+libmpi_mpifh_la_LDFLAGS = -version-info $(libmpi_mpifh_so_version)
 headers = \
     bindings.h \
     prototypes_mpi.h \
@@ -2650,8 +2640,7 @@ headers = \
 #
 # These files are only built and added to libmpi_mpifh.la in certain cases.
 #
-lib@OMPI_LIBMPI_NAME@_mpifh_la_SOURCES = $(am__append_5) \
-	$(am__append_6)
+libmpi_mpifh_la_SOURCES = $(am__append_5) $(am__append_6)
 
 # If we're building the MPI_SIZEOF interfaces, generate the source
 # code in sizeof_f.f90 (via a perl script).  Normally, we'd just add
@@ -2764,8 +2753,8 @@ clean-noinstLTLIBRARIES:
 	  rm -f $${locs}; \
 	}
 
-lib@OMPI_LIBMPI_NAME@_mpifh.la: $(lib@OMPI_LIBMPI_NAME@_mpifh_la_OBJECTS) $(lib@OMPI_LIBMPI_NAME@_mpifh_la_DEPENDENCIES) $(EXTRA_lib@OMPI_LIBMPI_NAME@_mpifh_la_DEPENDENCIES) 
-	$(AM_V_CCLD)$(lib@OMPI_LIBMPI_NAME@_mpifh_la_LINK) $(am_lib@OMPI_LIBMPI_NAME@_mpifh_la_rpath) $(lib@OMPI_LIBMPI_NAME@_mpifh_la_OBJECTS) $(lib@OMPI_LIBMPI_NAME@_mpifh_la_LIBADD) $(LIBS)
+libmpi_mpifh.la: $(libmpi_mpifh_la_OBJECTS) $(libmpi_mpifh_la_DEPENDENCIES) $(EXTRA_libmpi_mpifh_la_DEPENDENCIES) 
+	$(AM_V_CCLD)$(libmpi_mpifh_la_LINK) $(am_libmpi_mpifh_la_rpath) $(libmpi_mpifh_la_OBJECTS) $(libmpi_mpifh_la_LIBADD) $(LIBS)
 
 libmpi_mpifh_sizeof.la: $(libmpi_mpifh_sizeof_la_OBJECTS) $(libmpi_mpifh_sizeof_la_DEPENDENCIES) $(EXTRA_libmpi_mpifh_sizeof_la_DEPENDENCIES) 
 	$(AM_V_FCLD)$(FCLINK) $(am_libmpi_mpifh_sizeof_la_rpath) $(libmpi_mpifh_sizeof_la_OBJECTS) $(libmpi_mpifh_sizeof_la_LIBADD) $(LIBS)

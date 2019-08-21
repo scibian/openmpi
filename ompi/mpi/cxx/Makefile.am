@@ -11,7 +11,6 @@
 # Copyright (c) 2004-2005 The Regents of the University of California.
 #                         All rights reserved.
 # Copyright (c) 2007-2012 Cisco Systems, Inc.  All rights reserved.
-# Copyright (c) 2016      IBM Corporation.  All rights reserved.
 # $COPYRIGHT$
 #
 # Additional copyrights may follow
@@ -28,10 +27,10 @@ AM_CPPFLAGS = -DOMPI_BUILDING_CXX_BINDINGS_LIBRARY=1 -DOMPI_SKIP_MPICXX=1
 
 if BUILD_MPI_CXX_BINDINGS
 
-mpi_lib = lib@OMPI_LIBMPI_NAME@_cxx.la
+mpi_lib = libmpi_cxx.la
 
-lib_LTLIBRARIES = lib@OMPI_LIBMPI_NAME@_cxx.la
-lib@OMPI_LIBMPI_NAME@_cxx_la_SOURCES = \
+lib_LTLIBRARIES = libmpi_cxx.la
+libmpi_cxx_la_SOURCES = \
 	mpicxx.cc \
 	intercepts.cc \
 	comm.cc \
@@ -40,12 +39,12 @@ lib@OMPI_LIBMPI_NAME@_cxx_la_SOURCES = \
 	cxx_glue.c
 
 if OMPI_PROVIDE_MPI_FILE_INTERFACE
-lib@OMPI_LIBMPI_NAME@_cxx_la_SOURCES += \
+libmpi_cxx_la_SOURCES += \
 	file.cc
 endif
 
-lib@OMPI_LIBMPI_NAME@_cxx_la_LIBADD = $(top_builddir)/ompi/lib@OMPI_LIBMPI_NAME@.la
-lib@OMPI_LIBMPI_NAME@_cxx_la_LDFLAGS = -version-info $(libmpi_cxx_so_version)
+libmpi_cxx_la_LIBADD = $(top_builddir)/ompi/libmpi.la
+libmpi_cxx_la_LDFLAGS = -version-info $(libmpi_cxx_so_version)
 
 headers = \
 	mpicxx.h \

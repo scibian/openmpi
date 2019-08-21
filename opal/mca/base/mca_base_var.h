@@ -189,10 +189,7 @@ typedef enum {
         manually when you register a variable with
         mca_base_var_register().  Analogous to the
         MCA_BASE_PVAR_FLAG_IWG. */
-    MCA_BASE_VAR_FLAG_DWG          = 0x0040,
-    /** Variable has a default value of "unset". Meaning to only
-     * be set when the user explicitly asks for it */
-    MCA_BASE_VAR_FLAG_DEF_UNSET    = 0x0080,
+    MCA_BASE_VAR_FLAG_DWG          = 0x0040
 } mca_base_var_flag_t;
 
 
@@ -499,6 +496,8 @@ OPAL_DECLSPEC int mca_base_var_deregister(int vari);
  *
  * @param[in] vari Index of variable
  * @param[in,out] value Pointer to copy the value to. Can be NULL.
+ * @param[in,out] value_size Size of memory pointed to by value.
+ * copied size will be returned in value_size.
  * @param[out] source Source of current value. Can be NULL.
  * @param[out] source_file Source file for the current value if
  * it was set from a file.

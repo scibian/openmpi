@@ -44,8 +44,6 @@
 #include "opal/mca/btl/base/btl_base_error.h"
 #include "opal/mca/mpool/base/base.h"
 #include "opal/mca/mpool/mpool.h"
-#include "opal/mca/rcache/base/base.h"
-#include "opal/mca/rcache/rcache.h"
 #else
 #include "ompi/mca/btl/btl.h"
 #include "ompi/mca/btl/base/btl_base_error.h"
@@ -927,11 +925,7 @@ static int usnic_finalize(struct mca_btl_base_module_t* btl)
     OBJ_DESTRUCT(&module->chunk_segs);
     OBJ_DESTRUCT(&module->senders);
 
-#if RCACHE_VERSION == 30
-    mca_rcache_base_module_destroy(module->rcache);
-#else
     mca_mpool_base_module_destroy(module->super.btl_mpool);
-#endif
 
     if (NULL != module->av) {
         fi_close(&module->av->fid);
@@ -1133,7 +1127,6 @@ opal_btl_usnic_module_progress_sends(
     /*
      * Handle all the retransmits we can
      */
-    OPAL_THREAD_LOCK(&btl_usnic_lock);
     if (OPAL_UNLIKELY(!opal_list_is_empty(&module->pending_resend_segs))) {
         usnic_do_resends(module);
     }
@@ -1248,7 +1241,6 @@ opal_btl_usnic_module_progress_sends(
 
         endpoint = next_endpoint;
     }
-    OPAL_THREAD_UNLOCK(&btl_usnic_lock);
 }
 
 /*
@@ -1283,7 +1275,6 @@ usnic_send(
     opal_btl_usnic_module_t *module;
     opal_btl_usnic_send_segment_t *sseg;
 
-    OPAL_THREAD_LOCK(&btl_usnic_lock);
     endpoint = (opal_btl_usnic_endpoint_t *)base_endpoint;
     module = (opal_btl_usnic_module_t *)base_module;
     frag = (opal_btl_usnic_send_frag_t*) descriptor;
@@ -1392,7 +1383,6 @@ usnic_send(
 
     ++module->stats.pml_module_sends;
 
-    OPAL_THREAD_UNLOCK(&btl_usnic_lock);
     return rc;
 }
 
@@ -1659,7 +1649,7 @@ static int create_ep(opal_btl_usnic_module_t* module,
                        rc, fi_strerror(-rc));
         return OPAL_ERR_OUT_OF_RESOURCE;
     }
-    rc = fi_ep_bind(channel->ep, &module->av->fid, 0);
+    rc = fi_ep_bind(channel->ep, &module->av->fid, FI_RECV);
     if (0 != rc) {
         opal_show_help("help-mpi-btl-usnic.txt",
                        "internal error during init",
@@ -1804,8 +1794,7 @@ static int init_one_channel(opal_btl_usnic_module_t *module,
                        true,
                        opal_process_info.nodename,
                        module->linux_device_name,
-                       "failed to create CQ", __FILE__, __LINE__,
-                       rc, fi_strerror(-rc));
+                       "failed to create CQ", __FILE__, __LINE__);
         goto error;
     }
 
@@ -1859,9 +1848,9 @@ static int init_one_channel(opal_btl_usnic_module_t *module,
                                     rd_num /* num erorments to alloc */,
                                     rd_num /* max elements to alloc */,
                                     rd_num /* num elements per alloc */,
-                                    module->super.btl_mpool /* mpool for (1.x, 2.0: reg, 2.1+: allocation) */,
+                                    module->super.btl_mpool /* mpool for reg */,
                                     0 /* mpool reg flags */,
-                                    module->rcache /* registration cache for 2.1+ */,
+                                    NULL /* unused0 */,
                                     NULL /* item_init */,
                                     NULL /* item_init_context */);
     channel->recv_segs.ctx = module; /* must come after
@@ -2187,29 +2176,11 @@ static int init_mpool(opal_btl_usnic_module_t *module)
     mpool_resources.sizeof_reg = sizeof(opal_btl_usnic_reg_t);
     mpool_resources.register_mem = usnic_reg_mr;
     mpool_resources.deregister_mem = usnic_dereg_mr;
-#if RCACHE_VERSION == 30
-    mpool_resources.cache_name = mca_btl_usnic_component.usnic_rcache_name;
-    module->rcache =
-        mca_rcache_base_module_create (mca_btl_usnic_component.usnic_rcache_name,
-                                       &module->super, &mpool_resources);
-    if (NULL == module->rcache) {
-        opal_show_help("help-mpi-btl-usnic.txt",
-                       "internal error during init",
-                       true,
-                       opal_process_info.nodename,
-                       module->linux_device_name,
-                       "create rcache", __FILE__, __LINE__);
-        return OPAL_ERROR;
-    }
-    module->super.btl_mpool =
-        mca_mpool_base_module_lookup (mca_btl_usnic_component.usnic_mpool_hints);
-#else
     asprintf(&mpool_resources.pool_name, "%s",
              module->linux_device_name);
     module->super.btl_mpool =
         mca_mpool_base_module_create(mca_btl_usnic_component.usnic_mpool_name,
                                      &module->super, &mpool_resources);
-#endif
     if (NULL == module->super.btl_mpool) {
         opal_show_help("help-mpi-btl-usnic.txt",
                        "internal error during init",
@@ -2383,7 +2354,7 @@ static void init_freelists(opal_btl_usnic_module_t *module)
                              module->sd_num / 2,
                              module->super.btl_mpool,
                              0 /* mpool reg flags */,
-                             module->rcache,
+                             NULL /* unused0 */,
                              NULL /* item_init */,
                              NULL /* item_init_context */);
     assert(OPAL_SUCCESS == rc);
@@ -2438,7 +2409,7 @@ static void init_freelists(opal_btl_usnic_module_t *module)
                              module->sd_num / 2,
                              module->super.btl_mpool,
                              0 /* mpool reg flags */,
-                             module->rcache,
+                             NULL /* unused0 */,
                              NULL /* item_init */,
                              NULL /* item_init_context */);
     assert(OPAL_SUCCESS == rc);
@@ -2460,7 +2431,7 @@ static void init_freelists(opal_btl_usnic_module_t *module)
                              module->sd_num / 2,
                              module->super.btl_mpool,
                              0 /* mpool reg flags */,
-                             module->rcache,
+                             NULL /* unused0 */,
                              NULL /* item_init */,
                              NULL /* item_init_context */);
     assert(OPAL_SUCCESS == rc);
@@ -2517,11 +2488,7 @@ int opal_btl_usnic_module_init(opal_btl_usnic_module_t *module)
     int ret;
     if (OPAL_SUCCESS != (ret = init_mpool(module)) ||
         OPAL_SUCCESS != (ret = init_channels(module))) {
-#if RCACHE_VERSION == 30
-        mca_rcache_base_module_destroy (module->rcache);
-#else
         mca_mpool_base_module_destroy(module->super.btl_mpool);
-#endif
         return ret;
     }
 

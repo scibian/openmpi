@@ -2,7 +2,7 @@
  * Copyright (c) 2004-2007 The Trustees of Indiana University and Indiana
  *                         University Research and Technology
  *                         Corporation.  All rights reserved.
- * Copyright (c) 2004-2016 The University of Tennessee and The University
+ * Copyright (c) 2004-2005 The University of Tennessee and The University
  *                         of Tennessee Research Foundation.  All rights
  *                         reserved.
  * Copyright (c) 2004-2008 High Performance Computing Center Stuttgart,
@@ -10,7 +10,7 @@
  * Copyright (c) 2004-2005 The Regents of the University of California.
  *                         All rights reserved.
  * Copyright (c) 2006-2013 Cisco Systems, Inc.  All rights reserved.
- * Copyright (c) 2015-2017 Research Organization for Information Science
+ * Copyright (c) 2015      Research Organization for Information Science
  *                         and Technology (RIST). All rights reserved.
  * $COPYRIGHT$
  *
@@ -43,7 +43,7 @@ int MPI_Unpack(const void *inbuf, int insize, int *position,
                void *outbuf, int outcount, MPI_Datatype datatype,
                MPI_Comm comm)
 {
-    int rc = MPI_SUCCESS;
+    int rc = 1;
     opal_convertor_t local_convertor;
     struct iovec outvec;
     unsigned int iov_count;
@@ -70,15 +70,13 @@ int MPI_Unpack(const void *inbuf, int insize, int *position,
             return OMPI_ERRHANDLER_INVOKE(comm, MPI_ERR_COUNT, FUNC_NAME);
         }
 
-        OMPI_CHECK_DATATYPE_FOR_RECV(rc, datatype, outcount);
-        OMPI_ERRHANDLER_CHECK(rc, comm, rc, FUNC_NAME);
-        OMPI_CHECK_USER_BUFFER(rc, outbuf, datatype, outcount);
-        OMPI_ERRHANDLER_CHECK(rc, comm, rc, FUNC_NAME);
+        if (MPI_DATATYPE_NULL == datatype || NULL == datatype) {
+            return OMPI_ERRHANDLER_INVOKE(comm, MPI_ERR_TYPE, FUNC_NAME);
+        }
     }
 
 
     if( insize > 0 ) {
-        int ret;
         OBJ_CONSTRUCT( &local_convertor, opal_convertor_t );
         /* the resulting convertor will be set the the position ZERO */
         opal_convertor_copy_and_prepare_for_recv( ompi_mpi_local_convertor, &(datatype->super),
@@ -97,15 +95,16 @@ int MPI_Unpack(const void *inbuf, int insize, int *position,
 
         /* Do the actual unpacking */
         iov_count = 1;
-        ret = opal_convertor_unpack( &local_convertor, &outvec, &iov_count, &size );
+        rc = opal_convertor_unpack( &local_convertor, &outvec, &iov_count, &size );
         *position += size;
         OBJ_DESTRUCT( &local_convertor );
+
         /* All done.  Note that the convertor returns 1 upon success, not
-           OPAL_SUCCESS. */
-        if (1 != ret) {
-            rc = OMPI_ERROR;
-        }
+           OMPI_SUCCESS. */
+
     }
 
-    OMPI_ERRHANDLER_RETURN(rc, comm, MPI_ERR_UNKNOWN, FUNC_NAME);
+    OMPI_ERRHANDLER_RETURN((rc == 1) ? OMPI_SUCCESS : OMPI_ERROR,
+                           comm, MPI_ERR_UNKNOWN, FUNC_NAME);
+
 }

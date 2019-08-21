@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2017 Intel, Inc.  All rights reserved.
+ * Copyright (c) 2014-2016 Intel, Inc.  All rights reserved.
  * Copyright (c) 2014      Artem Y. Polyakov <artpol84@gmail.com>.
  *                         All rights reserved.
  * Copyright (c) 2015-2016 Research Organization for Information Science
@@ -53,9 +53,8 @@ static void lost_connection(pmix_peer_t *peer, pmix_status_t err)
     pmix_server_trkr_t *trk;
     pmix_rank_info_t *rinfo, *rnext;
     pmix_trkr_caddy_t *tcd;
-    pmix_usock_posted_recv_t *rcv;
-    pmix_buffer_t buf;
-    pmix_usock_hdr_t hdr;
+    pmix_error_reg_info_t *errreg;
+    pmix_regevents_info_t *reginfoptr, *regnext;
 
     /* stop all events */
     if (peer->recv_ev_active) {
@@ -102,34 +101,27 @@ static void lost_connection(pmix_peer_t *peer, pmix_status_t err)
                 }
             }
         }
-         /* remove this proc from the list of ranks for this nspace */
-         pmix_list_remove_item(&(peer->info->nptr->server->ranks), &(peer->info->super));
-         PMIX_RELEASE(peer->info);
-         /* reduce the number of local procs */
-         --peer->info->nptr->server->nlocalprocs;
-         /* do some cleanup as the client has left us */
-         pmix_pointer_array_set_item(&pmix_server_globals.clients,
+        /* remove this proc from the list of ranks for this nspace */
+        pmix_list_remove_item(&(peer->info->nptr->server->ranks), &(peer->info->super));
+        PMIX_RELEASE(peer->info);
+        /* reduce the number of local procs */
+        --peer->info->nptr->server->nlocalprocs;
+        /* do some cleanup as the client has left us */
+        pmix_pointer_array_set_item(&pmix_server_globals.clients,
                                      peer->index, NULL);
-         PMIX_RELEASE(peer);
+        /* remove all registered event handlers so libevent doesn't complain */
+        PMIX_LIST_FOREACH_SAFE(reginfoptr, regnext, &pmix_server_globals.client_eventregs, pmix_regevents_info_t) {
+            if (reginfoptr->peer == peer) {
+                pmix_list_remove_item(&pmix_server_globals.client_eventregs, &reginfoptr->super);
+                PMIX_RELEASE(reginfoptr);
+                break;
+            }
+        }
+        PMIX_RELEASE(peer);
      } else {
         /* if I am a client, there is only
          * one connection we can have */
         pmix_globals.connected = false;
-        /* it is possible that we have sendrecv's in progress where
-         * we are waiting for a response to arrive. Since we have
-         * lost connection to the server, that will never happen.
-         * Thus, to preclude any chance of hanging, cycle thru
-         * the list of posted recvs and complete any that are
-         * the return call from a sendrecv - i.e., any that are
-         * waiting on dynamic tags */
-        PMIX_CONSTRUCT(&buf, pmix_buffer_t);
-        hdr.nbytes = 0; // initialize the hdr to something safe
-        PMIX_LIST_FOREACH(rcv, &pmix_usock_globals.posted_recvs, pmix_usock_posted_recv_t) {
-            if (UINT_MAX != rcv->tag && NULL != rcv->cbfunc) {
-                rcv->cbfunc(peer, &hdr, &buf, rcv->cbdata);
-            }
-        }
-        PMIX_DESTRUCT(&buf);
     }
     PMIX_REPORT_ERROR(err);
 }

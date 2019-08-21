@@ -12,11 +12,10 @@
  *                         All rights reserved.
  * Copyright (c) 2010      University of Houston.  All rights reserved.
  * Copyright (c) 2012 Cisco Systems, Inc.  All rights reserved.
- * Copyright (c) 2012-2016 Los Alamos National Security, LLC.  All rights
+ * Copyright (c) 2012-2013 Los Alamos National Security, LLC.  All rights
  *                         reserved.
  * Copyright (c) 2015      Research Organization for Information Science
  *                         and Technology (RIST). All rights reserved.
- * Copyright (c) 2017      IBM Corporation.  All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -32,10 +31,7 @@
 #include "ompi/communicator/communicator.h"
 #include "ompi/errhandler/errhandler.h"
 #include "ompi/datatype/ompi_datatype.h"
-#include "ompi/mca/topo/base/base.h"
 #include "ompi/memchecker.h"
-#include "ompi/mca/topo/topo.h"
-#include "ompi/mca/topo/base/base.h"
 
 #if OMPI_BUILD_MPI_PROFILING
 #if OPAL_HAVE_WEAK_SYMBOLS
@@ -51,20 +47,20 @@ int MPI_Neighbor_allgatherv(const void *sendbuf, int sendcount, MPI_Datatype sen
                             void *recvbuf, const int recvcounts[], const int displs[],
                             MPI_Datatype recvtype, MPI_Comm comm)
 {
-    int in_size, out_size, err;
+    int i, size, err;
 
     MEMCHECKER(
         int rank;
         ptrdiff_t ext;
 
         rank = ompi_comm_rank(comm);
-        mca_topo_base_neighbor_count (comm, &in_size, &out_size);
+        size = ompi_comm_size(comm);
         ompi_datatype_type_extent(recvtype, &ext);
 
         memchecker_datatype(recvtype);
         memchecker_comm (comm);
         /* check whether the receive buffer is addressable. */
-        for (int i = 0; i < in_size; ++i) {
+        for (i = 0; i < size; i++) {
             memchecker_call(&opal_memchecker_base_isaddressable,
                             (char *)(recvbuf)+displs[i]*ext,
                             recvcounts[i], recvtype);
@@ -108,8 +104,8 @@ int MPI_Neighbor_allgatherv(const void *sendbuf, int sendcount, MPI_Datatype sen
          get the size of the remote group here for both intra- and
          intercommunicators */
 
-        mca_topo_base_neighbor_count (comm, &in_size, &out_size);
-        for (int i = 0; i < in_size; ++i) {
+        size = ompi_comm_remote_size(comm);
+        for (i = 0; i < size; ++i) {
           if (recvcounts[i] < 0) {
             return OMPI_ERRHANDLER_INVOKE(comm, MPI_ERR_COUNT, FUNC_NAME);
           }
@@ -118,29 +114,28 @@ int MPI_Neighbor_allgatherv(const void *sendbuf, int sendcount, MPI_Datatype sen
         if (NULL == displs) {
           return OMPI_ERRHANDLER_INVOKE(comm, MPI_ERR_BUFFER, FUNC_NAME);
         }
+    }
 
-        if( OMPI_COMM_IS_CART(comm) ) {
-            const mca_topo_base_comm_cart_2_2_0_t *cart = comm->c_topo->mtc.cart;
-            if( 0 > cart->ndims ) {
-                return OMPI_ERRHANDLER_INVOKE(comm, MPI_ERR_ARG, FUNC_NAME);
+    /* Do we need to do anything?  Everyone had to give the same
+       signature, which means that everyone must have given a
+       sum(recvounts) > 0 if there's anything to do. */
+
+    if ( OMPI_COMM_IS_INTRA( comm) ) {
+        for (i = 0; i < ompi_comm_size(comm); ++i) {
+            if (0 != recvcounts[i]) {
+                break;
             }
         }
-        else if( OMPI_COMM_IS_GRAPH(comm) ) {
-            int degree;
-            mca_topo_base_graph_neighbors_count(comm, ompi_comm_rank(comm), &degree);
-            if( 0 > degree ) {
-                return OMPI_ERRHANDLER_INVOKE(comm, MPI_ERR_ARG, FUNC_NAME);
-            }
-        }
-        else if( OMPI_COMM_IS_DIST_GRAPH(comm) ) {
-            const mca_topo_base_comm_dist_graph_2_2_0_t *dist_graph = comm->c_topo->mtc.dist_graph;
-            int indegree  = dist_graph->indegree;
-            int outdegree = dist_graph->outdegree;
-            if( indegree <  0 || outdegree <  0 ) {
-                return OMPI_ERRHANDLER_INVOKE(comm, MPI_ERR_ARG, FUNC_NAME);
-            }
+        if (i >= ompi_comm_size(comm)) {
+            return MPI_SUCCESS;
         }
     }
+    /* There is no rule that can be applied for inter-communicators, since
+       recvcount(s)=0 only indicates that the processes in the other group
+       do not send anything, sendcount=0 only indicates that I do not send
+       anything. However, other processes in my group might very well send
+       something */
+
 
     /* Invoke the coll component to perform the back-end operation */
     err = comm->c_coll.coll_neighbor_allgatherv(sendbuf, sendcount, sendtype,
@@ -148,3 +143,4 @@ int MPI_Neighbor_allgatherv(const void *sendbuf, int sendcount, MPI_Datatype sen
                                                 recvtype, comm, comm->c_coll.coll_neighbor_allgatherv_module);
     OMPI_ERRHANDLER_RETURN(err, comm, err, FUNC_NAME);
 }
+

@@ -1,9 +1,7 @@
 /*
  * Copyright (c) 2013      Mellanox Technologies, Inc.
  *                         All rights reserved.
- * Copyright (c) 2013      Cisco Systems, Inc.  All rights reserved.
- * Copyright (c) 2017      Research Organization for Information Science
- *                         and Technology (RIST). All rights reserved.
+ * Copyright (c) 2013 Cisco Systems, Inc.  All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -15,7 +13,7 @@
 
 #include <string.h>
 
-#include "ompi/mpi/fortran/base/fortran_base_strings.h"
+#include "ompi/mpi/fortran/base/strings.h"
 
 #include "oshmem/shmem/fortran/bindings.h"
 #include "oshmem/include/shmem.h"

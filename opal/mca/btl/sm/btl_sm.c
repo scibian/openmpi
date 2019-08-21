@@ -19,7 +19,6 @@
  * Copyright (c) 2013-2015 Intel, Inc. All rights reserved.
  * Copyright (c) 2014-2015 Research Organization for Information Science
  *                         and Technology (RIST). All rights reserved.
- * Copyright (c) 2016      ARM, Inc. All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -42,7 +41,7 @@
 #include <sys/mman.h>
 #endif  /* HAVE_SYS_MMAN_H */
 
-#if OPAL_BTL_SM_HAVE_CMA && OPAL_CMA_NEED_SYSCALL_DEFS
+#if OPAL_BTL_SM_HAVE_CMA && defined(OPAL_CMA_NEED_SYSCALL_DEFS)
 #include "opal/sys/cma.h"
 #endif /* OPAL_CMA_NEED_SYSCALL_DEFS */
 
@@ -57,6 +56,8 @@
 
 #include "opal/datatype/opal_convertor.h"
 #include "opal/mca/btl/btl.h"
+#include "opal/mca/mpool/base/base.h"
+#include "opal/mca/mpool/sm/mpool_sm.h"
 
 #include "opal/align.h"
 #include "opal/util/sys_limits.h"
@@ -102,7 +103,7 @@ static void *mpool_calloc(size_t nmemb, size_t size)
     size_t bsize = nmemb * size;
     mca_mpool_base_module_t *mpool = mca_btl_sm_component.sm_mpool;
 
-    buf = mpool->mpool_alloc(mpool, bsize, opal_cache_line_size, 0);
+    buf = mpool->mpool_alloc(mpool, bsize, opal_cache_line_size, 0, NULL);
 
     if (NULL == buf)
         return NULL;
@@ -113,7 +114,7 @@ static void *mpool_calloc(size_t nmemb, size_t size)
 
 static int
 setup_mpool_base_resources(mca_btl_sm_component_t *comp_ptr,
-                           mca_common_sm_mpool_resources_t *out_res)
+                           mca_mpool_base_resources_t *out_res)
 {
     int rc = OPAL_SUCCESS;
     int fd = -1;
@@ -213,7 +214,7 @@ sm_btl_first_time_init(mca_btl_sm_t *sm_btl,
     size_t length, length_payload;
     sm_fifo_t *my_fifos;
     int my_mem_node, num_mem_nodes, i, rc;
-    mca_common_sm_mpool_resources_t *res = NULL;
+    mca_mpool_base_resources_t *res = NULL;
     mca_btl_sm_component_t* m = &mca_btl_sm_component;
 
     /* Assume we don't have hwloc support and fill in dummy info */
@@ -282,14 +283,15 @@ sm_btl_first_time_init(mca_btl_sm_t *sm_btl,
     /* Disable memory binding, because each MPI process will claim pages in the
      * mpool for their local NUMA node */
     res->mem_node = -1;
-    res->allocator = mca_btl_sm_component.allocator;
 
     if (OPAL_SUCCESS != (rc = setup_mpool_base_resources(m, res))) {
         free(res);
         return rc;
     }
     /* now that res is fully populated, create the thing */
-    mca_btl_sm_component.sm_mpools[0] = common_sm_mpool_create (res);
+    mca_btl_sm_component.sm_mpools[0] =
+        mca_mpool_base_module_create(mca_btl_sm_component.sm_mpool_name,
+                                     sm_btl, res);
     /* Sanity check to ensure that we found it */
     if (NULL == mca_btl_sm_component.sm_mpools[0]) {
         free(res);
@@ -460,7 +462,7 @@ int mca_btl_sm_add_procs(
     bool have_connected_peer = false;
     char **bases;
     /* for easy access to the mpool_sm_module */
-    mca_common_sm_mpool_module_t *sm_mpool_modp = NULL;
+    mca_mpool_sm_module_t *sm_mpool_modp = NULL;
 
     /* initializion */
 
@@ -538,7 +540,7 @@ int mca_btl_sm_add_procs(
     }
 
     bases = mca_btl_sm_component.shm_bases;
-    sm_mpool_modp = (mca_common_sm_mpool_module_t *)mca_btl_sm_component.sm_mpool;
+    sm_mpool_modp = (mca_mpool_sm_module_t *)mca_btl_sm_component.sm_mpool;
 
     /* initialize own FIFOs */
     /*

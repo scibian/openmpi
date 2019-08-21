@@ -24,7 +24,6 @@
 #include "ompi/mca/pml/pml.h"
 #include "ompi/communicator/communicator.h"
 #include "opal/datatype/opal_convertor.h"
-#include "opal/util/show_help.h"
 
 #include "mtl_psm.h"
 #include "mtl_psm_types.h"
@@ -57,18 +56,12 @@ ompi_mtl_psm_send(struct mca_mtl_base_module_t* mtl,
                                  &length,
                                  &mtl_psm_request.free_after);
 
-    if (OMPI_SUCCESS != ret) return ret;
-
-    if (length >= 1ULL << sizeof(uint32_t) * 8) {
-            opal_show_help("help-mtl-psm.txt",
-                   "message too big", false,
-                   length, 1ULL << sizeof(uint32_t) * 8);
-            return OMPI_ERROR;
-    }
 
     mtl_psm_request.length = length;
     mtl_psm_request.convertor = convertor;
     mtl_psm_request.type = OMPI_MTL_PSM_ISEND;
+
+    if (OMPI_SUCCESS != ret) return ret;
 
     if (mode == MCA_PML_BASE_SEND_SYNCHRONOUS)
 	flags |= PSM_MQ_FLAG_SENDSYNC;
@@ -116,19 +109,11 @@ ompi_mtl_psm_isend(struct mca_mtl_base_module_t* mtl,
                                  &length,
                                  &mtl_psm_request->free_after);
 
-
-    if (OMPI_SUCCESS != ret) return ret;
-
-    if (length >= 1ULL << sizeof(uint32_t) * 8) {
-            opal_show_help("help-mtl-psm.txt",
-                   "message too big", false,
-                   length, 1ULL << sizeof(uint32_t) * 8);
-            return OMPI_ERROR;
-    }
-
     mtl_psm_request->length= length;
     mtl_psm_request->convertor = convertor;
     mtl_psm_request->type = OMPI_MTL_PSM_ISEND;
+
+    if (OMPI_SUCCESS != ret) return ret;
 
     if (mode == MCA_PML_BASE_SEND_SYNCHRONOUS)
 	flags |= PSM_MQ_FLAG_SENDSYNC;

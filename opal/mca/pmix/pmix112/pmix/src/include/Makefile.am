@@ -23,8 +23,7 @@
 # src/Makefile.am
 
 headers += \
-        src/include/pmix_globals.h \
-        src/include/pmix_jobdata.h
+        src/include/pmix_globals.h
 
 sources += \
         src/include/pmix_globals.c

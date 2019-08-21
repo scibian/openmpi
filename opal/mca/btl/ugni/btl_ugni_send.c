@@ -1,6 +1,6 @@
 /* -*- Mode: C; c-basic-offset:4 ; indent-tabs-mode:nil -*- */
 /*
- * Copyright (c) 2011-2017 Los Alamos National Security, LLC. All rights
+ * Copyright (c) 2011-2015 Los Alamos National Security, LLC. All rights
  *                         reserved.
  * Copyright (c) 2011      UT-Battelle, LLC. All rights reserved.
  * Copyright (c) 2014      Research Organization for Information Science
@@ -108,13 +108,6 @@ int mca_btl_ugni_sendi (struct mca_btl_base_module_t *btl,
     size_t packed_size = payload_size;
     int rc;
 
-    if (OPAL_UNLIKELY(opal_list_get_size (&endpoint->frag_wait_list))) {
-        if (NULL != descriptor) {
-            *descriptor = NULL;
-        }
-        return OPAL_ERR_OUT_OF_RESOURCE;
-    }
-
     do {
         if (OPAL_UNLIKELY(OPAL_SUCCESS != mca_btl_ugni_check_endpoint_state (endpoint))) {
             break;
@@ -131,7 +124,7 @@ int mca_btl_ugni_sendi (struct mca_btl_base_module_t *btl,
         }
 
         assert (packed_size == payload_size);
-        if (OPAL_UNLIKELY(NULL == frag || OPAL_SUCCESS != mca_btl_ugni_check_endpoint_state (endpoint))) {
+        if (OPAL_UNLIKELY(NULL == frag)) {
             break;
         }
 
@@ -140,6 +133,7 @@ int mca_btl_ugni_sendi (struct mca_btl_base_module_t *btl,
 
         rc = mca_btl_ugni_send_frag (endpoint, frag);
         if (OPAL_UNLIKELY(OPAL_SUCCESS != rc)) {
+            mca_btl_ugni_frag_return (frag);
             break;
         }
 
@@ -147,9 +141,8 @@ int mca_btl_ugni_sendi (struct mca_btl_base_module_t *btl,
     } while (0);
 
     if (NULL != descriptor) {
-        *descriptor = &frag->base;
+        *descriptor = NULL;
     }
-
     return OPAL_ERR_OUT_OF_RESOURCE;
 }
 

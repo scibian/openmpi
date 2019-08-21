@@ -102,12 +102,11 @@ host_triplet = @host@
 @EVPORT_BACKEND_TRUE@am__append_6 = evport.c
 @SIGNAL_SUPPORT_TRUE@am__append_7 = signal.c
 @HTTP_TRUE@am__append_8 = http.c
-# Note: evdns.c removed due to security vulnerability.  
-#CORE_SRC += evdns.c
-@RPC_TRUE@am__append_9 = evrpc.c
-@PTHREADS_TRUE@am__append_10 = evthread_pthread.c
-@OPENSSL_TRUE@am__append_11 = bufferevent_openssl.c
-@OPENSSL_TRUE@am__append_12 = -lcrypto -lssl
+@DNS_TRUE@am__append_9 = evdns.c
+@RPC_TRUE@am__append_10 = evrpc.c
+@PTHREADS_TRUE@am__append_11 = evthread_pthread.c
+@OPENSSL_TRUE@am__append_12 = bufferevent_openssl.c
+@OPENSSL_TRUE@am__append_13 = -lcrypto -lssl
 subdir = .
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/m4/ac_backport_259_ssizet.m4 \
@@ -134,7 +133,7 @@ am__libevent_la_SOURCES_DIST = event.c evthread.c evmap.c log.c \
 	evutil.c evutil_rand.c strlcpy.c select.c poll.c devpoll.c \
 	kqueue.c epoll.c evport.c signal.c win32select.c \
 	evthread_win32.c buffer_iocp.c event_iocp.c \
-	bufferevent_async.c http.c evrpc.c evthread_pthread.c \
+	bufferevent_async.c http.c evdns.c evrpc.c evthread_pthread.c \
 	bufferevent_openssl.c
 @SELECT_BACKEND_TRUE@am__objects_1 = select.lo
 @POLL_BACKEND_TRUE@am__objects_2 = poll.lo
@@ -154,13 +153,15 @@ am__libevent_la_SOURCES_DIST = event.c evthread.c evmap.c log.c \
 @BUILD_WIN32_TRUE@	$(am__objects_4) $(am__objects_5) \
 @BUILD_WIN32_TRUE@	$(am__objects_6) $(am__objects_7)
 @HTTP_TRUE@am__objects_9 = http.lo
-@RPC_TRUE@am__objects_10 = evrpc.lo
-@PTHREADS_TRUE@am__objects_11 = evthread_pthread.lo
-@OPENSSL_TRUE@am__objects_12 = bufferevent_openssl.lo
-am__objects_13 = event.lo evthread.lo evmap.lo log.lo evutil.lo \
+@DNS_TRUE@am__objects_10 = evdns.lo
+@RPC_TRUE@am__objects_11 = evrpc.lo
+@PTHREADS_TRUE@am__objects_12 = evthread_pthread.lo
+@OPENSSL_TRUE@am__objects_13 = bufferevent_openssl.lo
+am__objects_14 = event.lo evthread.lo evmap.lo log.lo evutil.lo \
 	evutil_rand.lo strlcpy.lo $(am__objects_8) $(am__objects_9) \
-	$(am__objects_10) $(am__objects_11) $(am__objects_12)
-am_libevent_la_OBJECTS = $(am__objects_13)
+	$(am__objects_10) $(am__objects_11) $(am__objects_12) \
+	$(am__objects_13)
+am_libevent_la_OBJECTS = $(am__objects_14)
 libevent_la_OBJECTS = $(am_libevent_la_OBJECTS)
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
@@ -574,8 +575,8 @@ SUBDIRS = . include
 # code not currently in use (buffer, tagging, and listener code).
 CORE_SRC = event.c evthread.c evmap.c log.c evutil.c evutil_rand.c \
 	strlcpy.c $(SYS_SRC) $(am__append_8) $(am__append_9) \
-	$(am__append_10) $(am__append_11)
-CORE_LIBS = $(am__append_12)
+	$(am__append_10) $(am__append_11) $(am__append_12)
+CORE_LIBS = $(am__append_13)
 
 # Open MPI - comment out all unused extra libs
 #if BUILD_WITH_NO_UNDEFINED
@@ -728,6 +729,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/bufferevent_openssl.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/devpoll.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/epoll.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/evdns.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/event.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/event_iocp.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/evmap.Plo@am__quote@

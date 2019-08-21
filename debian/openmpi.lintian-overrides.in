@@ -1,8 +1,0 @@
-# @PACKAGE_NAME@ path must be consistent across platforms
-@PACKAGE_NAME@: file-in-unusual-dir
-# @PACKAGE_NAME@ path must be consistent across platforms
-@PACKAGE_NAME@: non-standard-dir-in-usr usr/mpi/
-# @PACKAGE_NAME@: upstream ships .la files with dependency_libs
-@PACKAGE_NAME@: non-empty-dependency_libs-in-la-file
-# @PACKAGE_NAME@ path must be consistent across platforms
-@PACKAGE_NAME@: jar-not-in-usr-share

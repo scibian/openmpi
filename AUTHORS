@@ -10,12 +10,10 @@ individual who committed them.
 
 -----
 
-Abhishek Joshi, Broadcom
-  abhishek.joshi@broadcom.com
 Abhishek Kulkarni, Indiana University
   adkulkar@cs.indiana.edu
-Aboorva Devarajan, IBM
-  abodevar@in.ibm.com
+Aboorva Devarajan
+  abodevar@in.ibm.com, IBM
 Adrian Knoth, Friedrich-Schiller-Universitat Jena
   adi@minet.uni-jena.de
 Adrian Reber, Hochschule Esslingen
@@ -41,7 +39,7 @@ Anya Tatashina, Sun
   anya.tatashina@sun.com
 Artem Polyakov, Individual, Mellanox
   artpol84@gmail.com
-Aurelien Bouteiller, University of Tennessee-Knoxville
+Aurélien Bouteiller, University of Tennessee-Knoxville
   bouteill@icl.utk.edu
 Avneesh Pant, QLogic
   avneesh.pant@qlogic.com
@@ -98,7 +96,7 @@ Eugene Loh, Sun, Oracle
 Francois WELLENREITER, Individual
   francois.wellenreiter@atos.net
   wellen@free.fr
-Gabriel Pichot, Individual
+Gabriel Pichot
   gabriel.pichot@gmail.com
 Galen Shipman, Los Alamos National Laboratory
   gshipman@lanl.gov
@@ -134,8 +132,6 @@ Igor Ivanov, Mellanox
   igor.ivanov@itseez.com
 Igor Usarov, Mellanox
   igoru@mellanox.com
-Jeff Hammond, Intel
-  jeff.science@gmail.com
 Jeff Squyres, University of Indiana, Cisco
   jeff@squyres.com
   jsquyres@cisco.com
@@ -150,9 +146,8 @@ Jose Roman, Universitat Politecnica de Valencia
 Josh Hursey, Indiana University, Oak Ridge National Laboratory, Los Alamos National Laboratory, Lawrence Berkeley National Laboratory, University of Wisconsin-La Crosse, IBM
   jhursey@us.ibm.com
   jjhursey@open-mpi.org
-Joshua Gerrard, Individual
+Joshua Gerrard
   enquiries@joshuagerrard.com
-  joshuagerrard+ompi-commit@protonmail.com
 Joshua Ladd, Mellanox
   jladd.mlnx@gmail.com
   joshual@mellanox.com
@@ -165,8 +160,6 @@ Karol Mroz, University of British Columbia
   mroz.karol@gmail.com
 Kenneth Matney, Oak Ridge National Laboratory
   matneykdsr@ornl.gov
-Kevin Buckley, Victoria University of Wellington
-  kevin.buckley.ecs.vuw.ac.nz@gmail.com
 L. R. Rajeshnarayanan, Intel
   l.r.rajeshnarayanan@intel.com
 LANL OMPI Bot, Los Alamos National Laboratory
@@ -184,8 +177,6 @@ Mangala Jyothi Bhaskar, University of Houston
   mjbhaskar@uh.edu
 Manjunath Gorentla Venkata, Oak Ridge National Laboratory
   manjugv@ornl.gov
-Mark Allen, IBM
-  markalle@us.ibm.com
 Mark Santcroos, Rutgers University
   mas781@scarletmail.rutgers.edu
 Mark Taylor, Los Alamos National Laboratory
@@ -217,12 +208,8 @@ Nick Papior Andersen, Individual
   nickpapior@gmail.com
 Nicolas Chevalier, Bull
   nicolas.chevalier@bull.net
-Nicolas Morey-Chaisemartin, SUSE
-  nmoreychaisemartin@suse.com
 Nysal Jan K A, IBM
   jnysal@in.ibm.com
-Omri Mor,
-  omri50@gmail.com
 Orion Poplawski, Individual
   orion@cora.nwra.com
 Oscar Vega-Gisbert, Universitat Politecnica de Valencia
@@ -233,8 +220,6 @@ Pascal Deveze, Bull
   pascal.deveze@atos.net
 Patrick Geoffray, Myricom
   patrick@myri.com
-Paul H. Hargrove, Lawrence Berkeley Laboratory
-  phhargrove@lbl.gov
 Pavel Shamis, Mellanox, Oak Ridge National Laboratory
   pasharesearch@gmail.com
   shamisp@ornl.gov
@@ -265,8 +250,6 @@ Ron Brightwell, Sandia National Laboratory
 Ryan Grant, Sandia National Laboratory
   regrant233@gmail.com
   regrant@sandia.gov
-Sameh S. Sharkawi, IBM
-  sssharka@us.ibm.com
 Sami Ayyorgun, Los Alamos National Laboratory
   sami@lanl.gov
 Samuel Gutierrez, Los Alamos National Laboratory
@@ -299,10 +282,6 @@ Thara Angskun, University of Tennessee-Knoxville
   angskun@cs.utk.edu
 Thomas Herault, University of Tennessee-Knoxville
   herault@icl.utk.edu
-Thomas Naughton, Oak Ridge National Laboratory
-  naughtont@ornl.gov
-Tim Burgess,
-  timb@dugeo.com
 Tim Mattox, Indiana University, Cisco, Individual
   tmattox@gmail.com
 Tim Prins, Indiana University, Los Alamos National Laboratory
@@ -312,6 +291,8 @@ Tim Woodall, Los Alamos National Laboratory
 Todd Kordenbrock, Sandia National Laboratory
   thkgcode@gmail.com
   thkorde@sandia.gov
+Tom Naughton, Oak Ridge National Laboratory
+  naughtont@ornl.gov
 Tomislav Janjusic, Mellanox
   tomislavj@mngx-apl-01.mtl.labs.mlnx
 Torsten Hoefler, Indiana University, Technische Universtaet Chemnitz
@@ -328,8 +309,6 @@ Weikuan Yu, Los Alamos National Laboratory
   yuw@lanl.gov
 Wesley Bland, University of Tennessee-Knoxville
   wbland@icl.utk.edu
-William LePera, IBM
-  lepera@us.ibm.com
 William Throwe, Individual
   wtt6@cornell.edu
 Yael Dayan, Mellanox

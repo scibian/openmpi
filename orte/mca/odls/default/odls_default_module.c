@@ -11,7 +11,7 @@
  *                         All rights reserved.
  * Copyright (c) 2007-2010 Oracle and/or its affiliates.  All rights reserved.
  * Copyright (c) 2007      Evergrid, Inc. All rights reserved.
- * Copyright (c) 2008-2017 Cisco Systems, Inc.  All rights reserved
+ * Copyright (c) 2008-2016 Cisco Systems, Inc.  All rights reserved.
  * Copyright (c) 2010      IBM Corporation.  All rights reserved.
  * Copyright (c) 2011-2013 Los Alamos National Security, LLC.  All rights
  *                         reserved.
@@ -106,7 +106,7 @@
 #endif
 #include <ctype.h>
 
-#include "opal/mca/hwloc/hwloc-internal.h"
+#include "opal/mca/hwloc/hwloc.h"
 #include "opal/mca/hwloc/base/base.h"
 #include "opal/class/opal_pointer_array.h"
 #include "opal/util/opal_environ.h"
@@ -243,7 +243,7 @@ static int odls_default_kill_local(pid_t pid, int signum)
          * child processes our child may have
          * started
          */
-        pid = -pgrp;
+        pid = pgrp;
     }
 #endif
     if (0 != kill(pid, signum)) {

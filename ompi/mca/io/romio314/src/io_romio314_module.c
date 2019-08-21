@@ -11,7 +11,6 @@
  *                         All rights reserved.
  * Copyright (c) 2008      Sun Microsystems, Inc.  All rights reserved.
  * Copyright (c) 2008      Cisco Systems, Inc.  All rights reserved.
- * Copyright (c) 2017      IBM Corporation.  All rights reserved.
  * $COPYRIGHT$
  *
  * Additional copyrights may follow
@@ -60,8 +59,8 @@ mca_io_base_module_2_0_0_t mca_io_romio314_module = {
     mca_io_romio314_file_write_at_all,
     mca_io_romio314_file_iread_at,
     mca_io_romio314_file_iwrite_at,
-    mca_io_romio314_file_iread_at_all,
-    mca_io_romio314_file_iwrite_at_all,
+    NULL, /* iread_at_all */
+    NULL, /* iwrite_at_all */
 
     /* non-indexed IO operations */
     mca_io_romio314_file_read,
@@ -70,8 +69,8 @@ mca_io_base_module_2_0_0_t mca_io_romio314_module = {
     mca_io_romio314_file_write_all,
     mca_io_romio314_file_iread,
     mca_io_romio314_file_iwrite,
-    mca_io_romio314_file_iread_all,
-    mca_io_romio314_file_iwrite_all,
+    NULL, /* iread_all */
+    NULL, /* iwrite_all */
 
     mca_io_romio314_file_seek,
     mca_io_romio314_file_get_position,

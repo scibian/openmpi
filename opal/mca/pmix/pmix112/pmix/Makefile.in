@@ -27,7 +27,7 @@
 #                         All rights reserved.
 # Copyright (c) 2006-2015 Cisco Systems, Inc.  All rights reserved.
 # Copyright (c) 2012-2013 Los Alamos National Security, Inc.  All rights reserved.
-# Copyright (c) 2013-2017 Intel, Inc. All rights reserved.
+# Copyright (c) 2013-2015 Intel, Inc. All rights reserved
 # $COPYRIGHT$
 #
 # Additional copyrights may follow
@@ -64,7 +64,7 @@
 #
 
 #
-# Copyright (c) 2015-2017 Intel, Inc. All rights reserved.
+# Copyright 2015-2016 Intel, Inc. All rights reserved
 # Copyright (c) 2016      IBM Corporation.  All rights reserved.
 #
 # $COPYRIGHT$
@@ -183,7 +183,7 @@
 #
 
 #
-# Copyright (c) 2014-2017 Intel, Inc. All rights reserved.
+# Copyright (c) 2014-2015 Intel, Inc.  All rights reserved.
 # Copyright (c) 2014      Artem Y. Polyakov <artpol84@gmail.com>.
 #                         All rights reserved.
 # $COPYRIGHT$
@@ -221,267 +221,6 @@
 #
 # $HEADER$
 #
-
-#
-# Copyright (c) 2004-2005 The Trustees of Indiana University and Indiana
-#                         University Research and Technology
-#                         Corporation.  All rights reserved.
-# Copyright (c) 2004-2005 The University of Tennessee and The University
-#                         of Tennessee Research Foundation.  All rights
-#                         reserved.
-# Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
-#                         University of Stuttgart.  All rights reserved.
-# Copyright (c) 2004-2005 The Regents of the University of California.
-#                         All rights reserved.
-# Copyright (c) 2010      Cisco Systems, Inc.  All rights reserved.
-# Copyright (c) 2011      Sandia National Laboratories. All rights reserved.
-# Copyright (c) 2016      Los A.includeos National Security, LLC. All rights
-#                         reserved.
-# Copyright (c) 2017      Research Organization for Information Science
-#                         and Technology (RIST). All rights reserved.
-# Copyright (c) 2017      Intel, Inc. All rights reserved.
-# $COPYRIGHT$
-#
-# Additional copyrights may follow
-#
-# $HEADER$
-#
-
-# This makefile.include does not stand on its own - it is included from src/Makefile.am
-
-#
-# Copyright (c) 2004-2005 The Trustees of Indiana University and Indiana
-#                         University Research and Technology
-#                         Corporation.  All rights reserved.
-# Copyright (c) 2004-2005 The University of Tennessee and The University
-#                         of Tennessee Research Foundation.  All rights
-#                         reserved.
-# Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
-#                         University of Stuttgart.  All rights reserved.
-# Copyright (c) 2004-2005 The Regents of the University of California.
-#                         All rights reserved.
-# Copyright (c) 2017      Research Organization for Information Science
-#                         and Technology (RIST). All rights reserved.
-# Copyright (c) 2017      Intel, Inc. All rights reserved.
-# $COPYRIGHT$
-#
-# Additional copyrights may follow
-#
-# $HEADER$
-#
-
-# This makefile.am does not stand on its own - it is included from pmix/include/Makefile.am
-
-#
-# Copyright (c) 2004-2005 The Trustees of Indiana University and Indiana
-#                         University Research and Technology
-#                         Corporation.  All rights reserved.
-# Copyright (c) 2004-2008 The University of Tennessee and The University
-#                         of Tennessee Research Foundation.  All rights
-#                         reserved.
-# Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
-#                         University of Stuttgart.  All rights reserved.
-# Copyright (c) 2004-2005 The Regents of the University of California.
-#                         All rights reserved.
-# Copyright (c) 2017      Intel, Inc. All rights reserved.
-# $COPYRIGHT$
-#
-# Additional copyrights may follow
-#
-# $HEADER$
-#
-
-# This makefile.am does not stand on its own - it is included from src/atomics/sys/include/Makefile.include
-
-#
-# Copyright (c) 2004-2005 The Trustees of Indiana University and Indiana
-#                         University Research and Technology
-#                         Corporation.  All rights reserved.
-# Copyright (c) 2004-2008 The University of Tennessee and The University
-#                         of Tennessee Research Foundation.  All rights
-#                         reserved.
-# Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
-#                         University of Stuttgart.  All rights reserved.
-# Copyright (c) 2004-2005 The Regents of the University of California.
-#                         All rights reserved.
-# Copyright (c) 2017      Intel, Inc. All rights reserved.
-# $COPYRIGHT$
-#
-# Additional copyrights may follow
-#
-# $HEADER$
-#
-
-# This makefile.am does not stand on its own - it is included from pmix/include/Makefile.am
-
-#
-# Copyright (c) 2004-2005 The Trustees of Indiana University and Indiana
-#                         University Research and Technology
-#                         Corporation.  All rights reserved.
-# Copyright (c) 2004-2005 The University of Tennessee and The University
-#                         of Tennessee Research Foundation.  All rights
-#                         reserved.
-# Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
-#                         University of Stuttgart.  All rights reserved.
-# Copyright (c) 2004-2005 The Regents of the University of California.
-#                         All rights reserved.
-# Copyright (c) 2017      Intel, Inc. All rights reserved.
-# $COPYRIGHT$
-#
-# Additional copyrights may follow
-#
-# $HEADER$
-#
-
-# This makefile.am does not stand on its own - it is included from pmix/include/Makefile.am
-
-#
-# Copyright (c) 2004-2005 The Trustees of Indiana University and Indiana
-#                         University Research and Technology
-#                         Corporation.  All rights reserved.
-# Copyright (c) 2004-2005 The University of Tennessee and The University
-#                         of Tennessee Research Foundation.  All rights
-#                         reserved.
-# Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
-#                         University of Stuttgart.  All rights reserved.
-# Copyright (c) 2004-2005 The Regents of the University of California.
-#                         All rights reserved.
-# Copyright (c) 2017      Intel, Inc. All rights reserved.
-# $COPYRIGHT$
-#
-# Additional copyrights may follow
-#
-# $HEADER$
-#
-
-# This makefile.am does not stand on its own - it is included from pmix/include/Makefile.am
-
-#
-# Copyright (c) 2004-2005 The Trustees of Indiana University and Indiana
-#                         University Research and Technology
-#                         Corporation.  All rights reserved.
-# Copyright (c) 2004-2008 The University of Tennessee and The University
-#                         of Tennessee Research Foundation.  All rights
-#                         reserved.
-# Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
-#                         University of Stuttgart.  All rights reserved.
-# Copyright (c) 2004-2005 The Regents of the University of California.
-#                         All rights reserved.
-# Copyright (c) 2017      Intel, Inc. All rights reserved.
-# $COPYRIGHT$
-#
-# Additional copyrights may follow
-#
-# $HEADER$
-#
-
-# This makefile.am does not stand on its own - it is included from pmix/include/Makefile.am
-
-#
-# Copyright (c) 2004-2005 The Trustees of Indiana University and Indiana
-#                         University Research and Technology
-#                         Corporation.  All rights reserved.
-# Copyright (c) 2004-2005 The University of Tennessee and The University
-#                         of Tennessee Research Foundation.  All rights
-#                         reserved.
-# Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
-#                         University of Stuttgart.  All rights reserved.
-# Copyright (c) 2004-2005 The Regents of the University of California.
-#                         All rights reserved.
-# Copyright (c) 2017      Intel, Inc. All rights reserved.
-# $COPYRIGHT$
-#
-# Additional copyrights may follow
-#
-# $HEADER$
-#
-
-# This makefile.am does not stand on its own - it is included from pmix/include/Makefile.am
-
-#
-# Copyright (c) 2004-2005 The Trustees of Indiana University and Indiana
-#                         University Research and Technology
-#                         Corporation.  All rights reserved.
-# Copyright (c) 2004-2005 The University of Tennessee and The University
-#                         of Tennessee Research Foundation.  All rights
-#                         reserved.
-# Copyright (c) 2004-2005 High Performance Computing Center Stuttgart,
-#                         University of Stuttgart.  All rights reserved.
-# Copyright (c) 2004-2005 The Regents of the University of California.
-#                         All rights reserved.
-# Copyright (c) 2017      Intel, Inc. All rights reserved.
-# $COPYRIGHT$
-#
-# Additional copyrights may follow
-#
-# $HEADER$
-#
-
-# This makefile.am does not stand on its own - it is included from pmix/include/Makefile.am
-
-#
-# Copyright (c) 2004-2005 The Trustees of Indiana University and Indiana
-#                         University Research and Technology
-#                         Corporation.  All rights reserved.
-# Copyright (c) 2004-2005 The University of Tennessee and The University
-#                         of Tennessee Research Foundation.  All rights
-#                         reserved.
-# Copyright (c) 2004-2009 High Performance Computing Center Stuttgart,
-#                         University of Stuttgart.  All rights reserved.
-# Copyright (c) 2004-2005 The Regents of the University of California.
-#                         All rights reserved.
-# Copyright (c) 2011      Sandia National Laboratories. All rights reserved.
-# Copyright (c) 2017      Intel, Inc. All rights reserved.
-# $COPYRIGHT$
-#
-# Additional copyrights may follow
-#
-# $HEADER$
-#
-
-# This makefile.am does not stand on its own - it is included from pmix/include/Makefile.am
-
-#
-# Copyright (c) 2004-2005 The Trustees of Indiana University and Indiana
-#                         University Research and Technology
-#                         Corporation.  All rights reserved.
-# Copyright (c) 2004-2005 The University of Tennessee and The University
-#                         of Tennessee Research Foundation.  All rights
-#                         reserved.
-# Copyright (c) 2004-2009 High Performance Computing Center Stuttgart,
-#                         University of Stuttgart.  All rights reserved.
-# Copyright (c) 2004-2005 The Regents of the University of California.
-#                         All rights reserved.
-# Copyright (c) 2011      Sandia National Laboratories. All rights reserved.
-# Copyright (c) 2016      Los Alamos National Security, LLC. All rights
-#                         reserved.
-# Copyright (c) 2017      Intel, Inc. All rights reserved.
-# $COPYRIGHT$
-#
-# Additional copyrights may follow
-#
-# $HEADER$
-#
-
-# This makefile.am does not stand on its own - it is included from pmix/include/Makefile.am
-
-#
-# Copyright (c) 2016      Mellanox Technologies, Inc.
-#                         All rights reserved.
-# $COPYRIGHT$
-#
-# Additional copyrights may follow
-#
-# $HEADER$
-#
-
-# Copyright (c) 2015-2016 Mellanox Technologies, Inc.
-#                         All rights reserved.
-# $COPYRIGHT$
-#
-# Additional copyrights may follow
-#
-# $HEADER$
 
 
 
@@ -561,11 +300,7 @@ build_triplet = @build@
 host_triplet = @host@
 target_triplet = @target@
 @PMIX_EMBEDDED_MODE_FALSE@am__append_1 = contrib/pmix-valgrind.supp
-@PMIX_EMBEDDED_MODE_FALSE@@WANT_PMI_BACKWARD_TRUE@am__append_2 = \
-@PMIX_EMBEDDED_MODE_FALSE@@WANT_PMI_BACKWARD_TRUE@        include/pmi.h \
-@PMIX_EMBEDDED_MODE_FALSE@@WANT_PMI_BACKWARD_TRUE@        include/pmi2.h
-
-@PMIX_EMBEDDED_MODE_FALSE@am__append_3 = \
+@PMIX_EMBEDDED_MODE_FALSE@am__append_2 = \
 @PMIX_EMBEDDED_MODE_FALSE@        src/include/pmix_config.h \
 @PMIX_EMBEDDED_MODE_FALSE@        src/include/align.h \
 @PMIX_EMBEDDED_MODE_FALSE@        src/include/hash_string.h \
@@ -573,28 +308,22 @@ target_triplet = @target@
 @PMIX_EMBEDDED_MODE_FALSE@        src/include/prefetch.h \
 @PMIX_EMBEDDED_MODE_FALSE@        src/include/types.h
 
-@WANT_PMI_BACKWARD_TRUE@am__append_4 = \
-@WANT_PMI_BACKWARD_TRUE@        src/client/pmi1.c \
-@WANT_PMI_BACKWARD_TRUE@        src/client/pmi2.c
+@PMIX_EMBEDDED_MODE_FALSE@am__append_3 = \
+@PMIX_EMBEDDED_MODE_FALSE@        src/client/pmi1.c \
+@PMIX_EMBEDDED_MODE_FALSE@        src/client/pmi2.c
 
-@PMIX_WANT_MUNGE_TRUE@am__append_5 = \
+@PMIX_WANT_MUNGE_TRUE@am__append_4 = \
 @PMIX_WANT_MUNGE_TRUE@        src/sec/pmix_munge.h
 
-@PMIX_WANT_MUNGE_TRUE@am__append_6 = \
+@PMIX_WANT_MUNGE_TRUE@am__append_5 = \
 @PMIX_WANT_MUNGE_TRUE@        src/sec/pmix_munge.c
 
-@PMIX_WANT_SASL_TRUE@am__append_7 = \
+@PMIX_WANT_SASL_TRUE@am__append_6 = \
 @PMIX_WANT_SASL_TRUE@        src/sec/pmix_sasl.h
 
-@PMIX_WANT_SASL_TRUE@am__append_8 = \
+@PMIX_WANT_SASL_TRUE@am__append_7 = \
 @PMIX_WANT_SASL_TRUE@        src/sec/pmix_sasl.c
 
-@WANT_DSTORE_TRUE@am__append_9 = src/sm/pmix_sm.h src/sm/pmix_mmap.h \
-@WANT_DSTORE_TRUE@	src/dstore/pmix_dstore.h \
-@WANT_DSTORE_TRUE@	src/dstore/pmix_esh.h
-@WANT_DSTORE_TRUE@am__append_10 = src/sm/pmix_sm.c src/sm/pmix_mmap.c \
-@WANT_DSTORE_TRUE@	src/dstore/pmix_dstore.c \
-@WANT_DSTORE_TRUE@	src/dstore/pmix_esh.c
 subdir = .
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/config/c_get_alignment.m4 \
@@ -609,13 +338,11 @@ am__aclocal_m4_deps = $(top_srcdir)/config/c_get_alignment.m4 \
 	$(top_srcdir)/config/pmix_check_compiler_version.m4 \
 	$(top_srcdir)/config/pmix_check_icc.m4 \
 	$(top_srcdir)/config/pmix_check_ident.m4 \
-	$(top_srcdir)/config/pmix_check_lock.m4 \
 	$(top_srcdir)/config/pmix_check_munge.m4 \
 	$(top_srcdir)/config/pmix_check_package.m4 \
 	$(top_srcdir)/config/pmix_check_sasl.m4 \
 	$(top_srcdir)/config/pmix_check_vendor.m4 \
 	$(top_srcdir)/config/pmix_check_visibility.m4 \
-	$(top_srcdir)/config/pmix_config_asm.m4 \
 	$(top_srcdir)/config/pmix_ensure_contains_optflags.m4 \
 	$(top_srcdir)/config/pmix_functions.m4 \
 	$(top_srcdir)/config/pmix_load_platform.m4 \
@@ -623,7 +350,6 @@ am__aclocal_m4_deps = $(top_srcdir)/config/c_get_alignment.m4 \
 	$(top_srcdir)/config/pmix_setup_cc.m4 \
 	$(top_srcdir)/config/pmix_setup_hwloc.m4 \
 	$(top_srcdir)/config/pmix_setup_libevent.m4 \
-	$(top_srcdir)/config/pmix_try_assemble.m4 \
 	$(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
@@ -637,7 +363,7 @@ am__CONFIG_DISTCLEAN_FILES = config.status config.cache config.log \
  configure.lineno config.status.lineno
 mkinstalldirs = $(install_sh) -d
 CONFIG_HEADER = $(top_builddir)/include/pmix/autogen/config.h
-CONFIG_CLEAN_FILES = include/pmix_version.h
+CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
 am__vpath_adj_setup = srcdirstrip=`echo "$(srcdir)" | sed 's|.|.|g'`;
 am__vpath_adj = case $$p in \
@@ -670,14 +396,12 @@ am__installdirs = "$(DESTDIR)$(libdir)" "$(DESTDIR)$(man3dir)" \
 	"$(DESTDIR)$(man7dir)" "$(DESTDIR)$(pmixdatadir)" \
 	"$(DESTDIR)$(includedir)" "$(DESTDIR)$(include_pmixdir)" \
 	"$(DESTDIR)$(include_pmix_autogendir)" "$(DESTDIR)$(pmixdir)" \
-	"$(DESTDIR)$(includedir)" \
 	"$(DESTDIR)$(include_pmix_autogendir)"
 LTLIBRARIES = $(lib_LTLIBRARIES) $(noinst_LTLIBRARIES)
 libpmix_la_LIBADD =
 am__libpmix_la_SOURCES_DIST = src/class/pmix_object.h \
 	src/class/pmix_list.h src/class/pmix_pointer_array.h \
-	src/class/pmix_hash_table.h src/class/pmix_value_array.h \
-	src/include/pmix_globals.h src/include/pmix_jobdata.h \
+	src/class/pmix_hash_table.h src/include/pmix_globals.h \
 	src/include/pmix_config.h src/include/align.h \
 	src/include/hash_string.h src/include/pmix_socket_errno.h \
 	src/include/prefetch.h src/include/types.h \
@@ -689,27 +413,10 @@ am__libpmix_la_SOURCES_DIST = src/class/pmix_object.h \
 	src/util/hash.h src/util/strnlen.h src/usock/usock.h \
 	src/client/pmix_client_ops.h src/server/pmix_server_ops.h \
 	src/sec/pmix_sec.h src/sec/pmix_native.h src/sec/pmix_munge.h \
-	src/sec/pmix_sasl.h src/atomics/sys/architecture.h \
-	src/atomics/sys/atomic.h src/atomics/sys/atomic_impl.h \
-	src/atomics/sys/timer.h src/atomics/sys/cma.h \
-	src/atomics/sys/x86_64/atomic.h src/atomics/sys/x86_64/timer.h \
-	src/atomics//sys/arm/atomic.h src/atomics//sys/arm/timer.h \
-	src/atomics/sys/arm64/atomic.h src/atomics/sys/arm64/timer.h \
-	src/atomics/sys/ia32/atomic.h src/atomics/sys/ia32/timer.h \
-	src/atomics/sys/ia64/atomic.h src/atomics/sys/ia64/timer.h \
-	src/atomics/sys/mips/atomic.h src/atomics/sys/mips/timer.h \
-	src/atomics/sys/powerpc/atomic.h \
-	src/atomics/sys/powerpc/timer.h \
-	src/atomics/sys/sparcv9/atomic.h \
-	src/atomics/sys/sparcv9/timer.h \
-	src/atomics/sys/sync_builtin/atomic.h \
-	src/atomics/sys/gcc_builtin/atomic.h src/sm/pmix_sm.h \
-	src/sm/pmix_mmap.h src/dstore/pmix_dstore.h \
-	src/dstore/pmix_esh.h src/class/pmix_object.c \
+	src/sec/pmix_sasl.h src/class/pmix_object.c \
 	src/class/pmix_list.c src/class/pmix_pointer_array.c \
-	src/class/pmix_hash_table.c src/class/pmix_value_array.c \
-	src/include/pmix_globals.c src/buffer_ops/copy.c \
-	src/buffer_ops/internal_functions.c \
+	src/class/pmix_hash_table.c src/include/pmix_globals.c \
+	src/buffer_ops/copy.c src/buffer_ops/internal_functions.c \
 	src/buffer_ops/open_close.c src/buffer_ops/pack.c \
 	src/buffer_ops/print.c src/buffer_ops/unpack.c src/util/argv.c \
 	src/util/error.c src/util/printf.c src/util/output.c \
@@ -725,25 +432,18 @@ am__libpmix_la_SOURCES_DIST = src/class/pmix_object.h \
 	src/server/pmix_server_ops.c src/server/pmix_server_regex.c \
 	src/server/pmix_server_listener.c src/server/pmix_server_get.c \
 	src/sec/pmix_sec.c src/sec/pmix_native.c src/sec/pmix_munge.c \
-	src/sec/pmix_sasl.c src/common/pmix_common.c \
-	src/common/pmix_jobdata.c src/sm/pmix_sm.c src/sm/pmix_mmap.c \
-	src/dstore/pmix_dstore.c src/dstore/pmix_esh.c
+	src/sec/pmix_sasl.c src/common/pmix_common.c
 am__objects_1 =
-am__objects_2 = $(am__objects_1) $(am__objects_1) $(am__objects_1) \
-	$(am__objects_1)
+am__objects_2 = $(am__objects_1) $(am__objects_1) $(am__objects_1)
 am__dirstamp = $(am__leading_dot)dirstamp
-@WANT_PMI_BACKWARD_TRUE@am__objects_3 = src/client/pmi1.lo \
-@WANT_PMI_BACKWARD_TRUE@	src/client/pmi2.lo
+@PMIX_EMBEDDED_MODE_FALSE@am__objects_3 = src/client/pmi1.lo \
+@PMIX_EMBEDDED_MODE_FALSE@	src/client/pmi2.lo
 @PMIX_WANT_MUNGE_TRUE@am__objects_4 = src/sec/pmix_munge.lo
 @PMIX_WANT_SASL_TRUE@am__objects_5 = src/sec/pmix_sasl.lo
-@WANT_DSTORE_TRUE@am__objects_6 = src/sm/pmix_sm.lo \
-@WANT_DSTORE_TRUE@	src/sm/pmix_mmap.lo \
-@WANT_DSTORE_TRUE@	src/dstore/pmix_dstore.lo \
-@WANT_DSTORE_TRUE@	src/dstore/pmix_esh.lo
-am__objects_7 = src/class/pmix_object.lo src/class/pmix_list.lo \
+am__objects_6 = src/class/pmix_object.lo src/class/pmix_list.lo \
 	src/class/pmix_pointer_array.lo src/class/pmix_hash_table.lo \
-	src/class/pmix_value_array.lo src/include/pmix_globals.lo \
-	src/buffer_ops/copy.lo src/buffer_ops/internal_functions.lo \
+	src/include/pmix_globals.lo src/buffer_ops/copy.lo \
+	src/buffer_ops/internal_functions.lo \
 	src/buffer_ops/open_close.lo src/buffer_ops/pack.lo \
 	src/buffer_ops/print.lo src/buffer_ops/unpack.lo \
 	src/util/argv.lo src/util/error.lo src/util/printf.lo \
@@ -760,12 +460,11 @@ am__objects_7 = src/class/pmix_object.lo src/class/pmix_list.lo \
 	src/server/pmix_server_listener.lo \
 	src/server/pmix_server_get.lo src/sec/pmix_sec.lo \
 	src/sec/pmix_native.lo $(am__objects_4) $(am__objects_5) \
-	src/common/pmix_common.lo src/common/pmix_jobdata.lo \
-	$(am__objects_6)
+	src/common/pmix_common.lo
 @PMIX_EMBEDDED_MODE_FALSE@am_libpmix_la_OBJECTS = $(am__objects_2) \
-@PMIX_EMBEDDED_MODE_FALSE@	$(am__objects_7)
+@PMIX_EMBEDDED_MODE_FALSE@	$(am__objects_6)
 @PMIX_EMBEDDED_MODE_TRUE@am_libpmix_la_OBJECTS = $(am__objects_2) \
-@PMIX_EMBEDDED_MODE_TRUE@	$(am__objects_7)
+@PMIX_EMBEDDED_MODE_TRUE@	$(am__objects_6)
 libpmix_la_OBJECTS = $(am_libpmix_la_OBJECTS)
 AM_V_lt = $(am__v_lt_@AM_V@)
 am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
@@ -832,16 +531,16 @@ MANS = $(man_MANS)
 am__dist_pmixdata_DATA_DIST = contrib/pmix-valgrind.supp
 DATA = $(dist_pmixdata_DATA)
 am__include_HEADERS_DIST = include/pmix.h include/pmix_server.h \
-	include/pmix_version.h.in include/pmi.h include/pmi2.h
-am__include_pmix_HEADERS_DIST = include/pmix/pmix_common.h
+	include/pmi.h include/pmi2.h
+am__include_pmix_HEADERS_DIST = include/pmix/rename.h \
+	include/pmix/pmix_common.h
 am__include_pmix_autogen_HEADERS_DIST =  \
 	include/pmix/autogen/pmix_config_top.h \
 	include/pmix/autogen/pmix_config_bottom.h \
 	include/pmix/autogen/pmix_stdint.h
 am__nobase_pmix_HEADERS_DIST = src/class/pmix_object.h \
 	src/class/pmix_list.h src/class/pmix_pointer_array.h \
-	src/class/pmix_hash_table.h src/class/pmix_value_array.h \
-	src/include/pmix_globals.h src/include/pmix_jobdata.h \
+	src/class/pmix_hash_table.h src/include/pmix_globals.h \
 	src/include/pmix_config.h src/include/align.h \
 	src/include/hash_string.h src/include/pmix_socket_errno.h \
 	src/include/prefetch.h src/include/types.h \
@@ -853,27 +552,10 @@ am__nobase_pmix_HEADERS_DIST = src/class/pmix_object.h \
 	src/util/hash.h src/util/strnlen.h src/usock/usock.h \
 	src/client/pmix_client_ops.h src/server/pmix_server_ops.h \
 	src/sec/pmix_sec.h src/sec/pmix_native.h src/sec/pmix_munge.h \
-	src/sec/pmix_sasl.h src/atomics/sys/architecture.h \
-	src/atomics/sys/atomic.h src/atomics/sys/atomic_impl.h \
-	src/atomics/sys/timer.h src/atomics/sys/cma.h \
-	src/atomics/sys/x86_64/atomic.h src/atomics/sys/x86_64/timer.h \
-	src/atomics//sys/arm/atomic.h src/atomics//sys/arm/timer.h \
-	src/atomics/sys/arm64/atomic.h src/atomics/sys/arm64/timer.h \
-	src/atomics/sys/ia32/atomic.h src/atomics/sys/ia32/timer.h \
-	src/atomics/sys/ia64/atomic.h src/atomics/sys/ia64/timer.h \
-	src/atomics/sys/mips/atomic.h src/atomics/sys/mips/timer.h \
-	src/atomics/sys/powerpc/atomic.h \
-	src/atomics/sys/powerpc/timer.h \
-	src/atomics/sys/sparcv9/atomic.h \
-	src/atomics/sys/sparcv9/timer.h \
-	src/atomics/sys/sync_builtin/atomic.h \
-	src/atomics/sys/gcc_builtin/atomic.h src/sm/pmix_sm.h \
-	src/sm/pmix_mmap.h src/dstore/pmix_dstore.h \
-	src/dstore/pmix_esh.h
+	src/sec/pmix_sasl.h
 am__noinst_HEADERS_DIST = src/class/pmix_object.h \
 	src/class/pmix_list.h src/class/pmix_pointer_array.h \
-	src/class/pmix_hash_table.h src/class/pmix_value_array.h \
-	src/include/pmix_globals.h src/include/pmix_jobdata.h \
+	src/class/pmix_hash_table.h src/include/pmix_globals.h \
 	src/include/pmix_config.h src/include/align.h \
 	src/include/hash_string.h src/include/pmix_socket_errno.h \
 	src/include/prefetch.h src/include/types.h \
@@ -885,26 +567,9 @@ am__noinst_HEADERS_DIST = src/class/pmix_object.h \
 	src/util/hash.h src/util/strnlen.h src/usock/usock.h \
 	src/client/pmix_client_ops.h src/server/pmix_server_ops.h \
 	src/sec/pmix_sec.h src/sec/pmix_native.h src/sec/pmix_munge.h \
-	src/sec/pmix_sasl.h src/atomics/sys/architecture.h \
-	src/atomics/sys/atomic.h src/atomics/sys/atomic_impl.h \
-	src/atomics/sys/timer.h src/atomics/sys/cma.h \
-	src/atomics/sys/x86_64/atomic.h src/atomics/sys/x86_64/timer.h \
-	src/atomics//sys/arm/atomic.h src/atomics//sys/arm/timer.h \
-	src/atomics/sys/arm64/atomic.h src/atomics/sys/arm64/timer.h \
-	src/atomics/sys/ia32/atomic.h src/atomics/sys/ia32/timer.h \
-	src/atomics/sys/ia64/atomic.h src/atomics/sys/ia64/timer.h \
-	src/atomics/sys/mips/atomic.h src/atomics/sys/mips/timer.h \
-	src/atomics/sys/powerpc/atomic.h \
-	src/atomics/sys/powerpc/timer.h \
-	src/atomics/sys/sparcv9/atomic.h \
-	src/atomics/sys/sparcv9/timer.h \
-	src/atomics/sys/sync_builtin/atomic.h \
-	src/atomics/sys/gcc_builtin/atomic.h src/sm/pmix_sm.h \
-	src/sm/pmix_mmap.h src/dstore/pmix_dstore.h \
-	src/dstore/pmix_esh.h
+	src/sec/pmix_sasl.h
 HEADERS = $(include_HEADERS) $(include_pmix_HEADERS) \
 	$(include_pmix_autogen_HEADERS) $(nobase_pmix_HEADERS) \
-	$(nodist_include_HEADERS) \
 	$(nodist_include_pmix_autogen_HEADERS) $(noinst_HEADERS)
 RECURSIVE_CLEAN_TARGETS = mostlyclean-recursive clean-recursive	\
   distclean-recursive maintainer-clean-recursive
@@ -937,35 +602,21 @@ CSCOPE = cscope
 DIST_SUBDIRS = . test examples
 am__DIST_COMMON = $(srcdir)/Makefile.in $(srcdir)/config/Makefile.am \
 	$(srcdir)/include/Makefile.am \
-	$(srcdir)/src/atomics/sys/Makefile.include \
-	$(srcdir)/src/atomics/sys/arm/Makefile.include \
-	$(srcdir)/src/atomics/sys/arm64/Makefile.include \
-	$(srcdir)/src/atomics/sys/gcc_builtin/Makefile.include \
-	$(srcdir)/src/atomics/sys/ia32/Makefile.include \
-	$(srcdir)/src/atomics/sys/ia64/Makefile.include \
-	$(srcdir)/src/atomics/sys/mips/Makefile.include \
-	$(srcdir)/src/atomics/sys/powerpc/Makefile.include \
-	$(srcdir)/src/atomics/sys/sparcv9/Makefile.include \
-	$(srcdir)/src/atomics/sys/sync_builtin/Makefile.include \
-	$(srcdir)/src/atomics/sys/x86_64/Makefile.include \
 	$(srcdir)/src/buffer_ops/Makefile.am \
 	$(srcdir)/src/class/Makefile.am \
 	$(srcdir)/src/client/Makefile.am \
 	$(srcdir)/src/common/Makefile.am \
-	$(srcdir)/src/dstore/Makefile.am \
 	$(srcdir)/src/include/Makefile.am \
 	$(srcdir)/src/sec/Makefile.am $(srcdir)/src/server/Makefile.am \
-	$(srcdir)/src/sm/Makefile.am $(srcdir)/src/usock/Makefile.am \
-	$(srcdir)/src/util/Makefile.am $(top_srcdir)/./config/ar-lib \
-	$(top_srcdir)/./config/compile \
+	$(srcdir)/src/usock/Makefile.am $(srcdir)/src/util/Makefile.am \
+	$(top_srcdir)/./config/ar-lib $(top_srcdir)/./config/compile \
 	$(top_srcdir)/./config/config.guess \
 	$(top_srcdir)/./config/config.sub \
 	$(top_srcdir)/./config/depcomp \
 	$(top_srcdir)/./config/install-sh \
 	$(top_srcdir)/./config/ltmain.sh \
 	$(top_srcdir)/./config/missing \
-	$(top_srcdir)/include/pmix/autogen/config.h.in \
-	$(top_srcdir)/include/pmix_version.h.in ./config/ar-lib \
+	$(top_srcdir)/include/pmix/autogen/config.h.in ./config/ar-lib \
 	./config/compile ./config/config.guess ./config/config.sub \
 	./config/depcomp ./config/install-sh ./config/ltmain.sh \
 	./config/missing INSTALL NEWS README
@@ -1020,9 +671,6 @@ AUTOHEADER = @AUTOHEADER@
 AUTOMAKE = @AUTOMAKE@
 AWK = @AWK@
 CC = @CC@
-CCAS = @CCAS@
-CCASDEPMODE = @CCASDEPMODE@
-CCASFLAGS = @CCASFLAGS@
 CCDEPMODE = @CCDEPMODE@
 CC_FOR_BUILD = @CC_FOR_BUILD@
 CFLAGS = @CFLAGS@
@@ -1078,17 +726,6 @@ PACKAGE_TARNAME = @PACKAGE_TARNAME@
 PACKAGE_URL = @PACKAGE_URL@
 PACKAGE_VERSION = @PACKAGE_VERSION@
 PATH_SEPARATOR = @PATH_SEPARATOR@
-PERL = @PERL@
-PMIX_ASM_GSYM = @PMIX_ASM_GSYM@
-PMIX_ASM_LSYM = @PMIX_ASM_LSYM@
-PMIX_ASM_SUPPORT_64BIT = @PMIX_ASM_SUPPORT_64BIT@
-PMIX_ASM_TEXT = @PMIX_ASM_TEXT@
-PMIX_ASM_TYPE = @PMIX_ASM_TYPE@
-PMIX_ASSEMBLY_ARCH = @PMIX_ASSEMBLY_ARCH@
-PMIX_ASSEMBLY_BUILTIN = @PMIX_ASSEMBLY_BUILTIN@
-PMIX_ASSEMBLY_FORMAT = @PMIX_ASSEMBLY_FORMAT@
-PMIX_AS_GLOBAL = @PMIX_AS_GLOBAL@
-PMIX_AS_LABEL_SUFFIX = @PMIX_AS_LABEL_SUFFIX@
 PMIX_CC_ABSOLUTE = @PMIX_CC_ABSOLUTE@
 PMIX_CONFIGURE_DATE = @PMIX_CONFIGURE_DATE@
 PMIX_CONFIGURE_HOST = @PMIX_CONFIGURE_HOST@
@@ -1153,8 +790,6 @@ pdfdir = @pdfdir@
 pmixdatadir = @pmixdatadir@
 pmixincludedir = @pmixincludedir@
 pmixlibdir = @pmixlibdir@
-pmixmajor = @pmixmajor@
-pmixminor = @pmixminor@
 prefix = @prefix@
 program_transform_name = @program_transform_name@
 psdir = @psdir@
@@ -1178,8 +813,7 @@ ACLOCAL_AMFLAGS = -I ./config
 # Source code files
 headers = src/class/pmix_object.h src/class/pmix_list.h \
 	src/class/pmix_pointer_array.h src/class/pmix_hash_table.h \
-	src/class/pmix_value_array.h src/include/pmix_globals.h \
-	src/include/pmix_jobdata.h $(am__append_3) \
+	src/include/pmix_globals.h $(am__append_2) \
 	src/buffer_ops/buffer_ops.h src/buffer_ops/types.h \
 	src/buffer_ops/internal.h src/util/argv.h src/util/error.h \
 	src/util/printf.h src/util/output.h src/util/pmix_environ.h \
@@ -1187,26 +821,12 @@ headers = src/class/pmix_object.h src/class/pmix_list.h \
 	src/util/timings.h src/util/os_path.h src/util/basename.h \
 	src/util/hash.h src/util/strnlen.h src/usock/usock.h \
 	src/client/pmix_client_ops.h src/server/pmix_server_ops.h \
-	src/sec/pmix_sec.h src/sec/pmix_native.h $(am__append_5) \
-	$(am__append_7) src/atomics/sys/architecture.h \
-	src/atomics/sys/atomic.h src/atomics/sys/atomic_impl.h \
-	src/atomics/sys/timer.h src/atomics/sys/cma.h \
-	src/atomics/sys/x86_64/atomic.h src/atomics/sys/x86_64/timer.h \
-	src/atomics//sys/arm/atomic.h src/atomics//sys/arm/timer.h \
-	src/atomics/sys/arm64/atomic.h src/atomics/sys/arm64/timer.h \
-	src/atomics/sys/ia32/atomic.h src/atomics/sys/ia32/timer.h \
-	src/atomics/sys/ia64/atomic.h src/atomics/sys/ia64/timer.h \
-	src/atomics/sys/mips/atomic.h src/atomics/sys/mips/timer.h \
-	src/atomics/sys/powerpc/atomic.h \
-	src/atomics/sys/powerpc/timer.h \
-	src/atomics/sys/sparcv9/atomic.h \
-	src/atomics/sys/sparcv9/timer.h \
-	src/atomics/sys/sync_builtin/atomic.h \
-	src/atomics/sys/gcc_builtin/atomic.h $(am__append_9)
+	src/sec/pmix_sec.h src/sec/pmix_native.h $(am__append_4) \
+	$(am__append_6)
 sources = src/class/pmix_object.c src/class/pmix_list.c \
 	src/class/pmix_pointer_array.c src/class/pmix_hash_table.c \
-	src/class/pmix_value_array.c src/include/pmix_globals.c \
-	src/buffer_ops/copy.c src/buffer_ops/internal_functions.c \
+	src/include/pmix_globals.c src/buffer_ops/copy.c \
+	src/buffer_ops/internal_functions.c \
 	src/buffer_ops/open_close.c src/buffer_ops/pack.c \
 	src/buffer_ops/print.c src/buffer_ops/unpack.c src/util/argv.c \
 	src/util/error.c src/util/printf.c src/util/output.c \
@@ -1217,13 +837,12 @@ sources = src/class/pmix_object.c src/class/pmix_list.c \
 	src/client/pmix_client.c src/client/pmix_client_fence.c \
 	src/client/pmix_client_get.c src/client/pmix_client_pub.c \
 	src/client/pmix_client_spawn.c \
-	src/client/pmix_client_connect.c $(am__append_4) \
+	src/client/pmix_client_connect.c $(am__append_3) \
 	src/server/pmix_server.c src/server/pmix_server_ops.c \
 	src/server/pmix_server_regex.c \
 	src/server/pmix_server_listener.c src/server/pmix_server_get.c \
-	src/sec/pmix_sec.c src/sec/pmix_native.c $(am__append_6) \
-	$(am__append_8) src/common/pmix_common.c \
-	src/common/pmix_jobdata.c $(am__append_10)
+	src/sec/pmix_sec.c src/sec/pmix_native.c $(am__append_5) \
+	$(am__append_7) src/common/pmix_common.c
 nodist_headers = 
 EXTRA_DIST = config/c_get_alignment.m4 config/pmix_get_version.sh \
 	config/distscript.sh config/pmix_check_attributes.m4 \
@@ -1232,7 +851,6 @@ EXTRA_DIST = config/c_get_alignment.m4 config/pmix_get_version.sh \
 	config/pmix_check_ident.m4 config/pmix_check_munge.m4 \
 	config/pmix_check_package.m4 config/pmix_check_sasl.m4 \
 	config/pmix_check_vendor.m4 config/pmix_check_visibility.m4 \
-	config/pmix_check_lock.m4 \
 	config/pmix_ensure_contains_optflags.m4 \
 	config/pmix_functions.m4 config/pmix.m4 \
 	config/pmix_search_libs.m4 config/pmix_setup_cc.m4 \
@@ -1259,12 +877,15 @@ dist_pmixdata_DATA = $(am__append_1)
 @PMIX_EMBEDDED_MODE_FALSE@        man/man7/pmix.7 \
 @PMIX_EMBEDDED_MODE_FALSE@        man/man7/pmix_constants.7
 
-@PMIX_EMBEDDED_MODE_FALSE@include_HEADERS = include/pmix.h \
-@PMIX_EMBEDDED_MODE_FALSE@	include/pmix_server.h \
-@PMIX_EMBEDDED_MODE_FALSE@	include/pmix_version.h.in \
-@PMIX_EMBEDDED_MODE_FALSE@	$(am__append_2)
+@PMIX_EMBEDDED_MODE_FALSE@include_HEADERS = \
+@PMIX_EMBEDDED_MODE_FALSE@        include/pmix.h \
+@PMIX_EMBEDDED_MODE_FALSE@        include/pmix_server.h \
+@PMIX_EMBEDDED_MODE_FALSE@        include/pmi.h \
+@PMIX_EMBEDDED_MODE_FALSE@        include/pmi2.h
+
 @PMIX_EMBEDDED_MODE_FALSE@include_pmixdir = $(includedir)/pmix
 @PMIX_EMBEDDED_MODE_FALSE@include_pmix_HEADERS = \
+@PMIX_EMBEDDED_MODE_FALSE@    include/pmix/rename.h \
 @PMIX_EMBEDDED_MODE_FALSE@    include/pmix/pmix_common.h
 
 @PMIX_EMBEDDED_MODE_FALSE@include_pmix_autogendir = $(includedir)/pmix/autogen
@@ -1275,9 +896,6 @@ dist_pmixdata_DATA = $(am__append_1)
 
 @PMIX_EMBEDDED_MODE_FALSE@nodist_include_pmix_autogen_HEADERS = \
 @PMIX_EMBEDDED_MODE_FALSE@        include/pmix/autogen/config.h
-
-@PMIX_EMBEDDED_MODE_FALSE@nodist_include_HEADERS = \
-@PMIX_EMBEDDED_MODE_FALSE@    include/pmix_version.h
 
 @PMIX_EMBEDDED_MODE_TRUE@noinst_LTLIBRARIES = libpmix.la
 @PMIX_EMBEDDED_MODE_FALSE@libpmix_la_SOURCES = $(headers) $(sources)
@@ -1295,7 +913,7 @@ all: all-recursive
 .SUFFIXES: .c .lo .o .obj
 am--refresh: Makefile
 	@:
-$(srcdir)/Makefile.in:  $(srcdir)/Makefile.am $(srcdir)/config/Makefile.am $(srcdir)/include/Makefile.am $(srcdir)/src/class/Makefile.am $(srcdir)/src/include/Makefile.am $(srcdir)/src/buffer_ops/Makefile.am $(srcdir)/src/util/Makefile.am $(srcdir)/src/usock/Makefile.am $(srcdir)/src/client/Makefile.am $(srcdir)/src/server/Makefile.am $(srcdir)/src/sec/Makefile.am $(srcdir)/src/common/Makefile.am $(srcdir)/src/atomics/sys/Makefile.include $(srcdir)/src/atomics/sys/x86_64/Makefile.include $(srcdir)/src/atomics/sys/arm/Makefile.include $(srcdir)/src/atomics/sys/arm64/Makefile.include $(srcdir)/src/atomics/sys/ia32/Makefile.include $(srcdir)/src/atomics/sys/ia64/Makefile.include $(srcdir)/src/atomics/sys/mips/Makefile.include $(srcdir)/src/atomics/sys/powerpc/Makefile.include $(srcdir)/src/atomics/sys/sparcv9/Makefile.include $(srcdir)/src/atomics/sys/sync_builtin/Makefile.include $(srcdir)/src/atomics/sys/gcc_builtin/Makefile.include $(srcdir)/src/sm/Makefile.am $(srcdir)/src/dstore/Makefile.am $(am__configure_deps)
+$(srcdir)/Makefile.in:  $(srcdir)/Makefile.am $(srcdir)/config/Makefile.am $(srcdir)/include/Makefile.am $(srcdir)/src/class/Makefile.am $(srcdir)/src/include/Makefile.am $(srcdir)/src/buffer_ops/Makefile.am $(srcdir)/src/util/Makefile.am $(srcdir)/src/usock/Makefile.am $(srcdir)/src/client/Makefile.am $(srcdir)/src/server/Makefile.am $(srcdir)/src/sec/Makefile.am $(srcdir)/src/common/Makefile.am $(am__configure_deps)
 	@for dep in $?; do \
 	  case '$(am__configure_deps)' in \
 	    *$$dep*) \
@@ -1317,7 +935,7 @@ Makefile: $(srcdir)/Makefile.in $(top_builddir)/config.status
 	    echo ' cd $(top_builddir) && $(SHELL) ./config.status $@ $(am__depfiles_maybe)'; \
 	    cd $(top_builddir) && $(SHELL) ./config.status $@ $(am__depfiles_maybe);; \
 	esac;
-$(srcdir)/config/Makefile.am $(srcdir)/include/Makefile.am $(srcdir)/src/class/Makefile.am $(srcdir)/src/include/Makefile.am $(srcdir)/src/buffer_ops/Makefile.am $(srcdir)/src/util/Makefile.am $(srcdir)/src/usock/Makefile.am $(srcdir)/src/client/Makefile.am $(srcdir)/src/server/Makefile.am $(srcdir)/src/sec/Makefile.am $(srcdir)/src/common/Makefile.am $(srcdir)/src/atomics/sys/Makefile.include $(srcdir)/src/atomics/sys/x86_64/Makefile.include $(srcdir)/src/atomics/sys/arm/Makefile.include $(srcdir)/src/atomics/sys/arm64/Makefile.include $(srcdir)/src/atomics/sys/ia32/Makefile.include $(srcdir)/src/atomics/sys/ia64/Makefile.include $(srcdir)/src/atomics/sys/mips/Makefile.include $(srcdir)/src/atomics/sys/powerpc/Makefile.include $(srcdir)/src/atomics/sys/sparcv9/Makefile.include $(srcdir)/src/atomics/sys/sync_builtin/Makefile.include $(srcdir)/src/atomics/sys/gcc_builtin/Makefile.include $(srcdir)/src/sm/Makefile.am $(srcdir)/src/dstore/Makefile.am $(am__empty):
+$(srcdir)/config/Makefile.am $(srcdir)/include/Makefile.am $(srcdir)/src/class/Makefile.am $(srcdir)/src/include/Makefile.am $(srcdir)/src/buffer_ops/Makefile.am $(srcdir)/src/util/Makefile.am $(srcdir)/src/usock/Makefile.am $(srcdir)/src/client/Makefile.am $(srcdir)/src/server/Makefile.am $(srcdir)/src/sec/Makefile.am $(srcdir)/src/common/Makefile.am $(am__empty):
 
 $(top_builddir)/config.status: $(top_srcdir)/configure $(CONFIG_STATUS_DEPENDENCIES)
 	$(SHELL) ./config.status --recheck
@@ -1342,8 +960,6 @@ $(top_srcdir)/include/pmix/autogen/config.h.in:  $(am__configure_deps)
 
 distclean-hdr:
 	-rm -f include/pmix/autogen/config.h include/pmix/autogen/stamp-h1
-include/pmix_version.h: $(top_builddir)/config.status $(top_srcdir)/include/pmix_version.h.in
-	cd $(top_builddir) && $(SHELL) ./config.status $@
 
 install-libLTLIBRARIES: $(lib_LTLIBRARIES)
 	@$(NORMAL_INSTALL)
@@ -1403,8 +1019,6 @@ src/class/pmix_list.lo: src/class/$(am__dirstamp) \
 src/class/pmix_pointer_array.lo: src/class/$(am__dirstamp) \
 	src/class/$(DEPDIR)/$(am__dirstamp)
 src/class/pmix_hash_table.lo: src/class/$(am__dirstamp) \
-	src/class/$(DEPDIR)/$(am__dirstamp)
-src/class/pmix_value_array.lo: src/class/$(am__dirstamp) \
 	src/class/$(DEPDIR)/$(am__dirstamp)
 src/include/$(am__dirstamp):
 	@$(MKDIR_P) src/include
@@ -1532,28 +1146,6 @@ src/common/$(DEPDIR)/$(am__dirstamp):
 	@: > src/common/$(DEPDIR)/$(am__dirstamp)
 src/common/pmix_common.lo: src/common/$(am__dirstamp) \
 	src/common/$(DEPDIR)/$(am__dirstamp)
-src/common/pmix_jobdata.lo: src/common/$(am__dirstamp) \
-	src/common/$(DEPDIR)/$(am__dirstamp)
-src/sm/$(am__dirstamp):
-	@$(MKDIR_P) src/sm
-	@: > src/sm/$(am__dirstamp)
-src/sm/$(DEPDIR)/$(am__dirstamp):
-	@$(MKDIR_P) src/sm/$(DEPDIR)
-	@: > src/sm/$(DEPDIR)/$(am__dirstamp)
-src/sm/pmix_sm.lo: src/sm/$(am__dirstamp) \
-	src/sm/$(DEPDIR)/$(am__dirstamp)
-src/sm/pmix_mmap.lo: src/sm/$(am__dirstamp) \
-	src/sm/$(DEPDIR)/$(am__dirstamp)
-src/dstore/$(am__dirstamp):
-	@$(MKDIR_P) src/dstore
-	@: > src/dstore/$(am__dirstamp)
-src/dstore/$(DEPDIR)/$(am__dirstamp):
-	@$(MKDIR_P) src/dstore/$(DEPDIR)
-	@: > src/dstore/$(DEPDIR)/$(am__dirstamp)
-src/dstore/pmix_dstore.lo: src/dstore/$(am__dirstamp) \
-	src/dstore/$(DEPDIR)/$(am__dirstamp)
-src/dstore/pmix_esh.lo: src/dstore/$(am__dirstamp) \
-	src/dstore/$(DEPDIR)/$(am__dirstamp)
 
 libpmix.la: $(libpmix_la_OBJECTS) $(libpmix_la_DEPENDENCIES) $(EXTRA_libpmix_la_DEPENDENCIES) 
 	$(AM_V_CCLD)$(libpmix_la_LINK) $(am_libpmix_la_rpath) $(libpmix_la_OBJECTS) $(libpmix_la_LIBADD) $(LIBS)
@@ -1568,16 +1160,12 @@ mostlyclean-compile:
 	-rm -f src/client/*.lo
 	-rm -f src/common/*.$(OBJEXT)
 	-rm -f src/common/*.lo
-	-rm -f src/dstore/*.$(OBJEXT)
-	-rm -f src/dstore/*.lo
 	-rm -f src/include/*.$(OBJEXT)
 	-rm -f src/include/*.lo
 	-rm -f src/sec/*.$(OBJEXT)
 	-rm -f src/sec/*.lo
 	-rm -f src/server/*.$(OBJEXT)
 	-rm -f src/server/*.lo
-	-rm -f src/sm/*.$(OBJEXT)
-	-rm -f src/sm/*.lo
 	-rm -f src/usock/*.$(OBJEXT)
 	-rm -f src/usock/*.lo
 	-rm -f src/util/*.$(OBJEXT)
@@ -1596,7 +1184,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@src/class/$(DEPDIR)/pmix_list.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/class/$(DEPDIR)/pmix_object.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/class/$(DEPDIR)/pmix_pointer_array.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@src/class/$(DEPDIR)/pmix_value_array.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/client/$(DEPDIR)/pmi1.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/client/$(DEPDIR)/pmi2.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/client/$(DEPDIR)/pmix_client.Plo@am__quote@
@@ -1606,9 +1193,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@src/client/$(DEPDIR)/pmix_client_pub.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/client/$(DEPDIR)/pmix_client_spawn.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/common/$(DEPDIR)/pmix_common.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@src/common/$(DEPDIR)/pmix_jobdata.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@src/dstore/$(DEPDIR)/pmix_dstore.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@src/dstore/$(DEPDIR)/pmix_esh.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/include/$(DEPDIR)/pmix_globals.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/sec/$(DEPDIR)/pmix_munge.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/sec/$(DEPDIR)/pmix_native.Plo@am__quote@
@@ -1619,8 +1203,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@src/server/$(DEPDIR)/pmix_server_listener.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/server/$(DEPDIR)/pmix_server_ops.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/server/$(DEPDIR)/pmix_server_regex.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@src/sm/$(DEPDIR)/pmix_mmap.Plo@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@src/sm/$(DEPDIR)/pmix_sm.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/usock/$(DEPDIR)/usock.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/usock/$(DEPDIR)/usock_sendrecv.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@src/util/$(DEPDIR)/argv.Plo@am__quote@
@@ -1669,11 +1251,9 @@ clean-libtool:
 	-rm -rf src/class/.libs src/class/_libs
 	-rm -rf src/client/.libs src/client/_libs
 	-rm -rf src/common/.libs src/common/_libs
-	-rm -rf src/dstore/.libs src/dstore/_libs
 	-rm -rf src/include/.libs src/include/_libs
 	-rm -rf src/sec/.libs src/sec/_libs
 	-rm -rf src/server/.libs src/server/_libs
-	-rm -rf src/sm/.libs src/sm/_libs
 	-rm -rf src/usock/.libs src/usock/_libs
 	-rm -rf src/util/.libs src/util/_libs
 
@@ -1873,27 +1453,6 @@ uninstall-nobase_pmixHEADERS:
 	@list='$(nobase_pmix_HEADERS)'; test -n "$(pmixdir)" || list=; \
 	$(am__nobase_strip_setup); files=`$(am__nobase_strip)`; \
 	dir='$(DESTDIR)$(pmixdir)'; $(am__uninstall_files_from_dir)
-install-nodist_includeHEADERS: $(nodist_include_HEADERS)
-	@$(NORMAL_INSTALL)
-	@list='$(nodist_include_HEADERS)'; test -n "$(includedir)" || list=; \
-	if test -n "$$list"; then \
-	  echo " $(MKDIR_P) '$(DESTDIR)$(includedir)'"; \
-	  $(MKDIR_P) "$(DESTDIR)$(includedir)" || exit 1; \
-	fi; \
-	for p in $$list; do \
-	  if test -f "$$p"; then d=; else d="$(srcdir)/"; fi; \
-	  echo "$$d$$p"; \
-	done | $(am__base_list) | \
-	while read files; do \
-	  echo " $(INSTALL_HEADER) $$files '$(DESTDIR)$(includedir)'"; \
-	  $(INSTALL_HEADER) $$files "$(DESTDIR)$(includedir)" || exit $$?; \
-	done
-
-uninstall-nodist_includeHEADERS:
-	@$(NORMAL_UNINSTALL)
-	@list='$(nodist_include_HEADERS)'; test -n "$(includedir)" || list=; \
-	files=`for p in $$list; do echo $$p; done | sed -e 's|^.*/||'`; \
-	dir='$(DESTDIR)$(includedir)'; $(am__uninstall_files_from_dir)
 install-nodist_include_pmix_autogenHEADERS: $(nodist_include_pmix_autogen_HEADERS)
 	@$(NORMAL_INSTALL)
 	@list='$(nodist_include_pmix_autogen_HEADERS)'; test -n "$(include_pmix_autogendir)" || list=; \
@@ -2217,7 +1776,7 @@ check: check-recursive
 all-am: Makefile $(LTLIBRARIES) $(MANS) $(DATA) $(HEADERS)
 installdirs: installdirs-recursive
 installdirs-am:
-	for dir in "$(DESTDIR)$(libdir)" "$(DESTDIR)$(man3dir)" "$(DESTDIR)$(man7dir)" "$(DESTDIR)$(pmixdatadir)" "$(DESTDIR)$(includedir)" "$(DESTDIR)$(include_pmixdir)" "$(DESTDIR)$(include_pmix_autogendir)" "$(DESTDIR)$(pmixdir)" "$(DESTDIR)$(includedir)" "$(DESTDIR)$(include_pmix_autogendir)"; do \
+	for dir in "$(DESTDIR)$(libdir)" "$(DESTDIR)$(man3dir)" "$(DESTDIR)$(man7dir)" "$(DESTDIR)$(pmixdatadir)" "$(DESTDIR)$(includedir)" "$(DESTDIR)$(include_pmixdir)" "$(DESTDIR)$(include_pmix_autogendir)" "$(DESTDIR)$(pmixdir)" "$(DESTDIR)$(include_pmix_autogendir)"; do \
 	  test -z "$$dir" || $(MKDIR_P) "$$dir"; \
 	done
 install: install-recursive
@@ -2255,16 +1814,12 @@ distclean-generic:
 	-rm -f src/client/$(am__dirstamp)
 	-rm -f src/common/$(DEPDIR)/$(am__dirstamp)
 	-rm -f src/common/$(am__dirstamp)
-	-rm -f src/dstore/$(DEPDIR)/$(am__dirstamp)
-	-rm -f src/dstore/$(am__dirstamp)
 	-rm -f src/include/$(DEPDIR)/$(am__dirstamp)
 	-rm -f src/include/$(am__dirstamp)
 	-rm -f src/sec/$(DEPDIR)/$(am__dirstamp)
 	-rm -f src/sec/$(am__dirstamp)
 	-rm -f src/server/$(DEPDIR)/$(am__dirstamp)
 	-rm -f src/server/$(am__dirstamp)
-	-rm -f src/sm/$(DEPDIR)/$(am__dirstamp)
-	-rm -f src/sm/$(am__dirstamp)
 	-rm -f src/usock/$(DEPDIR)/$(am__dirstamp)
 	-rm -f src/usock/$(am__dirstamp)
 	-rm -f src/util/$(DEPDIR)/$(am__dirstamp)
@@ -2280,7 +1835,7 @@ clean-am: clean-generic clean-libLTLIBRARIES clean-libtool \
 
 distclean: distclean-recursive
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
-	-rm -rf src/buffer_ops/$(DEPDIR) src/class/$(DEPDIR) src/client/$(DEPDIR) src/common/$(DEPDIR) src/dstore/$(DEPDIR) src/include/$(DEPDIR) src/sec/$(DEPDIR) src/server/$(DEPDIR) src/sm/$(DEPDIR) src/usock/$(DEPDIR) src/util/$(DEPDIR)
+	-rm -rf src/buffer_ops/$(DEPDIR) src/class/$(DEPDIR) src/client/$(DEPDIR) src/common/$(DEPDIR) src/include/$(DEPDIR) src/sec/$(DEPDIR) src/server/$(DEPDIR) src/usock/$(DEPDIR) src/util/$(DEPDIR)
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
 	distclean-hdr distclean-libtool distclean-tags
@@ -2300,7 +1855,7 @@ info-am:
 install-data-am: install-dist_pmixdataDATA install-includeHEADERS \
 	install-include_pmixHEADERS \
 	install-include_pmix_autogenHEADERS install-man \
-	install-nobase_pmixHEADERS install-nodist_includeHEADERS \
+	install-nobase_pmixHEADERS \
 	install-nodist_include_pmix_autogenHEADERS
 
 install-dvi: install-dvi-recursive
@@ -2332,7 +1887,7 @@ installcheck-am:
 maintainer-clean: maintainer-clean-recursive
 	-rm -f $(am__CONFIG_DISTCLEAN_FILES)
 	-rm -rf $(top_srcdir)/autom4te.cache
-	-rm -rf src/buffer_ops/$(DEPDIR) src/class/$(DEPDIR) src/client/$(DEPDIR) src/common/$(DEPDIR) src/dstore/$(DEPDIR) src/include/$(DEPDIR) src/sec/$(DEPDIR) src/server/$(DEPDIR) src/sm/$(DEPDIR) src/usock/$(DEPDIR) src/util/$(DEPDIR)
+	-rm -rf src/buffer_ops/$(DEPDIR) src/class/$(DEPDIR) src/client/$(DEPDIR) src/common/$(DEPDIR) src/include/$(DEPDIR) src/sec/$(DEPDIR) src/server/$(DEPDIR) src/usock/$(DEPDIR) src/util/$(DEPDIR)
 	-rm -f Makefile
 maintainer-clean-am: distclean-am maintainer-clean-generic \
 	maintainer-clean-local
@@ -2354,7 +1909,6 @@ uninstall-am: uninstall-dist_pmixdataDATA uninstall-includeHEADERS \
 	uninstall-include_pmixHEADERS \
 	uninstall-include_pmix_autogenHEADERS uninstall-libLTLIBRARIES \
 	uninstall-man uninstall-nobase_pmixHEADERS \
-	uninstall-nodist_includeHEADERS \
 	uninstall-nodist_include_pmix_autogenHEADERS
 
 uninstall-man: uninstall-man3 uninstall-man7
@@ -2377,7 +1931,6 @@ uninstall-man: uninstall-man3 uninstall-man7
 	install-include_pmix_autogenHEADERS install-info \
 	install-info-am install-libLTLIBRARIES install-man \
 	install-man3 install-man7 install-nobase_pmixHEADERS \
-	install-nodist_includeHEADERS \
 	install-nodist_include_pmix_autogenHEADERS install-pdf \
 	install-pdf-am install-ps install-ps-am install-strip \
 	installcheck installcheck-am installdirs installdirs-am \
@@ -2389,7 +1942,7 @@ uninstall-man: uninstall-man3 uninstall-man7
 	uninstall-include_pmixHEADERS \
 	uninstall-include_pmix_autogenHEADERS uninstall-libLTLIBRARIES \
 	uninstall-man uninstall-man3 uninstall-man7 \
-	uninstall-nobase_pmixHEADERS uninstall-nodist_includeHEADERS \
+	uninstall-nobase_pmixHEADERS \
 	uninstall-nodist_include_pmix_autogenHEADERS
 
 .PRECIOUS: Makefile
@@ -2404,9 +1957,6 @@ nroff:
 	    contrib/md2nroff.pl --source=$$source.md; \
 	done
 
-#
-# Copy over all the generated files
-#
 dist-hook:
 	env LS_COLORS= sh "$(top_srcdir)/config/distscript.sh" "$(top_srcdir)" "$(distdir)" "$(PMIX_VERSION)" "$(PMIX_REPO_REV)"
 

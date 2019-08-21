@@ -535,13 +535,6 @@ static void *mca_oob_ud_event_dispatch(int fd, int flags, void *context)
                      ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
     }
 
-    rc = mca_oob_ud_process_messages (event_cq, port);
-    if (rc < 0) {
-        opal_output (0, "%s oob:ud:event_dispatch error processing messages",
-        ORTE_NAME_PRINT(ORTE_PROC_MY_NAME));
-        return NULL;
-    }
-
     /* re-arm the event */
     opal_event_add (&port->device->event, NULL);
 

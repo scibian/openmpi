@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014-2016 Mellanox Technologies, Inc.
+ * Copyright (c) 2014      Mellanox Technologies, Inc.
  *                         All rights reserved.
  * $COPYRIGHT$
  *
@@ -15,16 +15,16 @@
 
 #include <shmem.h>
 
+#warning This application uses deprecated API see http://www.open-mpi.org/
+
 int main(void)
 {
     long *x;
 
-    shmem_init();
+    start_pes(0);
 
-    x = (long *) shmem_malloc(sizeof(*x));
+    x = (long *) shmalloc(sizeof(*x));
 
-    shmem_free(x);
-
-    shmem_finalize();
+    shfree(x);
 }
 

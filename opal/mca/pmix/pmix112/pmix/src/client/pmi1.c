@@ -202,30 +202,6 @@ PMIX_EXPORT int PMI_KVS_Get( const char kvsname[], const char key[], char value[
     pmix_output_verbose(2, pmix_globals.debug_output,
             "PMI_KVS_Get: KVS=%s, key=%s value=%s", kvsname, key, value);
 
-    /* PMI-1 expects resource manager to set
-     * process mapping in ANL notation. */
-    if (!strcmp(key, ANL_MAPPING)) {
-        /* we are looking in the job-data. If there is nothing there
-         * we don't want to look in rank's data, thus set rank to widcard */
-        proc = myproc;
-        proc.rank = PMIX_RANK_WILDCARD;
-        if (PMIX_SUCCESS == PMIx_Get(&proc, PMIX_ANL_MAP, NULL, 0, &val) &&
-               (NULL != val) && (PMIX_STRING == val->type)) {
-            strncpy(value, val->data.string, length);
-            PMIX_VALUE_FREE(val, 1);
-            return PMI_SUCCESS;
-        } else {
-            /* artpol:
-             * Some RM's (i.e. SLURM) already have ANL precomputed. The export it
-             * through PMIX_ANL_MAP variable.
-             * If we haven't found it we want to have our own packing functionality
-             * since it's common.
-             * Somebody else has to write it since I've already done that for
-             * GPL'ed SLURM :) */
-            return PMI_FAIL;
-        }
-    }
-
     /* retrieve the data from PMIx - since we don't have a rank,
      * we indicate that by passing the UNDEF value */
     (void)strncpy(proc.nspace, kvsname, PMIX_MAX_NSLEN);
@@ -271,16 +247,18 @@ PMIX_EXPORT int PMI_Get_size(int *size)
 {
     pmix_status_t rc = PMIX_SUCCESS;
     pmix_value_t *val;
+    pmix_proc_t proc;
     pmix_info_t info[1];
     bool  val_optinal = 1;
-    pmix_proc_t proc = myproc;
-    proc.rank = PMIX_RANK_WILDCARD;
 
     PMI_CHECK();
 
     if (NULL == size) {
         return PMI_ERR_INVALID_ARG;
     }
+
+    (void)strncpy(proc.nspace, myproc.nspace, PMIX_MAX_NSLEN);
+    proc.rank = PMIX_RANK_UNDEF;
 
     /* set controlling parameters
      * PMIX_OPTIONAL - expect that these keys should be available on startup
@@ -315,16 +293,18 @@ PMIX_EXPORT int PMI_Get_universe_size(int *size)
 {
     pmix_status_t rc = PMIX_SUCCESS;
     pmix_value_t *val;
+    pmix_proc_t proc;
     pmix_info_t info[1];
     bool  val_optinal = 1;
-    pmix_proc_t proc = myproc;
-    proc.rank = PMIX_RANK_WILDCARD;
 
     PMI_CHECK();
 
     if (NULL == size) {
         return PMI_ERR_INVALID_ARG;
     }
+
+    (void)strncpy(proc.nspace, myproc.nspace, PMIX_MAX_NSLEN);
+    proc.rank = PMIX_RANK_UNDEF;
 
     /* set controlling parameters
      * PMIX_OPTIONAL - expect that these keys should be available on startup
@@ -347,16 +327,18 @@ PMIX_EXPORT int PMI_Get_appnum(int *appnum)
 {
     pmix_status_t rc = PMIX_SUCCESS;
     pmix_value_t *val;
+    pmix_proc_t proc;
     pmix_info_t info[1];
     bool  val_optinal = 1;
-    pmix_proc_t proc = myproc;
-    proc.rank = PMIX_RANK_WILDCARD;
 
     PMI_CHECK();
 
     if (NULL == appnum) {
         return PMI_ERR_INVALID_ARG;
     }
+
+    (void)strncpy(proc.nspace, myproc.nspace, PMIX_MAX_NSLEN);
+    proc.rank = PMIX_RANK_UNDEF;
 
     /* set controlling parameters
      * PMIX_OPTIONAL - expect that these keys should be available on startup
@@ -368,10 +350,6 @@ PMIX_EXPORT int PMI_Get_appnum(int *appnum)
     if (PMIX_SUCCESS == rc) {
         rc = convert_int(appnum, val);
         PMIX_VALUE_RELEASE(val);
-    } else if( PMIX_ERR_NOT_FOUND == rc ){
-        /* this is optional value, set to 0 */
-        *appnum = 0;
-        rc = PMIX_SUCCESS;
     }
 
     PMIX_INFO_DESTRUCT(&info[0]);
@@ -503,8 +481,6 @@ PMIX_EXPORT int PMI_Get_clique_size(int *size)
     pmix_value_t *val;
     pmix_info_t info[1];
     bool  val_optinal = 1;
-    pmix_proc_t proc = myproc;
-    proc.rank = PMIX_RANK_WILDCARD;
 
     PMI_CHECK();
 
@@ -518,7 +494,7 @@ PMIX_EXPORT int PMI_Get_clique_size(int *size)
     PMIX_INFO_CONSTRUCT(&info[0]);
     PMIX_INFO_LOAD(&info[0], PMIX_OPTIONAL, &val_optinal, PMIX_BOOL);
 
-    rc = PMIx_Get(&proc, PMIX_LOCAL_SIZE, info, 1, &val);
+    rc = PMIx_Get(&myproc, PMIX_LOCAL_SIZE, info, 1, &val);
     if (PMIX_SUCCESS == rc) {
         rc = convert_int(size, val);
         PMIX_VALUE_RELEASE(val);
@@ -535,8 +511,6 @@ PMIX_EXPORT int PMI_Get_clique_ranks(int ranks[], int length)
     pmix_value_t *val;
     char **rks;
     int i;
-    pmix_proc_t proc = myproc;
-    proc.rank = PMIX_RANK_WILDCARD;
 
     PMI_CHECK();
 
@@ -544,7 +518,7 @@ PMIX_EXPORT int PMI_Get_clique_ranks(int ranks[], int length)
         return PMI_ERR_INVALID_ARGS;
     }
 
-    rc = PMIx_Get(&proc, PMIX_LOCAL_PEERS, NULL, 0, &val);
+    rc = PMIx_Get(&myproc, PMIX_LOCAL_PEERS, NULL, 0, &val);
     if (PMIX_SUCCESS == rc) {
         /* kv will contain a string of comma-separated
          * ranks on my node */

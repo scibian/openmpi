@@ -16,7 +16,6 @@
 #                         reserved.
 # Copyright (c) 2015      Research Organization for Information Science
 #                         and Technology (RIST). All rights reserved.
-# Copyright (c) 2016      IBM Corporation.  All rights reserved.
 # $COPYRIGHT$
 #
 # Additional copyrights may follow
@@ -51,22 +50,22 @@ CLEANFILES =
 # Note that we invoke some OPAL functions directly in libmpi_mpifh.la,
 # so we need to link in the OPAL library directly (pulling it in
 # indirectly via libmpi.la does not work on all platforms).
-lib@OMPI_LIBMPI_NAME@_mpifh_la_LIBADD = \
-        $(top_builddir)/ompi/lib@OMPI_LIBMPI_NAME@.la \
+libmpi_mpifh_la_LIBADD = \
+        $(top_builddir)/ompi/libmpi.la \
         $(OMPI_MPIEXT_MPIFH_LIBS) \
         $(OMPI_TOP_BUILDDIR)/opal/lib@OPAL_LIB_PREFIX@open-pal.la
 
-lib@OMPI_LIBMPI_NAME@_mpifh_la_LDFLAGS = -version-info $(libmpi_mpifh_so_version)
+libmpi_mpifh_la_LDFLAGS = -version-info $(libmpi_mpifh_so_version)
 
 # Are we building the mpif.h bindings at all?
 if OMPI_BUILD_FORTRAN_MPIFH_BINDINGS
 # If yes, then we need to build the installable library and the glue
 # convenience library that will be sucked up into the main libmpi.
-lib_LTLIBRARIES += lib@OMPI_LIBMPI_NAME@_mpifh.la
+lib_LTLIBRARIES += libmpi_mpifh.la
 # Do we need to suck in the convenience library from the lower
 # directory?
 if BUILD_PMPI_FORTRAN_MPIFH_BINDINGS_LAYER
-lib@OMPI_LIBMPI_NAME@_mpifh_la_LIBADD += profile/libmpi_mpifh_pmpi.la
+libmpi_mpifh_la_LIBADD += profile/libmpi_mpifh_pmpi.la
 endif
 endif
 
@@ -78,7 +77,7 @@ headers = \
 #
 # These files are only built and added to libmpi_mpifh.la in certain cases.
 #
-lib@OMPI_LIBMPI_NAME@_mpifh_la_SOURCES =
+libmpi_mpifh_la_SOURCES =
 
 # sizeof_f.f90 is generated based on some results from configure tests.
 CLEANFILES += sizeof_f.f90
@@ -108,7 +107,7 @@ if BUILD_FORTRAN_SIZEOF
 noinst_LTLIBRARIES += libmpi_mpifh_sizeof.la
 # Do not dist this file; it is generated
 nodist_libmpi_mpifh_sizeof_la_SOURCES = sizeof_f.f90
-lib@OMPI_LIBMPI_NAME@_mpifh_la_LIBADD += libmpi_mpifh_sizeof.la
+libmpi_mpifh_la_LIBADD += libmpi_mpifh_sizeof.la
 endif
 
 sizeof_pl = $(top_srcdir)/ompi/mpi/fortran/base/gen-mpi-sizeof.pl
@@ -124,7 +123,7 @@ sizeof_f.f90:
 	    --complex32=$(OMPI_HAVE_FORTRAN_COMPLEX32)
 
 if BUILD_MPI_FORTRAN_MPIFH_BINDINGS_LAYER
-lib@OMPI_LIBMPI_NAME@_mpifh_la_SOURCES += \
+libmpi_mpifh_la_SOURCES += \
         abort_f.c \
         add_error_class_f.c \
         add_error_code_f.c \
@@ -432,7 +431,7 @@ lib@OMPI_LIBMPI_NAME@_mpifh_la_SOURCES += \
         win_flush_local_all_f.c
 
 if OMPI_PROVIDE_MPI_FILE_INTERFACE
-lib@OMPI_LIBMPI_NAME@_mpifh_la_SOURCES += \
+libmpi_mpifh_la_SOURCES += \
         file_call_errhandler_f.c \
         file_close_f.c \
         file_create_errhandler_f.c \

@@ -385,6 +385,7 @@ opal_net_get_hostname(const struct sockaddr *addr)
         if(NULL == inet_ntop(AF_INET6, &((struct sockaddr_in6*) addr)->sin6_addr,
                              name, NI_MAXHOST)) {
             opal_output(0, "opal_sockaddr2str failed with error code %d", errno);
+            free(name);
             return NULL;
         }
         return name;
@@ -393,6 +394,7 @@ opal_net_get_hostname(const struct sockaddr *addr)
 #endif
         break;
     default:
+        free(name);
         return NULL;
     }
 
@@ -403,6 +405,7 @@ opal_net_get_hostname(const struct sockaddr *addr)
        int err = errno;
        opal_output (0, "opal_sockaddr2str failed:%s (return code %i)\n",
                     gai_strerror(err), error);
+       free (name);
        return NULL;
     }
     /* strip any trailing % data as it isn't pertinent */

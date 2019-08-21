@@ -97,14 +97,6 @@ static int mca_spml_ucx_component_register(void)
                                       "[integer] ucx priority",
                                       &mca_spml_ucx.priority);
 
-    mca_spml_ucx_param_register_int("num_disconnect", 1,
-                                    "How many disconnects to do in parallel",
-                                    &mca_spml_ucx.num_disconnect);
-
-    mca_spml_ucx_param_register_int("heap_reg_nb", 0,
-                                    "Use non-blocking memory registration for shared heap",
-                                    &mca_spml_ucx.heap_reg_nb);
-
     return OSHMEM_SUCCESS;
 }
 
@@ -128,7 +120,6 @@ static int mca_spml_ucx_component_open(void)
     memset(&params, 0, sizeof(params));
     params.field_mask = UCP_PARAM_FIELD_FEATURES;
     params.features   = UCP_FEATURE_RMA|UCP_FEATURE_AMO32|UCP_FEATURE_AMO64;
-
     err = ucp_init(&params, ucp_config, &mca_spml_ucx.ucp_context);
     ucp_config_release(ucp_config);
     if (UCS_OK != err) {
@@ -140,10 +131,7 @@ static int mca_spml_ucx_component_open(void)
 
 static int mca_spml_ucx_component_close(void)
 {
-    if (mca_spml_ucx.ucp_context) {
-        ucp_cleanup(mca_spml_ucx.ucp_context);
-        mca_spml_ucx.ucp_context = NULL;
-    }
+    ucp_cleanup(mca_spml_ucx.ucp_context);
     return OSHMEM_SUCCESS;
 }
 
