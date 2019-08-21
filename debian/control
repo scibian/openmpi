@@ -24,7 +24,7 @@ Build-Depends: debhelper (>= 10),
 
 
 Package: openmpi-gcc-hfi
-Architecture: amd64
+Architecture: linux-any
 Depends: mpi-selector,
          ${misc:Depends},
          ${shlibs:Depends}
@@ -38,7 +38,7 @@ Description: Powerful implementation of MPI/SHMEM with PSM2
  Open MPI jobs.
 
 Package: openmpi-gcc-cuda-hfi
-Architecture: amd64
+Architecture: linux-any
 Depends: mpi-selector,
          ${misc:Depends},
          ${shlibs:Depends}
