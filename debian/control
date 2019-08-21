@@ -20,7 +20,6 @@ Build-Depends: debhelper (>= 10),
                libpsm2-dev,
                libfabric-dev,
                libpsm-infinipath1-dev,
-               nvidia-cuda-toolkit,
 
 
 Package: openmpi-gcc-hfi
