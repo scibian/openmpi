@@ -1,3 +1,36 @@
+openmpi (2.0.2-2sci9+opa10.7u4) scibian9+opa10.7; urgency=medium
+
+  * Add IO ROMIO flags in configure
+
+ -- Rémi Palancher <remi-externe.palancher@edf.fr>  Tue, 06 Dec 2018 08:27:13 +0100
+
+openmpi (2.0.2-2sci9+opa10.7u3) scibian9+opa10.7; urgency=medium
+
+  * Add missing PSM2 flag in configure command line
+  * Add support for PMI1
+  * Disable heterogenous support
+
+ -- Rémi Palancher <remi-externe.palancher@edf.fr>  Thu, 22 Nov 2018 15:46:12 +0100
+
+openmpi (2.0.2-2sci9+opa10.7u2) scibian9+opa10.7; urgency=medium
+
+  * Fix performance regression due to CPU frequency-dependent timer issues
+    - add patch timer.patch
+
+ -- Mehdi Dogguy <mehdi.dogguy@edf.fr>  Thu, 11 Oct 2018 12:43:45 +0200
+
+openmpi (2.0.2-2sci9+opa10.7u1) scibian9+opa10.7; urgency=medium
+
+  * Scibian9+OPA10.7 release
+
+ -- Nicolas Meaux <nicolas-externe.meaux@edf.fr>  Fri, 10 Aug 2018 10:13:27 +0200
+
+openmpi (2.0.2-2sci9+opa10.6u1) unstable; urgency=medium
+
+  * Add psm2 support (manual backport from the Debian unstable patch).
+
+ -- Lucas Nussbaum <lucas@debian.org>  Thu, 14 Jun 2018 17:38:18 +0200
+
 openmpi (2.0.2-2) unstable; urgency=medium
 
   * Move to unstable. Closes: #8487574

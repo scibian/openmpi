@@ -3,3 +3,4 @@ x32.patch
 powerpc.patch
 build_hurd
 link-libfabric.patch
+timer.patch
