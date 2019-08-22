@@ -1,3 +1,9 @@
+openmpi (2.0.2-2sci9+opa10.9u1) scibian9+opa10.9; urgency=medium
+
+  * Scibian9+opa10.9 release.
+
+ -- MHamed Bouaziz <mhamed-externe.bouaziz@edf.fr>  Thu, 22 Aug 2019 10:49:33 +0200
+
 openmpi (2.0.2-2sci9+opa10.7u4) scibian9+opa10.7; urgency=medium
 
   * Add IO ROMIO flags in configure
