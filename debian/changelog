@@ -1,8 +1,8 @@
-openmpi (2.0.2-2sci9+opa10.7u4) scibian9+opa10.7; urgency=medium
+openmpi (2.0.2-2sci9+opa10.8u1) scibian9+opa10.8; urgency=medium
 
-  * Add IO ROMIO flags in configure
+  * Release 2.0.2-2sci9+opa10.8u1
 
- -- Rémi Palancher <remi-externe.palancher@edf.fr>  Tue, 06 Dec 2018 08:27:13 +0100
+ -- Pierre Trespeuch <pierre-externe.trespeuch@edf.fr>  Thu, 05 Sep 2019 18:08:46 +0200
 
 openmpi (2.0.2-2sci9+opa10.7u3) scibian9+opa10.7; urgency=medium
 
